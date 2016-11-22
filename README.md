@@ -1,7 +1,8 @@
 JUser
 =======
 
-A simple Module that glues together ZfcUser, BjyAuthorize, SlmLocale, GoalioRememberMe and Zend\Db.
+A simple Module that glues together ZfcUser, BjyAuthorize, SlmLocale, GoalioRememberMe and Zend\Db. A fork of `manuakasam/SamUser`.
+
 
 Installation
 ============
@@ -32,4 +33,4 @@ Installation
     ];
     ```
 
-5. The GUI can be accessed from `users`. Make sure to double-check that only administers have access to the `juser` routes. This can be configured in your `juser.global.php` file.
+5. The GUI can be accessed from `/users`. Make sure to double-check that only administers have access to the `juser` routes. This can be configured in your `juser.global.php` file.
