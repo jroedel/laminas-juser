@@ -15,5 +15,10 @@
         "snapshotpl/zf-snap-geoip": "2.*",
     	"goalio/goalio-rememberme": "1.*",
         "slm/locale": ">=0.1.0,<1.2.0-dev"
+    },
+    "autoload": {
+        "psr-0": {
+            "JUser": "src"
+        }
     }
 }
