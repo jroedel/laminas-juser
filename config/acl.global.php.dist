@@ -1,0 +1,46 @@
+<?php
+
+return [
+    'bjyauthorize' => [
+        //'unauthorized_strategy' => 'Application\View\UnauthorizedStrategy',
+
+        // resource providers provide a list of resources that will be tracked
+        // in the ACL. like roles, they can be hierarchical
+        'resource_providers' => [
+            'BjyAuthorize\Provider\Resource\Config' => [
+            	//Great for controlling certain elements in views using
+            	//if ($this->isAllowed('export_resource')) :
+                'export_resource'    => [], 
+            ],
+        ],
+        
+        /* rules can be specified here with the format:
+         * [roles (array], resource, [privilege (array|string], assertion]]
+        * assertions will be loaded using the service manager and must implement
+        * Zend\Acl\Assertion\AssertionInterface.
+        * *if you use assertions, define them using the service manager!*
+        */
+        'rule_providers' => [
+            'BjyAuthorize\Provider\Rule\Config' => [
+                'allow' => [
+                    //export_resource
+                    [['admin'], 'export_resource'],
+                ],
+            ],
+        ],
+        
+        /* I don't recommend using BjyAuthorize\Guard\Controller, because in
+         * the end it's just too much work. Just stick with Route guards.
+        */
+        
+        'guards' => [
+            /* If this guard is specified here (i.e. it is enabled], it will block
+             * access to all routes unless they are specified here.
+            */
+            'BjyAuthorize\Guard\Route' => [
+                ['route' => 'auth-home', 'roles' => ['user']],
+                ['route' => 'home', 'roles' => ['guest']],
+            ],
+        ],
+    ],
+];

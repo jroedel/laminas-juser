@@ -1,0 +1,23 @@
+<?php
+$title = 'Create new user';
+$this->headTitle($title);
+?>
+<h1><?php echo $this->escapeHtml($title); ?></h1>
+
+<?php $form = $this->form;
+$this->form->prepare();
+echo $this->form()->openTag($form);
+echo $this->formRow($form->get('username'));
+echo $this->formRow($form->get('email'));
+echo $this->formRow($form->get('displayName'));
+echo $this->formRow($form->get('password'));
+echo $this->formRow($form->get('passwordVerify'));
+$this->formSelect()->setTranslatorEnabled(false);
+echo $this->formRow($form->get('roles')); ?>
+<p><a href="<?php echo $this->url('juser/create-role');?>"><?php 
+    echo $this->translate("Create new role");?></a></p>
+<?php echo $this->formRow($form->get('personId'));
+echo $this->formRow($form->get('emailVerified'));
+echo $this->formRow($form->get('active'));
+echo $this->formRow($form->get('security'));
+echo $this->formSubmit($form->get('submit')); ?>

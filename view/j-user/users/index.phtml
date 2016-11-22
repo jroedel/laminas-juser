@@ -1,0 +1,47 @@
+<?php 
+$title = 'User Management';
+$this->headTitle($title);
+?>
+<h1><?php echo $this->escapeHtml($this->translate($title)); ?></h1>
+<p><a href="<?php echo $this->url('juser/create');?>"><?php echo $this->translate("Add new user");
+    ?></a> | <a href="<?php echo $this->url('juser/create-role');?>"><?php 
+    echo $this->translate("Add new role");?></a></p>
+
+<table class="table">
+<tr>
+	<!-- <th><?php echo $this->translate("Id");?></th> -->
+	<th><?php echo $this->translate("Username");?></th>
+    <th><?php echo $this->translate("Email");?></th>
+    <th><?php echo $this->translate("Display Name");?></th>
+    <th><?php echo $this->translate("Active");?></th>
+    <th><?php echo $this->translate("Roles");?></th>
+    <th><?php echo $this->translate("Person");?></th>
+</tr>
+<?php  foreach($users as $user) : ?>
+<tr>
+	<!-- <td><?php echo $this->escapeHtml($user['userId']);?></td> -->
+	<td><?php echo $this->escapeHtml($user['username']).$this->editPencil('user', $user['userId']);?></td>
+	<td><?php echo $this->escapeHtml($user['email']);?></td>
+	<td><?php echo $this->escapeHtml($user['displayName']);?></td>
+	<td><?php echo $user['active'] ? '✓' : '&times;';?></td>
+	<td><?php if (is_array($user['roles'])) {
+        if (count($user['roles']) == 0) {
+            echo $this->translate('none');
+        } else {
+            echo $this->escapeHtml(implode(', ', $user['roles']));
+        }} ?></td>
+	<!-- <td><?php if (is_object($user['createdOn'])) {
+	    echo $this->dateFormat($user['createdOn'], 
+	        IntlDateFormatter::SHORT, IntlDateFormatter::NONE);
+        }?></td>
+	<td><?php if (is_object($user['updatedOn'])) {
+	    echo $this->dateFormat($user['updatedOn'], 
+	        IntlDateFormatter::SHORT, IntlDateFormatter::NONE);
+	   }?></td> -->
+	<td><?php if ($user['personId'] && isset($this->persons[$user['personId']])) {
+	    $phone['person'] = $this->persons[$user['personId']];
+	    echo $this->formatPerson($phone['person'], ['editPencil' => true]); 
+    }?></td>
+</tr>
+<?php endforeach; ?>
+</table>
