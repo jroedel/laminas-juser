@@ -45,6 +45,8 @@ return [
     ],
         
     'bjyauthorize' => [
+        'unauthorized_strategy' => 'JUser\View\RedirectionStrategy',
+        
 //         'cache_options'         => [
 //                 'adapter'   => [
 //                         'name' => 'filesystem',
@@ -100,39 +102,6 @@ return [
                 'table'             => 'user_role',
                 'role_id_field'     => 'role_id',
                 'parent_role_field' => 'parent',
-            ],
-        ],
-
-        // resource providers provide a list of resources that will be tracked
-        // in the ACL. like roles, they can be hierarchical
-//         'resource_providers' => [
-//                'BjyAuthorize\Provider\Resource\Config' => [
-//                        'user' => [],
-//                ],
-//         ],
-
-        /* Currently, only controller and route guards exist
-         *
-         * Consider enabling either the controller or the route guard depending on your needs.
-         */
-        'guards' => [
-            /* If this guard is specified here (i.e. it is enabled], it will block
-             * access to all routes unless they are specified here.
-            */
-            'BjyAuthorize\Guard\Route' => [
-                ['route' => 'zfcuser/login', 'roles' => ['guest']],
-                ['route' => 'zfcuser/logout', 'roles' => ['user']],
-                ['route' => 'change-password', 'roles' => ['user']],
-//                 ['route' => 'change-email', 'roles' => ['user']],
-                ['route' => 'register', 'roles' => ['guest']],
-//                 ['route' => 'zfcuser/register', 'roles' => ['guest']],
-                ['route' => 'juser', 'roles' => ['administrator']],
-                ['route' => 'juser/user/edit', 'roles' => ['administrator']],
-                ['route' => 'juser/user/delete', 'roles' => ['administrator']],
-                ['route' => 'juser/user/change-password', 'roles' => ['administrator']],
-                ['route' => 'juser/user/show', 'roles' => ['administrator']],
-                ['route' => 'juser/create', 'roles' => ['administrator']],
-                ['route' => 'juser/create-role', 'roles' => ['administrator']],
             ],
         ],
     ],
@@ -241,6 +210,9 @@ return [
             'JUser\Model\UserTable'       => 'JUser\Service\UserTableFactory',
             'JUser\Form\EditUserForm'     => 'JUser\Service\EditUserFormFactory',
             'JUser\Form\CreateRoleForm'   => 'JUser\Service\CreateRoleFormFactory',
+        ],
+        'invokables'  => [
+            'JUser\View\RedirectionStrategy' => 'JUser\View\RedirectionStrategy',
         ],
     ],
 ];

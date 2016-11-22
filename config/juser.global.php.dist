@@ -82,12 +82,29 @@ return [
     
         /**
          * End of GoalioRememberMe configuration
-            */
+        */
     ],
-            /**
-             * ZfcUser Configuration
-            *
-            * If you have a ./config/autoload/ directory set up for your project, you can
-            * drop this config file in it and change the values as you wish.
+    'bjyauthorize' => [
+    
+        'guards' => [
+            /* If this guard is specified here (i.e. it is enabled], it will block
+             * access to all routes unless they are specified here.
             */
+            'BjyAuthorize\Guard\Route' => [
+                ['route' => 'zfcuser/login', 'roles' => ['guest']],
+                ['route' => 'zfcuser/logout', 'roles' => ['user']],
+                ['route' => 'change-password', 'roles' => ['user']],
+//                 ['route' => 'change-email', 'roles' => ['user']],
+                ['route' => 'register', 'roles' => ['guest']],
+//                 ['route' => 'zfcuser/register', 'roles' => ['guest']],
+                ['route' => 'juser', 'roles' => ['administrator']],
+                ['route' => 'juser/user/edit', 'roles' => ['administrator']],
+                ['route' => 'juser/user/delete', 'roles' => ['administrator']],
+                ['route' => 'juser/user/change-password', 'roles' => ['administrator']],
+                ['route' => 'juser/user/show', 'roles' => ['administrator']],
+                ['route' => 'juser/create', 'roles' => ['administrator']],
+                ['route' => 'juser/create-role', 'roles' => ['administrator']],
+            ],
+        ],
+	],
 ];
