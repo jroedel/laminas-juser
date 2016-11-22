@@ -9,7 +9,7 @@
     "homepage": "https://github.com/jroedel/zf2-juser",
     "require": {
         "php": ">=5.3.3",
-        "zendframework/zendframework": "~2.5.0",
+        "zendframework/zendframework": "^2.5.0",
     	"zf-commons/zfc-user": "1.0.0",
         "bjyoungblood/bjy-authorize": "1.4.*",
         "snapshotpl/zf-snap-geoip": "2.*",
