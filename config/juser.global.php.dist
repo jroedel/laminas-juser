@@ -25,29 +25,31 @@ return [
             ],
         ],
     ],
-    /**
-     * Beginning of SlmLocale configuration
-     * 
-     * Default locale
-     *
-     */
-    'default' => 'en-US',
-
-    /**
-     * Supported locales
-     *
-     */
-    'supported' => ['en_US', 'es_ES', 'de_DE', 'pt_BR'],
-
-    /**
-     * Strategies
-     *
-     */
-    'strategies' => ['query', 'cookie', 'acceptlanguage'],
-
-    /**
-     * End of SlmLocale configuration
-     */
+    'slm_locale' => [
+	    /**
+	     * Beginning of SlmLocale configuration
+	     * 
+	     * Default locale
+	     *
+	     */
+	    'default' => 'en-US',
+	
+	    /**
+	     * Supported locales
+	     *
+	     */
+	    'supported' => ['en_US', 'es_ES', 'de_DE', 'pt_BR'],
+	
+	    /**
+	     * Strategies
+	     *
+	     */
+	    'strategies' => ['query', 'cookie', 'acceptlanguage'],
+	    
+	    /**
+	     * End of SlmLocale configuration
+	     */
+	],
 
     /**
      * GoalioRememberMe Configuration

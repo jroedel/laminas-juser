@@ -11,7 +11,7 @@
         "php": ">=5.3.3",
         "zendframework/zendframework": "^2.5.0",
     	"zf-commons/zfc-user": "1.0.0",
-        "bjyoungblood/bjy-authorize": "1.4.*",
+        "bjyoungblood/bjy-authorize": "^1.4.0",
         "snapshotpl/zf-snap-geoip": "2.*",
     	"goalio/goalio-rememberme": "1.*",
         "slm/locale": ">=0.1.0,<1.2.0-dev"

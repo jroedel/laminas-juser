@@ -96,7 +96,7 @@ class RedirectionStrategy implements ListenerAggregateInterface
         // Work out where were we trying to get to
         $options['name'] = $routeMatch->getMatchedRouteName();
         $redirect = $router->assemble($routeMatch->getParams(), $options);
-        var_dump($redirect);
+        
         $response = $response ?: new Response();
 
         $response->getHeaders()->addHeaderLine('Location', $url . '?redirect=' . $redirect);
