@@ -1,7 +1,10 @@
 <?php
 namespace JUser;
 
-class Module {
+class Module implements
+	\Zend\ModuleManager\Feature\ConfigProviderInterface,
+	\Zend\ModuleManager\Feature\AutoloaderProviderInterface
+{
     public function getConfig()
     {
         return include __DIR__ . '/../../config/module.config.php';
@@ -13,11 +16,11 @@ class Module {
            'Zend\Loader\ClassMapAutoloader' => array(
                 __DIR__ . '/../../autoload_classmap.php',
            ),
-//             'Zend\Loader\StandardAutoloader' => array(
-//                 'namespaces' => array(
-//                     __NAMESPACE__ => __DIR__ . '/../../src/' . __NAMESPACE__,
-//                 ),
-//             ),
+            'Zend\Loader\StandardAutoloader' => array(
+                'namespaces' => array(
+                    __NAMESPACE__ => __DIR__,
+                ),
+            ),
         );
     }
 }

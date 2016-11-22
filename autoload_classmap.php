@@ -17,4 +17,5 @@ return array(
     'JUser\Service\MailTransportFactory'   => __DIR__ . '/src/JUser/Service/MailTransportFactory.php',
     'JUser\Service\UsersControllerFactory' => __DIR__ . '/src/JUser/Service/UsersControllerFactory.php',
     'JUser\Service\UserTableFactory'       => __DIR__ . '/src/JUser/Service/UserTableFactory.php',
+    'JUser\View\RedirectionStrategy'       => __DIR__ . '/src/JUser/View/RedirectionStrategy.php',
 );
