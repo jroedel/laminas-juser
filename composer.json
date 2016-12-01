@@ -16,7 +16,7 @@
         "snapshotpl/zf-snap-geoip": "2.*",
     	"goalio/goalio-rememberme": "1.*",
         "slm/locale": ">=0.1.0,<1.2.0-dev",
-        "zfc-commons/zfc-user": "1.0.0"
+        "zf-commons/zfc-user": "1.0.0"
     },
     "autoload": {
         "psr-0": {
