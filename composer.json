@@ -12,7 +12,6 @@
         "zendframework/zend-db": "^2.4.0",
         "zendframework/zend-form": "^2.4.0",
         "zendframework/zend-crypt": "^2.4.0 || ^3.1.0",
-    	"dillchuk/ZfcUser": "dev-master@dev",
         "bjyoungblood/bjy-authorize": "^1.4.0",
         "snapshotpl/zf-snap-geoip": "2.*",
     	"goalio/goalio-rememberme": "1.*",
