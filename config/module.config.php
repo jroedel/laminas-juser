@@ -34,6 +34,8 @@ return [
         'login_redirect_route' => 'home',
         
         'logout_redirect_route' => 'home',
+
+        'use_redirect_parameter_if_present' => true,
         
         'enable_user_state' => true,
         //the user state will stay at 0 until the user has been validated
