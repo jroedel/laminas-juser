@@ -205,6 +205,14 @@ return [
             'users' => __DIR__ . '/../view',
         ],
     ],
+    'view_helpers' => [  
+        'factories' => [
+        ],
+        'invokables' => [
+            'ipPlace'		        => 'JUser\View\Helper\IpPlace',
+            'userWithIp'		    => 'JUser\View\Helper\UserWithIp',
+       	],
+    ],
     'service_manager' => [
         'factories' => [
             'JUserMailMessage'            => 'JUser\Service\MailMessageFactory',
