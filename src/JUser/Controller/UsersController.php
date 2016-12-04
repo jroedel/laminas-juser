@@ -11,7 +11,6 @@ use JUser\Form\ChangeOtherPasswordForm;
 use JUser\Form\DeleteUserForm;
 use Zend\Mvc\Controller\Plugin\FlashMessenger;
 use Zend\Crypt\Password\Bcrypt;
-use Patres\Model\PatresTable;
 
 /**
  *
@@ -79,15 +78,16 @@ class UsersController extends AbstractActionController
 
     public function indexAction()
     {
-        /** @var PatresTable $table */
-        $table = $this->getServiceLocator()->get('Patres\Model\PatresTable');
-        //get course persons
-        $query = array(
-            'deceased'     => true,
-            'exMembers'    => true,
-        );
-        $persons = $table->searchPersons($query, false, true);
-
+    	$sm = $this->getServiceLocator();
+    	$persons = null;
+    	if ($sm->has('Patres\Model\PatresTable')) {
+	        $table = $sm->get('Patres\Model\PatresTable');
+	        $query = [
+	            'deceased'     => true,
+	            'exMembers'    => true,
+	        ];
+	        $persons = $table->searchPersons($query, false, true);
+    	}
         $users = $this->userTable->getUsers();
         return new ViewModel(array(
             'users' => $users,

@@ -39,7 +39,9 @@ $this->headTitle($title);
 	    echo $this->dateFormat($user['updatedOn'],
 	        IntlDateFormatter::SHORT, IntlDateFormatter::NONE);
 	   }?></td> -->
-	<td><?php if ($user['personId'] && isset($this->persons[$user['personId']])) {
+	<td><?php if ($user['personId'] &&
+			!is_null($this->persons) &&
+			isset($this->persons[$user['personId']])) {
 	    $phone['person'] = $this->persons[$user['personId']];
 	    echo $this->formatPerson($phone['person'], ['editPencil' => true]);
     }?></td>

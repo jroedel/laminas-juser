@@ -215,8 +215,6 @@ return [
     ],
     'service_manager' => [
         'factories' => [
-//             'JUserMailMessage'            => 'JUser\Service\MailMessageFactory',
-//             'JUserMailTransport'          => 'JUser\Service\MailTransportFactory',
             'JUser\Model\UserTable'       => 'JUser\Service\UserTableFactory',
             'JUser\Form\EditUserForm'     => 'JUser\Service\EditUserFormFactory',
             'JUser\Form\CreateRoleForm'   => 'JUser\Service\CreateRoleFormFactory',
