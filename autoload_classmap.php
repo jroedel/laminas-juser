@@ -13,8 +13,6 @@ return array(
     'JUser\Module'                         => __DIR__ . '/src/JUser/Module.php',
     'JUser\Service\CreateRoleFormFactory'  => __DIR__ . '/src/JUser/Service/CreateRoleFormFactory.php',
     'JUser\Service\EditUserFormFactory'    => __DIR__ . '/src/JUser/Service/EditUserFormFactory.php',
-    'JUser\Service\MailMessageFactory'     => __DIR__ . '/src/JUser/Service/MailMessageFactory.php',
-    'JUser\Service\MailTransportFactory'   => __DIR__ . '/src/JUser/Service/MailTransportFactory.php',
     'JUser\Service\UsersControllerFactory' => __DIR__ . '/src/JUser/Service/UsersControllerFactory.php',
     'JUser\Service\UserTableFactory'       => __DIR__ . '/src/JUser/Service/UserTableFactory.php',
     'JUser\View\Helper\IpPlace'            => __DIR__ . '/src/JUser/View/Helper/IpPlace.php',

@@ -12,14 +12,9 @@ class UsersControllerFactory implements FactoryInterface
     {
         $serviceLocator = $services->getServiceLocator();
         $userTable      = $serviceLocator->get('JUser\Model\UserTable');
-        $transport      = $serviceLocator->get('JUserMailTransport');
-        $message        = $serviceLocator->get('JUserMailMessage');
 
         $controller = new UsersController();
         $controller->setUserTable($userTable);
-        //$controller->setContactForm($form);
-        $controller->setMessage($message);
-        $controller->setMailTransport($transport);
 
         return $controller;
     }

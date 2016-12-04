@@ -2,8 +2,6 @@
 
 namespace JUser\Controller;
 
-use Zend\Mail\Message;
-use Zend\Mail\Transport\TransportInterface;
 use JUser\Form\EditUserForm;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\View\Model\ViewModel;
@@ -25,18 +23,6 @@ use Patres\Model\PatresTable;
 class UsersController extends AbstractActionController
 {
     protected $userTable;
-    protected $transport;
-    protected $message;
-
-    public function setMailTransport(TransportInterface $transport)
-    {
-        $this->transport = $transport;
-    }
-
-    public function setMessage(Message $message)
-    {
-        $this->message = $message;
-    }
 
     /**
      *
@@ -280,18 +266,5 @@ class UsersController extends AbstractActionController
         	'user' => $user,
             'form' => $form,
         );
-    }
-
-    protected function sendEmail(array $data)
-    {
-        $from    = $data['from'];
-        $subject = '[Testing Users] ' . $data['subject'];
-        $body    = $data['body'];
-
-        $this->message->addFrom($from)
-        ->addReplyTo($from)
-        ->setSubject($subject)
-        ->setBody($body);
-        $this->transport->send($this->message);
     }
 }
