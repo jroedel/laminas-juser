@@ -5,8 +5,8 @@ return [
         'zend_db_adapter' => 'Zend\Db\Adapter\Adapter',
         // telling ZfcUser to use our own class
         'user_entity_class'       => 'JUser\Model\User',
-        
-        'auth_adapters' => [ 
+
+        'auth_adapters' => [
             100 => 'ZfcUser\Authentication\Adapter\Db',
             50 => 'GoalioRememberMe\Authentication\Adapter\Cookie'
         ],
@@ -14,9 +14,9 @@ return [
         'enable_default_entities' => false,
 
         'enable_registration' => false,
-        
+
         'use_registration_form_captcha' => true,
-            
+
         'form_captcha_options' => [
                 'class'   => 'figlet',
                 'options' => [
@@ -26,29 +26,29 @@ return [
                 ],
         ],
         'enable_display_name' => true,
-            
+
         'enable_username' => true,
-            
+
         'auth_identity_fields' => [ 'username', 'email' ],
-            
+
         'login_redirect_route' => 'home',
-        
+
         'logout_redirect_route' => 'home',
 
         'use_redirect_parameter_if_present' => true,
-        
+
         'enable_user_state' => true,
         //the user state will stay at 0 until the user has been validated
         'default_user_state' => 0,
-        
+
         'allowed_login_states' => [1],
 
         'user_login_widget_view_template' => 'zfc-user/user/login',
     ],
-        
+
     'bjyauthorize' => [
         'unauthorized_strategy' => 'JUser\View\RedirectionStrategy',
-        
+
 //         'cache_options'         => [
 //                 'adapter'   => [
 //                         'name' => 'filesystem',
@@ -57,10 +57,10 @@ return [
 //                         'Serializer',
 //                 ]
 //         ],
-        
+
 //         // Key used by the cache for caching the acl
 //         'cache_key'             => 'bjyauthorize_acl',
-        
+
         // set the 'guest' role as default (must be defined in a role provider]
         'default_role' => 'guest',
 
@@ -205,7 +205,7 @@ return [
             'users' => __DIR__ . '/../view',
         ],
     ],
-    'view_helpers' => [  
+    'view_helpers' => [
         'factories' => [
         ],
         'invokables' => [
@@ -215,8 +215,8 @@ return [
     ],
     'service_manager' => [
         'factories' => [
-            'JUserMailMessage'            => 'JUser\Service\MailMessageFactory',
-            'JUserMailTransport'          => 'JUser\Service\MailTransportFactory',
+//             'JUserMailMessage'            => 'JUser\Service\MailMessageFactory',
+//             'JUserMailTransport'          => 'JUser\Service\MailTransportFactory',
             'JUser\Model\UserTable'       => 'JUser\Service\UserTableFactory',
             'JUser\Form\EditUserForm'     => 'JUser\Service\EditUserFormFactory',
             'JUser\Form\CreateRoleForm'   => 'JUser\Service\CreateRoleFormFactory',
