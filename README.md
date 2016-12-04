@@ -27,7 +27,7 @@ Installation
 			'BjyAuthorize',
 	        'SlmLocale',
 			'GoalioRememberMe',
-	        'SamUser',
+	        'JUser',
         ],
         // ...
     ];

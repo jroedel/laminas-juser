@@ -3,14 +3,10 @@
 namespace JUser\Controller;
 
 use Zend\Mail\Message;
-
 use Zend\Mail\Transport\TransportInterface;
-
 use JUser\Form\EditUserForm;
-
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\View\Model\ViewModel;
-use JUser\Form\UserForm;
 use JUser\Model\User;
 use JUser\Model\UserTable;
 use JUser\Form\ChangeOtherPasswordForm;
@@ -20,7 +16,7 @@ use Zend\Crypt\Password\Bcrypt;
 use Patres\Model\PatresTable;
 
 /**
- *         
+ *
  * @author Jeff Roedel <jeff.roedel@gmail.com>
  * @todo   fix activation
  * @todo   user email verification
@@ -41,7 +37,7 @@ class UsersController extends AbstractActionController
     {
         $this->message = $message;
     }
-    
+
     /**
      *
      * @return UserTable
@@ -50,7 +46,7 @@ class UsersController extends AbstractActionController
     {
         $this->userTable = $userTable;
     }
-    
+
     public function changePasswordAction()
     {
     	$id = (int)$this->params('user_id');
@@ -87,14 +83,14 @@ class UsersController extends AbstractActionController
     		$form->setData($userIdData);
     	}
     	$user = $table->getUser($id);
-    	
+
     	return array(
     			'userId' => $id,
     			'user' => $user,
     			'form' => $form,
     	);
     }
-    
+
     public function indexAction()
     {
         /** @var PatresTable $table */
@@ -105,30 +101,14 @@ class UsersController extends AbstractActionController
             'exMembers'    => true,
         );
         $persons = $table->searchPersons($query, false, true);
-//         var_dump($persons);
-//         $data = array(
-//             'from' => 'mountsiondata@gmail.com',
-//             'subject' => 'viewing',
-//             'body' => 'Someone is looking at the users.'
-//         );
-//         $this->sendEmail($data);
-        
-//         try {
-//             if (!$this->isAllowed('user', 'read')) {
-//                 throw new \Exception('You do not have permission to view this page.');
-//             }
-//         }
-//         catch (\Exception $e) {
-//             $this->flashMessenger()->setNamespace('error')->addMessage('404');
-//             return $this->redirect()->toRoute('juser');
-//         }
+
         $users = $this->userTable->getUsers();
         return new ViewModel(array(
             'users' => $users,
             'persons' => $persons
         ));
     }
-    
+
     public function editAction()
     {
 		$sm = $this->getServiceLocator ();
@@ -220,7 +200,7 @@ class UsersController extends AbstractActionController
             'form' => $form,
         );
     }
-    
+
     protected function hashPassword($password)
     {
         $zfcOptions = $this->getServiceLocator()->get('zfcuser_module_options');
@@ -229,10 +209,10 @@ class UsersController extends AbstractActionController
         $pass = $bcrypt->create($password);
         return $pass;
     }
-    
+
     protected function generatePassword()
     {
-        
+
     }
 
     public function createRoleAction()
@@ -240,7 +220,7 @@ class UsersController extends AbstractActionController
         $sm = $this->getServiceLocator ();
         /** @var UserTable $table **/
         $table = $sm->get ( 'JUser\Model\UserTable' );
-    
+
         /** @var EditUserForm $form */
         $form = $sm->get('JUser\Form\CreateRoleForm');
         $request = $this->getRequest();
@@ -264,7 +244,7 @@ class UsersController extends AbstractActionController
             'form' => $form,
         );
     }
-    
+
     public function deleteAction()
     {
         $id = (int)$this->params('user_id');
@@ -294,7 +274,7 @@ class UsersController extends AbstractActionController
         	$form->setData($userIdData);
         }
         $user = $table->getUser($id);
-    
+
         return array(
             'userId' => $id,
         	'user' => $user,
@@ -307,7 +287,7 @@ class UsersController extends AbstractActionController
         $from    = $data['from'];
         $subject = '[Testing Users] ' . $data['subject'];
         $body    = $data['body'];
-    
+
         $this->message->addFrom($from)
         ->addReplyTo($from)
         ->setSubject($subject)
