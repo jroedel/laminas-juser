@@ -16,7 +16,7 @@
         "snapshotpl/zf-snap-geoip": "2.*",
     	"goalio/goalio-rememberme": "1.*",
         "zf-commons/zfc-user": "1.0.0",
-        "bb-drummer/locale": "dev-master@dev"
+        "jroedel/locale": "dev-master@dev"
     },
     "autoload": {
         "psr-0": {
@@ -26,7 +26,7 @@
 	"repositories": [
 	   {
 	     "type": "vcs",
-	     "url": "https://github.com/bb-drummer/SlmLocale"
+	     "url": "https://github.com/jroedel/SlmLocale"
 	   }
 	]
 }
