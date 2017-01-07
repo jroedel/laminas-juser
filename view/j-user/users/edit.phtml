@@ -13,7 +13,9 @@ echo $this->formRow($form->get('email'));
 echo $this->formRow($form->get('displayName'));
 $this->formSelect()->setTranslatorEnabled(false);
 echo $this->formRow($form->get('roles'));
-echo $this->formRow($form->get('personId'));
+if (!empty($form->get('personId')->getValueOptions())) {
+    echo $this->formRow($form->get('personId'));
+}
 echo $this->formRow($form->get('emailVerified'));
 echo $this->formRow($form->get('active'));
 echo $this->formRow($form->get('security'));
@@ -34,8 +36,8 @@ echo $this->formSubmit($form->get('submit')); ?>
       </div>
       <div class="modal-body">
         <p><?php echo sprintf($this->translate("You are about to change %s 's password"), $this->user['username']);?></p>
-        <?php $form = $this->changePasswordForm; 
-        	$form->setAttribute('action', $this->url('juser/user/change-password', 
+        <?php $form = $this->changePasswordForm;
+        	$form->setAttribute('action', $this->url('juser/user/change-password',
         			array('user_id' => $this->userId)));
         	$form->prepare();
  			echo $this->form()->openTag($form);
@@ -63,8 +65,8 @@ echo $this->formSubmit($form->get('submit')); ?>
       </div>
       <div class="modal-body">
         <p><?php echo sprintf($this->translate("You are about to delete %s"), $this->user['username']); ?></p>
-        <?php $form = $this->deleteUserForm; 
-        	$form->setAttribute('action', $this->url('juser/user/delete', 
+        <?php $form = $this->deleteUserForm;
+        	$form->setAttribute('action', $this->url('juser/user/delete',
         			array('user_id' => $this->userId)));
         	$form->prepare();
  			echo $this->form()->openTag($form);

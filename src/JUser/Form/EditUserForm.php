@@ -9,48 +9,48 @@ use Zend\Validator\Regex;
 class EditUserForm extends Form implements InputFilterProviderInterface
 {
     protected $filterSpec;
-    
+
 	public function __construct($name = null)
 	{
 		// we want to ignore the name passed
 		parent::__construct ( 'user_edit' );
-		
+
 		$this->setAttribute ( 'method', 'post' );
 		$this->add ( array (
 			'name' => 'userId',
 			'attributes' => array (
-				'type' => 'hidden' 
-			) 
+				'type' => 'hidden'
+			)
 		) );
 		$this->add ( array (
 			'name' => 'username',
 			'attributes' => array (
 				'type' => 'text',
-				'size' => '30' 
+				'size' => '30'
 			),
 			'options' => array (
-				'label' => 'Username' 
+				'label' => 'Username'
 			)
 		) );
 		$this->add ( array (
 			'name' => 'email',
 			'attributes' => array (
 				'type' => 'text',
-				'size' => '50' 
+				'size' => '50'
 			),
 			'options' => array (
-				'label' => 'Email' 
-			) 
+				'label' => 'Email'
+			)
 		) );
 		$this->add ( array (
 			'name' => 'displayName',
 			'attributes' => array (
 				'type' => 'text',
-				'size' => '50' 
+				'size' => '50'
 			),
 			'options' => array (
-				'label' => 'Display Name' 
-			) 
+				'label' => 'Display Name'
+			)
 		) );
 
 		$this->add(array(
@@ -86,7 +86,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 		        'value'           => 0,
 		    ),
 		));
-		$this->add(array( 
+		$this->add(array(
 			'name' => 'active',
 			'type' => 'Checkbox',
 			'options' => array(
@@ -130,8 +130,8 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 			    'class' => 'btn-primary',
 				'type' => 'submit',
 				'value' => 'Submit',
-				'id' => 'submit' 
-			) 
+				'id' => 'submit'
+			)
 		) );
 	}
 
@@ -139,7 +139,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 	{
 	    $this->filterSpec = $spec;
 	}
-	
+
 	public function getInputFilterSpecification()
 	{
 	    if ($this->filterSpec) {
@@ -253,38 +253,42 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 		);
 		return $this->filterSpec;
 	}
-	
+
 	public function setValidatorsForCreate()
 	{
 	    $spec = $this->getInputFilterSpecification();
 	    if ($spec && isset($spec['userId']) && $spec['userId']) {
 	        $spec['userId']['required'] = false;
 	    }
-	    if ($spec && isset($spec['displayName']) && $spec['displayName']) {
-	        $spec['displayName']['validators'][] = array(
-                'name'    => 'Zend\Validator\Db\NoRecordExists',
-                'options' => array(
-                    'table' => 'user',
-                    'field' => 'display_name',
-                    'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
-                    'messages' => array(
-                        \Zend\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND => 'Display name already exists in database'
+	    try { //use try block in case there is no StaticAdapter
+    	    if ($spec && isset($spec['displayName']) && $spec['displayName']) {
+    	        $spec['displayName']['validators'][] = array(
+                    'name'    => 'Zend\Validator\Db\NoRecordExists',
+                    'options' => array(
+                        'table' => 'user',
+                        'field' => 'display_name',
+                        'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                        'messages' => array(
+                            \Zend\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND => 'Display name already exists in database'
+                        ),
                     ),
-                ),
-            );
-	    }
-	    if ($spec && isset($spec['username']) && $spec['username']) {
-	        $spec['username']['validators'][] = array(
-                'name'    => 'Zend\Validator\Db\NoRecordExists',
-                'options' => array(
-                    'table' => 'user',
-                    'field' => 'username',
-                    'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
-                    'messages' => array(
-                        \Zend\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND => 'Username already exists in database'
+                );
+    	    }
+    	    if ($spec && isset($spec['username']) && $spec['username']) {
+    	        $spec['username']['validators'][] = array(
+                    'name'    => 'Zend\Validator\Db\NoRecordExists',
+                    'options' => array(
+                        'table' => 'user',
+                        'field' => 'username',
+                        'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                        'messages' => array(
+                            \Zend\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND => 'Username already exists in database'
+                        ),
                     ),
-                ),
-	        );
+    	        );
+    	    }
+	    } catch (\Exception $e) {
+
 	    }
 	    $this->setInputFilterSpecification($spec);
 	}

@@ -20,8 +20,11 @@ $this->headTitle($title);
 <?php  foreach($users as $user) : ?>
 <tr>
 	<!-- <td><?php echo $this->escapeHtml($user['userId']);?></td> -->
-	<td><?php echo $this->escapeHtml($user['username']).$this->editPencil('user', $user['userId']);
-	//@todo factor out this editPencil?></td>
+	<td><?php echo $this->escapeHtml($user['username']);
+	if ($this->isAllowed('route/juser/user/edit')):
+	   ?>&nbsp;<a href="<?php echo $this->url('juser/user/edit', [ 'user_id' => $user['userId']]);
+	   ?>"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></a><?php
+    endif;?></td>
 	<td><?php echo $this->escapeHtml($user['email']);?></td>
 	<td><?php echo $this->escapeHtml($user['displayName']);?></td>
 	<td><?php echo $user['active'] ? '✓' : '&times;';?></td>

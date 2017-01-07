@@ -121,9 +121,13 @@ class UsersController extends AbstractActionController
 				$this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_ERROR )->addMessage ( 'Error in form submission, please try again later.' );
 				return $this->redirect ()->toRoute ( 'juser' );
 			}
+			$isPersonIdSet = key_exists('personId', $data);
 			$form->setData ( $data );
 			if ($form->isValid ()) {
 			    $data = $form->getData();
+			    if (!$isPersonIdSet) {
+			        unset($data['personId']);
+			    }
 				if ($table->updateUser ($id, $data)) {
 					$this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_SUCCESS )->addMessage ( 'User successfully updated.' );
 					$this->redirect ()->toUrl ( $this->url ()->fromRoute ( 'juser' ) );

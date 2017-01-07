@@ -21,16 +21,18 @@ class EditUserFormFactory implements FactoryInterface
      */
     public function createService(ServiceLocatorInterface $serviceLocator)
     {
-        /** @var \Patres\Model\PatresTable $patresTable **/
-		$patresTable = $serviceLocator->get ( 'Patres\Model\PatresTable' );
         /** @var UserTable $userTable **/
 		$userTable = $serviceLocator->get ( 'JUser\Model\UserTable' );
 		$form = new EditUserForm();
+        if ($serviceLocator->has ( 'Patres\Model\PatresTable' )) {
+            /** @var \Patres\Model\PatresTable $patresTable **/
+        	$patresTable = $serviceLocator->get ( 'Patres\Model\PatresTable' );
+        	$persons = $patresTable->getPersonValueOptions(true, false);
+        	$form->get('personId')->setValueOptions($persons);
+        }
 		$roles = $userTable->getRolesValueOptions();
-		$persons = $patresTable->getPersonValueOptions(true, false);
 		$form->get('roles')->setValueOptions($roles);
-		$form->get('personId')->setValueOptions($persons);
-		
+
 		return $form;
     }
 }
