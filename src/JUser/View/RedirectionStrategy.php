@@ -14,6 +14,7 @@ use Zend\Mvc\Application;
 use Zend\Mvc\MvcEvent;
 use BjyAuthorize\Guard\Route;
 use BjyAuthorize\Guard\Controller;
+use BjyAuthorize\View\UnauthorizedStrategy;
 
 /**
  * Dispatch error handler, catches exceptions related with authorization and
@@ -22,7 +23,7 @@ use BjyAuthorize\Guard\Controller;
  * @author Ben Youngblood <bx.youngblood@gmail.com>
  * @author Marco Pivetta  <ocramius@gmail.com>
  */
-class RedirectionStrategy implements ListenerAggregateInterface
+class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggregateInterface
 {
     /**
      * @var string route to be used to handle redirects
@@ -38,6 +39,11 @@ class RedirectionStrategy implements ListenerAggregateInterface
      * @var \Zend\Stdlib\CallbackHandler[]
      */
     protected $listeners = array();
+
+    public function __construct()
+    {
+        parent::__construct('error/403');
+    }
 
     /**
      * {@inheritDoc}
@@ -73,6 +79,8 @@ class RedirectionStrategy implements ListenerAggregateInterface
         $router     = $event->getRouter();
         $error      = $event->getError();
         $url        = $this->redirectUri;
+        $identity   = $event->getApplication()->getServiceManager()->
+            get('zfcuser_user_service')->getAuthService()->getIdentity();
 
         if ($result instanceof Response
             || ! $routeMatch
@@ -89,6 +97,10 @@ class RedirectionStrategy implements ListenerAggregateInterface
             return;
         }
 
+        if ($identity) { //if we have an identity, don't redirect to login)
+            return parent::onDispatchError($event);
+        }
+
         if (null === $url) {
             $url = $router->assemble(array(), array('name' => $this->redirectRoute));
         }
@@ -96,7 +108,7 @@ class RedirectionStrategy implements ListenerAggregateInterface
         // Work out where were we trying to get to
         $options['name'] = $routeMatch->getMatchedRouteName();
         $redirect = $router->assemble($routeMatch->getParams(), $options);
-        
+
         $response = $response ?: new Response();
 
         $response->getHeaders()->addHeaderLine('Location', $url . '?redirect=' . $redirect);
