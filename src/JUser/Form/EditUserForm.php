@@ -9,6 +9,7 @@ use Zend\Validator\Regex;
 class EditUserForm extends Form implements InputFilterProviderInterface
 {
     protected $filterSpec;
+    protected $hasPersonData = false;
 
 	public function __construct($name = null)
 	{
@@ -133,6 +134,23 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 				'id' => 'submit'
 			)
 		) );
+	}
+	
+	public function getHasPersonData()
+	{
+	    return $this->hasPersonData;
+	}
+	
+	/**
+	 * Set value options for the personId field
+	 * @param bool $hasPersonData
+	 * @return \JUser\Form\EditUserForm
+	 */
+	public function setPersonValueOptions(array $personValueOptions)
+	{
+	    $this->get('personId')->setValueOptions($personValueOptions);
+	    $this->hasPersonData = true;
+	    return $this;
 	}
 
 	public function setInputFilterSpecification($spec)

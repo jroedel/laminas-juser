@@ -11,6 +11,7 @@ use JUser\Form\ChangeOtherPasswordForm;
 use JUser\Form\DeleteUserForm;
 use Zend\Mvc\Controller\Plugin\FlashMessenger;
 use Zend\Crypt\Password\Bcrypt;
+use JUser\Model\PersonValueOptionsProviderInterface;
 
 /**
  *
@@ -56,7 +57,6 @@ class UsersController extends AbstractActionController
 		    	$bcrypt = new Bcrypt();
 		        $bcrypt->setCost($zfcOptions->getPasswordCost());
 		        $pass = $bcrypt->create($data['newCredential']);
-// 		        var_dump($pass);
 		        $table->updateUserPassword($id, $pass);
     			$this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_SUCCESS )->addMessage ( 'User password updated successfully.' );
 	     		return $this->redirect()->toRoute('juser');
@@ -64,35 +64,38 @@ class UsersController extends AbstractActionController
     			$this->nowMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_ERROR )->addMessage ( 'Please review the form and resubmit.' );
     		}
     	} else {
-    		$userIdData = array('userId' => $id);
+    		$userIdData = ['userId' => $id];
     		$form->setData($userIdData);
     	}
     	$user = $table->getUser($id);
 
-    	return array(
+    	return [
     			'userId' => $id,
     			'user' => $user,
     			'form' => $form,
-    	);
+    	];
     }
 
     public function indexAction()
     {
     	$sm = $this->getServiceLocator();
     	$persons = null;
-    	if ($sm->has('Patres\Model\PatresTable')) {
-	        $table = $sm->get('Patres\Model\PatresTable');
-	        $query = [
-	            'deceased'     => true,
-	            'exMembers'    => true,
-	        ];
-	        $persons = $table->searchPersons($query, false, true);
-    	}
+    	
+		$config = $sm->get('JUser\Config');
+		$personProvider = $config['person_provider'];
+        if ($sm->has ($personProvider)) {
+            /** @var PersonValueOptionsProviderInterface $provider **/
+        	$provider = $sm->get($personProvider);
+            if (!$provider instanceof PersonValueOptionsProviderInterface) {
+        	   throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not implement the PersonValueOptionsProviderInterface.');
+            }
+            $persons = $provider->getPersons();
+        }
         $users = $this->userTable->getUsers();
-        return new ViewModel(array(
+        return new ViewModel([
             'users' => $users,
             'persons' => $persons
-        ));
+        ]);
     }
 
     public function editAction()
@@ -138,19 +141,19 @@ class UsersController extends AbstractActionController
 				$this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_ERROR )->addMessage ( 'Error in form submission, please review.' );
 			}
 		}
-        $userIdData = array('userId' => $id);
+        $userIdData = ['userId' => $id];
         $changePasswordForm = new ChangeOtherPasswordForm();
         $changePasswordForm->setData($userIdData);
         $deleteUserForm = new DeleteUserForm();
         $deleteUserForm->setData($userIdData);
 
-        return new ViewModel(array(
+        return new ViewModel([
             'userId' => $id,
             'user' => $user,
             'form' => $form,
         	'changePasswordForm' => $changePasswordForm,
         	'deleteUserForm' => $deleteUserForm,
-        ));
+        ]);
     }
 
     public function createAction()
@@ -230,9 +233,9 @@ class UsersController extends AbstractActionController
                 $this->nowMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_ERROR )->addMessage ( 'Error in form submission, please review.' );
             }
         }
-        return array (
+        return [
             'form' => $form,
-        );
+        ];
     }
 
     public function deleteAction()
@@ -260,15 +263,15 @@ class UsersController extends AbstractActionController
 			$this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_SUCCESS )->addMessage ( 'User deleted.' );
 	        return $this->redirect()->toRoute('juser');
         } else {
-        	$userIdData = array('userId' => $id);
+        	$userIdData = ['userId' => $id];
         	$form->setData($userIdData);
         }
         $user = $table->getUser($id);
 
-        return array(
+        return [
             'userId' => $id,
         	'user' => $user,
             'form' => $form,
-        );
+        ];
     }
 }

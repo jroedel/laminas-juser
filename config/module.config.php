@@ -218,6 +218,7 @@ return [
             'JUser\Model\UserTable'       => 'JUser\Service\UserTableFactory',
             'JUser\Form\EditUserForm'     => 'JUser\Service\EditUserFormFactory',
             'JUser\Form\CreateRoleForm'   => 'JUser\Service\CreateRoleFormFactory',
+            'JUser\Config'                => 'JUser\Service\ConfigServiceFactory',
         ],
         'invokables'  => [
             'JUser\View\RedirectionStrategy' => 'JUser\View\RedirectionStrategy',

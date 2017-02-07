@@ -1,6 +1,7 @@
 <?php
 return [
     'juser' => [
+    	'person_provider' => 'MyModule\Model\PersonTable',
         'mail_transport' => [
             'class'   => 'Zend\Mail\Transport\Smtp',
             'options' => [
