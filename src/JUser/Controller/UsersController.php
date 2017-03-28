@@ -80,17 +80,19 @@ class UsersController extends AbstractActionController
     {
     	$sm = $this->getServiceLocator();
     	$persons = null;
-    	
+
 		$config = $sm->get('JUser\Config');
-		$personProvider = $config['person_provider'];
-        if ($sm->has ($personProvider)) {
-            /** @var PersonValueOptionsProviderInterface $provider **/
-        	$provider = $sm->get($personProvider);
-            if (!$provider instanceof PersonValueOptionsProviderInterface) {
-        	   throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not implement the PersonValueOptionsProviderInterface.');
+		if (key_exists('person_provider', $config)) {
+    		$personProvider = $config['person_provider'];
+            if ($sm->has ($personProvider)) {
+                /** @var PersonValueOptionsProviderInterface $provider **/
+            	$provider = $sm->get($personProvider);
+                if (!$provider instanceof PersonValueOptionsProviderInterface) {
+            	   throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not implement the PersonValueOptionsProviderInterface.');
+                }
+                $persons = $provider->getPersons();
             }
-            $persons = $provider->getPersons();
-        }
+		}
         $users = $this->userTable->getUsers();
         return new ViewModel([
             'users' => $users,
