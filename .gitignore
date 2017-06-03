@@ -4,3 +4,8 @@
 /composer.phar
 /vendor/
 /composer.lock
+.DS_Store
+/tests/
+phploy.ini
+phploy.phar
+phploy.log

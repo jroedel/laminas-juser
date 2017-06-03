@@ -9,7 +9,6 @@ $this->headTitle($title);
 
 <table class="table">
 <tr>
-	<!-- <th><?php echo $this->translate("Id");?></th> -->
 	<th><?php echo $this->translate("Username");?></th>
     <th><?php echo $this->translate("Email");?></th>
     <th><?php echo $this->translate("Display Name");?></th>
@@ -19,7 +18,6 @@ $this->headTitle($title);
 </tr>
 <?php  foreach($users as $user) : ?>
 <tr>
-	<!-- <td><?php echo $this->escapeHtml($user['userId']);?></td> -->
 	<td><?php echo $this->escapeHtml($user['username']);
 	if ($this->isAllowed('route/juser/user/edit')):
 	   ?>&nbsp;<a href="<?php echo $this->url('juser/user/edit', [ 'user_id' => $user['userId']]);
@@ -34,14 +32,6 @@ $this->headTitle($title);
         } else {
             echo $this->escapeHtml(implode(', ', $user['roles']));
         }} ?></td>
-	<!-- <td><?php if (is_object($user['createdOn'])) {
-	    echo $this->dateFormat($user['createdOn'],
-	        IntlDateFormatter::SHORT, IntlDateFormatter::NONE);
-        }?></td>
-	<td><?php if (is_object($user['updatedOn'])) {
-	    echo $this->dateFormat($user['updatedOn'],
-	        IntlDateFormatter::SHORT, IntlDateFormatter::NONE);
-	   }?></td> -->
 	<td><?php if ($user['personId'] &&
 			!is_null($this->persons) &&
 			isset($this->persons[$user['personId']])) {
