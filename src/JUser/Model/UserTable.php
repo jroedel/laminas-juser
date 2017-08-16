@@ -12,17 +12,17 @@ class UserTable
      * @var AdapterInterface
      */
     protected $adapter;
-    
+
     /**
      * @var TableGateway
      */
     protected $tableGateway;
-    
+
     /**
      * @var TableGateway
      */
     protected $userGateway;
-    
+
     /**
      * @var TableGateway
      */
@@ -32,20 +32,20 @@ class UserTable
      * @var TableGateway
      */
     protected $roleGateway;
-    
+
     /**
      * @var array
      */
     protected $userRoles;
-    
+
     protected $usersCache = null;
     protected $userRolesCache = null;
     protected $userRolesSimpleCache = null;
     protected $rolesCache = null;
     protected $rolesSimpleCache = null;
-    
+
     /**
-     * 
+     *
      * @var \JUser\Entity\User
      */
     protected $actingUser;
@@ -63,7 +63,7 @@ class UserTable
         $this->adapter = $userGateway->getAdapter();
         $this->actingUser = $actingUser;
     }
-    
+
     /**
      * Gets list of users
      * @return boolean[][]|unknown[][]|DateTime[][]|NULL[][]|number[][]
@@ -73,8 +73,8 @@ class UserTable
         if ($this->usersCache) {
             return $this->usersCache;
         }
-	    $sql = "SELECT `user_id`, `username`, `email`, 
-`display_name`, `password`, `create_datetime`, create_by, `update_datetime`, update_by, 
+	    $sql = "SELECT `user_id`, `username`, `email`,
+`display_name`, `password`, `create_datetime`, create_by, `update_datetime`, update_by,
 `state`, `lang`, `PersID`, `email_verified`, `must_change_password`, `multi_person_user` FROM `user`";
 	    $results = $this->fetchSome(null, $sql, null);
 	    //manipulate column names
@@ -102,7 +102,7 @@ class UserTable
 	    $this->usersCache = $users;
 	    return $users;
 	}
-	
+
 	/**
 	 * Get user properties
 	 * @param int|string $id
@@ -117,7 +117,7 @@ class UserTable
 	    }
 	    return $this->usersCache[$id];
 	}
-	
+
 	/**
 	 * Get roles for a user
 	 * caches user_role_linker table
@@ -152,7 +152,7 @@ class UserTable
            return $roles;
         }
 	}
-	
+
 	public function createRole($data)
 	{
 	    $tableName     = 'user_role';
@@ -163,14 +163,14 @@ class UserTable
 	    );
 	    $updateCols = array(
 	        'roleId'       => 'role_id',
-	        'parent'       => 'parent',
+	        'parentId'     => 'parent',
 	        'createdOn'    => 'create_datetime',
 	        'createdBy'    => 'create_by',
 	    );
 	    $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway, $scope);
 	    return $return;
 	}
-	
+
 	public function getRolesValueOptions()
 	{
 	    $roles = $this->getRoles(false);
@@ -181,7 +181,7 @@ class UserTable
 	    }
 	    return $return;
 	}
-	
+
 	/**
 	 * Get roles for a user
 	 * caches user_role_linker table
@@ -206,7 +206,7 @@ class UserTable
 	           return $this->userRolesCache[$id];
 	        }
 	    }
-	    $sql = "SELECT `user_id`, `role_id`, `create_datetime`, `create_by` 
+	    $sql = "SELECT `user_id`, `role_id`, `create_datetime`, `create_by`
 FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    $results = $this->fetchSome(null, $sql, null);
 	    //manipulate column names
@@ -245,7 +245,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	       return $usersRoles[$id];
 	    }
 	}
-	
+
 	/**
 	 * Check if a user has a certain role
 	 * @param int $userId
@@ -325,7 +325,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    }
 	    return true;
 	}
-	
+
 	/**
 	 *
 	 * @param int|string $id
@@ -335,7 +335,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    $tableName     = 'user';
 	    $tableKey      = 'user_id';
 	    $tableGateway  = $this->getUserTableGateway();
-	    
+
 	    if (!is_numeric($id)) {
 	        throw new \InvalidArgumentException('Invalid user id provided.');
 	    }
@@ -362,11 +362,11 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    $this->updateUserRoles($data, $user);
 	    return $return;
 	}
-	
+
     protected function updateUserRoles($newUser, $oldUser)
     {
-        if (!$newUser || !is_array($newUser) || 
-            !isset($newUser['userId']) || 
+        if (!$newUser || !is_array($newUser) ||
+            !isset($newUser['userId']) ||
             !isset($newUser['roles']))
         {
             return 0;
@@ -402,7 +402,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
                 $result = $tableGateway->insert($data);
                 $return[] = array(
                     'method' => 'insert',
-                    'data' => $data, 
+                    'data' => $data,
                     'result' => $result
                 );
                 continue;
@@ -411,7 +411,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
                 $result = $tableGateway->delete($data);
                 $return[] = array(
                     'method' => 'delete',
-                    'data' => $data, 
+                    'data' => $data,
                     'result' => $result
                 );
                 continue;
@@ -451,7 +451,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    $this->updateUserRoles($data, null);
 	    return $return;
 	}
-	
+
 	protected function createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway, $scope = null)
 	{
 	    //make sure required cols are being passed
@@ -522,7 +522,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
     	$result = $this->getUserTableGateway()->delete(array('user_id' => $id));
     	return $result;
     }
-    
+
     /**
      * no validation of id
      * @todo report errors
@@ -534,9 +534,9 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
     	$result = $this->getUserTableGateway()->update(array('password' => $newPass), array('user_id' => $id));
     	return $result;
     }
-    
+
     /**
-     * 
+     *
      * @param array $data
      * @param \Traversable $currentRecord
      */
@@ -578,10 +578,10 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 //         $result = $this->getUserTableGateway()->update($data, array('user_id' => $id));
 //         $this->insertUserChangeRecord($cleanData, $currentRecord);
 //         if ($data['roles']) {
-            
+
 //         }
 //     }
-    
+
 
 	/**
 	 * @param Where|\Closure|string|array $where
@@ -603,14 +603,14 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    } else {
 	        $result = $this->tableGateway->select($where);
 	    }
-	
+
         $return = array();
         foreach ($result as $row) {
             $return[] = $row;
         }
         return $return;
 	}
-	
+
 	protected function filterDbId($str)
 	{
 	    if (is_null($str) || $str === '' || $str == '0') {
@@ -626,7 +626,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    }
 	    return (int) $str;
 	}
-	
+
 	protected function filterDbBool($str)
 	{
 	    if (is_null($str) || $str === '' || $str == '0') {
@@ -638,9 +638,9 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    }
 	    return $filter->filter($str);
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $str
 	 * @return \DateTime
 	 */
@@ -658,9 +658,9 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    }
 	    return $return;
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $str
 	 * @return \DateTime
 	 */
@@ -676,11 +676,11 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    }
 	    return $return;
 	}
-	
-	
-	
+
+
+
 	/**
-	 * 
+	 *
 	 * @param \DateTime $object
 	 * @return string
 	 */
@@ -691,7 +691,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    }
 	    return $object->format('Y-m-d H:i:s');
 	}
-	
+
 	protected function keyArray(array $a, $key, $unique = true)
 	{
 	    $return = array();
@@ -708,7 +708,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
 	    }
 	    return $return;
 	}
-	
+
     /**
      * @return TableGateway
      */
@@ -719,7 +719,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
     	}
     	return $this->roleGateway;
     }
-    
+
     /**
      *
      * @param TableGateway $gateway
@@ -730,7 +730,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
     	$this->roleGateway = $gateway;
     	return $this;
     }
-	
+
     /**
      * @return TableGateway
      */
@@ -741,7 +741,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
     	}
     	return $this->userRoleGateway;
     }
-    
+
     /**
      *
      * @param TableGateway $gateway
@@ -752,7 +752,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
     	$this->userRoleGateway = $gateway;
     	return $this;
     }
-    
+
     /**
      * @return TableGateway
      */
@@ -763,7 +763,7 @@ FROM `user_role_linker` ORDER BY `user_id`, `role_id`";
     	}
     	return $this->userGateway;
     }
-    
+
     /**
      *
      * @param TableGateway $gateway
