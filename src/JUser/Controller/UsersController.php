@@ -42,7 +42,8 @@ class UsersController extends AbstractActionController
     	}
     	/** @var UserTable $table */
     	$table = $this->getServiceLocator()->get('JUser\Model\UserTable');
-    	$form = new ChangeOtherPasswordForm();
+    	$zfcOptions = $this->getServiceLocator()->get('zfcuser_module_options');
+    	$form = new ChangeOtherPasswordForm($zfcOptions);
     	$request = $this->getRequest();
     	if ($request->isPost()) {
     		$data = $request->getPost();
@@ -53,7 +54,6 @@ class UsersController extends AbstractActionController
     		$form->setData($data);
     		if ($form->isValid()) {
     			$data = $form->getData();
-		    	$zfcOptions = $this->getServiceLocator()->get('zfcuser_module_options');
 		    	$bcrypt = new Bcrypt();
 		        $bcrypt->setCost($zfcOptions->getPasswordCost());
 		        $pass = $bcrypt->create($data['newCredential']);
