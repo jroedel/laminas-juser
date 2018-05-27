@@ -12,21 +12,29 @@
         "zendframework/zend-db": "^2.4.0",
         "zendframework/zend-form": "^2.4.0",
         "zendframework/zend-crypt": "^2.4.0 || ^3.1.0",
-        "bjyoungblood/bjy-authorize": "^1.4.0",
+        "kokspflanze/bjy-authorize": "dev-master",
         "snapshotpl/zf-snap-geoip": "2.*",
-    	"goalio/goalio-rememberme": "1.*",
+    	"goalio/goalio-rememberme": "dev-master",
         "zf-commons/zfc-user": "1.0.0",
         "jroedel/locale": "dev-master@dev"
     },
-    "autoload": {
-        "psr-0": {
-            "JUser": "src"
-        }
-    },
+	"autoload": {
+    	"psr-4": {
+        	"JUser\\": "module/JUser/src/"
+    	}
+	},
 	"repositories": [
 	   {
 	     "type": "vcs",
-	     "url": "https://github.com/jroedel/SlmLocale"
+	     "url": "https://github.com/basz/SlmLocale"
+	   },
+	   {
+	     "type": "vcs",
+	     "url": "https://github.com/kokspflanze/BjyAuthorize"
+	   },
+	   {
+	     "type": "vcs",
+	     "url": "https://github.com/jroedel/GoalioRememberMe"
 	   }
 	]
 }

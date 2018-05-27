@@ -1,8 +1,8 @@
 <?php
 namespace JUser\Service;
 
-use Zend\ServiceManager\FactoryInterface;
-use Zend\ServiceManager\ServiceLocatorInterface;
+use Zend\ServiceManager\Factory\FactoryInterface;
+use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use JUser\Form\CreateRoleForm;
 
@@ -14,14 +14,14 @@ use JUser\Form\CreateRoleForm;
 class CreateRoleFormFactory implements FactoryInterface
 {
     /**
-     * {@inheritDoc}
+     * Create an object
      *
-     * @return EditCourseForm
+     * @inheritdoc
      */
-    public function createService(ServiceLocatorInterface $serviceLocator)
+    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         /** @var UserTable $userTable **/
-		$userTable = $serviceLocator->get ( 'JUser\Model\UserTable' );
+		$userTable = $container->get (UserTable::class );
 		$form = new CreateRoleForm();
 		$roles = $userTable->getRolesValueOptions();
 		$form->get('parentId')->setValueOptions($roles);

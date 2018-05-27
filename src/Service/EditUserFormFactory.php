@@ -1,8 +1,8 @@
 <?php
 namespace JUser\Service;
 
-use Zend\ServiceManager\FactoryInterface;
-use Zend\ServiceManager\ServiceLocatorInterface;
+use Zend\ServiceManager\Factory\FactoryInterface;
+use Interop\Container\ContainerInterface;
 use Patres\Form\EditCourseForm;
 use JUser\Form\EditUserForm;
 use JUser\Model\UserTable;
@@ -16,20 +16,20 @@ use JUser\Model\PersonValueOptionsProviderInterface;
 class EditUserFormFactory implements FactoryInterface
 {
     /**
-     * {@inheritDoc}
+     * Create an object
      *
-     * @return EditCourseForm
+     * @inheritdoc
      */
-    public function createService(ServiceLocatorInterface $serviceLocator)
+    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         /** @var UserTable $userTable **/
-		$userTable = $serviceLocator->get ( 'JUser\Model\UserTable' );
+		$userTable = $container->get ( UserTable::class );
 		$form = new EditUserForm();
-		$config = $serviceLocator->get('JUser\Config');
+		$config = $$container->get('JUser\Config');
 		$personProvider = $config['person_provider'];
-        if ($serviceLocator->has ($personProvider)) {
+        if ($$container->has ($personProvider)) {
             /** @var PersonValueOptionsProviderInterface $provider **/
-        	$provider = $serviceLocator->get($personProvider);
+        	$provider = $$container->get($personProvider);
             if (!$provider instanceof PersonValueOptionsProviderInterface) {
         	   throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not implement the PersonValueOptionsProviderInterface.');
             }

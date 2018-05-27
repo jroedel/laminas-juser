@@ -1,14 +1,36 @@
 <?php
 namespace JUser;
+
+use JUser\Model\User;
+use Zend\Db\Adapter\Adapter;
+use ZfcUser\Authentication\Adapter\Db;
+use GoalioRememberMe\Authentication\Adapter\Cookie;
+use JUser\View\RedirectionStrategy;
+use BjyAuthorize\Provider\Identity\ZfcUserZendDb;
+use BjyAuthorize\Provider\Role\ZendDb;
+use Zend\Router\Http\Literal;
+use Zend\Router\Http\Segment;
+use JUser\Service\UsersControllerFactory;
+use JUser\Controller\UsersController;
+use JUser\View\Helper\IpPlace;
+use JUser\View\Helper\UserWithIp;
+use JUser\Service\UserTableFactory;
+use JUser\Model\UserTable;
+use JUser\Form\EditUserForm;
+use JUser\Service\EditUserFormFactory;
+use JUser\Service\CreateRoleFormFactory;
+use JUser\Form\CreateRoleForm;
+use JUser\Service\ConfigServiceFactory;
+
 return [
     'zfcuser' => [
-        'zend_db_adapter' => 'Zend\Db\Adapter\Adapter',
+        'zend_db_adapter' => Adapter::class,
         // telling ZfcUser to use our own class
-        'user_entity_class'       => 'JUser\Model\User',
+        'user_entity_class'       => User::class,
 
         'auth_adapters' => [
-            100 => 'ZfcUser\Authentication\Adapter\Db',
-            50 => 'GoalioRememberMe\Authentication\Adapter\Cookie'
+            100 => Db::class,
+            50 => 'GoalioRememberMe\Authentication\Adapter\Cookie',
         ],
 
         'enable_default_entities' => false,
@@ -47,7 +69,7 @@ return [
     ],
 
     'bjyauthorize' => [
-        'unauthorized_strategy' => 'JUser\View\RedirectionStrategy',
+        'unauthorized_strategy' => RedirectionStrategy::class,
 
 //         'cache_options'         => [
 //                 'adapter'   => [
@@ -70,7 +92,7 @@ return [
          *
          * for ZfcUser, this will be your default identity provider
         */
-        'identity_provider' => 'BjyAuthorize\Provider\Identity\ZfcUserZendDb',
+        'identity_provider' => ZfcUserZendDb::class,
 
         /* If you only have a default role and an authenticated role, you can
          * use the 'AuthenticationIdentityProvider' to allow/restrict access
@@ -100,41 +122,49 @@ return [
 
             // this will load roles from the user_role table in a database
             // format: user_role(role_id(varchar], parent(varchar]]
-            'BjyAuthorize\Provider\Role\ZendDb' => [
+            ZendDb::class => [
                 'table'             => 'user_role',
                 'role_id_field'     => 'role_id',
+                'identifier_field_name' => 'id',
                 'parent_role_field' => 'parent',
+            ],
+            
+            \BjyAuthorize\Provider\Role\ZendDb::class => [
+                'table'                 => 'user_role',
+                'identifier_field_name' => 'id',
+                'role_id_field'         => 'role_id',
+                'parent_role_field'     => 'parent_id',
             ],
         ],
     ],
     'router' => [
         'routes' => [
             'juser' => [
-                'type'    => 'Literal',
+                'type'    => Literal::class,
                 'options' => [
                     'route'    => '/users',
                     'defaults' => [
-                        'controller' => 'JUser\Controller\Users',
+                        'controller' => UsersController::class,
                         'action'     => 'index',
                     ],
                 ],
                 'may_terminate' => true,
                 'child_routes' => [
                     'user' => [
-                        'type'    => 'Segment',
+                        'type'    => Segment::class,
                         'options' => [
                             'route'    => '/:user_id',
                             'constraints' => [
                                 'user_id' => '[0-9]{1,5}',
                             ],
                             'defaults' => [
-                                'controller' => 'JUser\Controller\Users',
+                                'controller' => UsersController::class,
                             ],
                         ],
                         'may_terminate' => false,
                         'child_routes' => [
                             'edit' => [
-                                'type'    => 'Literal',
+                                'type'    => Literal::class,
                                 'options' => [
                                     'route'    => '/edit',
                                     'defaults' => [
@@ -143,7 +173,7 @@ return [
                                 ],
                             ],
                             'delete' => [
-                                'type'    => 'Literal',
+                                'type'    => Literal::class,
                                 'options' => [
                                     'route'    => '/delete',
                                     'defaults' => [
@@ -152,7 +182,7 @@ return [
                                 ],
                             ],
                             'change-password' => [
-                                'type'    => 'Literal',
+                                'type'    => Literal::class,
                                 'options' => [
                                     'route'    => '/change-password',
                                     'defaults' => [
@@ -161,7 +191,7 @@ return [
                                 ],
                             ],
                             'show' => [
-                                'type'    => 'Literal',
+                                'type'    => Literal::class,
                                 'options' => [
                                     'route'    => '/show',
                                     'defaults' => [
@@ -172,21 +202,21 @@ return [
                         ],
                     ],
                     'create' => [
-                        'type'    => 'Literal',
+                        'type'    => Literal::class,
                         'options' => [
                             'route'    => '/create',
                             'defaults' => [
-                                'controller' => 'JUser\Controller\Users',
+                                'controller' => UsersController::class,
                                 'action'     => 'create',
                             ],
                         ],
                     ],
                     'create-role' => [
-                        'type'    => 'Literal',
+                        'type'    => Literal::class,
                         'options' => [
                             'route'    => '/roles/create',
                             'defaults' => [
-                                'controller' => 'JUser\Controller\Users',
+                                'controller' => UsersController::class,
                                 'action'     => 'createRole',
                             ],
                         ],
@@ -197,10 +227,11 @@ return [
     ],
     'controllers' => [
         'factories' => [
-            'JUser\Controller\Users' => 'JUser\Service\UsersControllerFactory',
+            UsersController::class => UsersControllerFactory::class,
         ],
     ],
     'view_manager' => [
+        'template_map' => include __DIR__ . '/template_map.config.php',
         'template_path_stack' => [
             'users' => __DIR__ . '/../view',
         ],
@@ -209,19 +240,19 @@ return [
         'factories' => [
         ],
         'invokables' => [
-            'ipPlace'		        => 'JUser\View\Helper\IpPlace',
-            'userWithIp'		    => 'JUser\View\Helper\UserWithIp',
+            'ipPlace'		        => IpPlace::class,
+            'userWithIp'		    => UserWithIp::class,
        	],
     ],
     'service_manager' => [
         'factories' => [
-            'JUser\Model\UserTable'       => 'JUser\Service\UserTableFactory',
-            'JUser\Form\EditUserForm'     => 'JUser\Service\EditUserFormFactory',
-            'JUser\Form\CreateRoleForm'   => 'JUser\Service\CreateRoleFormFactory',
-            'JUser\Config'                => 'JUser\Service\ConfigServiceFactory',
+            UserTable::class        => UserTableFactory::class,
+            EditUserForm::class     => EditUserFormFactory::class,
+            CreateRoleForm::class   => CreateRoleFormFactory::class,
+            'JUser\Config'          => ConfigServiceFactory::class,
         ],
         'invokables'  => [
-            'JUser\View\RedirectionStrategy' => 'JUser\View\RedirectionStrategy',
+            RedirectionStrategy::class => RedirectionStrategy::class,
         ],
     ],
 ];
