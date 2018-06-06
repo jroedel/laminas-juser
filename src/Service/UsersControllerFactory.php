@@ -21,6 +21,23 @@ class UsersControllerFactory implements FactoryInterface
         $controller = new UsersController();
         $controller->setUserTable($userTable);
 
+        $config = $serviceLocator->get('JUser\Config');
+        
+        $services = [];
+        $services['JUser\Config'] = $config;
+        if (key_exists('person_provider', $config)) {
+            $personProvider = $config['person_provider'];
+            if ($serviceLocator->has($personProvider)) {
+                $services[$personProvider] = $serviceLocator->get($personProvider);
+            }
+        }
+        
+        $services[\JUser\Form\EditUserForm::class] = $serviceLocator->get(\JUser\Form\EditUserForm::class);
+        $services[\JUser\Form\CreateRoleForm::class] = $serviceLocator->get(\JUser\Form\CreateRoleForm::class);
+        $services['zfcuser_module_options'] = $serviceLocator->get('zfcuser_module_options');
+        
+        $controller->setServices($services);
+        
         return $controller;
     }
 }

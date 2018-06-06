@@ -21,6 +21,7 @@ use JUser\Service\EditUserFormFactory;
 use JUser\Service\CreateRoleFormFactory;
 use JUser\Form\CreateRoleForm;
 use JUser\Service\ConfigServiceFactory;
+use Zend\ServiceManager\Proxy\LazyServiceFactory;
 
 return [
     'zfcuser' => [
@@ -30,7 +31,7 @@ return [
 
         'auth_adapters' => [
             100 => Db::class,
-            50 => 'GoalioRememberMe\Authentication\Adapter\Cookie',
+            //50 => 'GoalioRememberMe\Authentication\Adapter\Cookie',
         ],
 
         'enable_default_entities' => false,
@@ -253,6 +254,22 @@ return [
         ],
         'invokables'  => [
             RedirectionStrategy::class => RedirectionStrategy::class,
+        ],
+        'lazy_services' => [
+            // Mapping services to their class names is required
+            // since the ServiceManager is not a declarative DIC.
+            'class_map' => [
+                CreateRoleForm::class => CreateRoleForm::class,
+                EditUserForm::class => EditUserForm::class,
+            ],
+        ],
+        'delegators' => [
+            CreateRoleForm::class => [
+                LazyServiceFactory::class,
+            ],
+            EditUserForm::class => [
+                LazyServiceFactory::class,
+            ],
         ],
     ],
 ];

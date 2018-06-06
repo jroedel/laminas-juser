@@ -1,9 +1,9 @@
 <?php
 return [
     'juser' => [
-    	'person_provider' => 'MyModule\Model\PersonTable',
+    	'person_provider' => MyModule\Model\PersonTable::class,
         'mail_transport' => [
-            'class'   => 'Zend\Mail\Transport\Smtp',
+            'class'   => Zend\Mail\Transport\Smtp::class,
             'options' => [
                 'host'             => 'smtp.gmail.com',
                 'port'             => 587,
@@ -27,7 +27,7 @@ return [
         ],
     ],
     'zfcuser' => [
-        'zend_db_adapter' => 'Zend\Db\Adapter\Adapter',
+        'zend_db_adapter' => Zend\Db\Adapter\Adapter::class,
         
         'enable_default_entities' => false,
 

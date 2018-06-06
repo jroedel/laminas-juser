@@ -9,9 +9,10 @@ use JUser\Model\User;
 use JUser\Model\UserTable;
 use JUser\Form\ChangeOtherPasswordForm;
 use JUser\Form\DeleteUserForm;
-use Zend\Mvc\Controller\Plugin\FlashMessenger;
+use Zend\Mvc\Plugin\FlashMessenger\FlashMessenger;
 use Zend\Crypt\Password\Bcrypt;
 use JUser\Model\PersonValueOptionsProviderInterface;
+use JUser\Form\CreateRoleForm;
 
 /**
  *
@@ -23,7 +24,9 @@ use JUser\Model\PersonValueOptionsProviderInterface;
 class UsersController extends AbstractActionController
 {
     protected $userTable;
-
+    
+    protected $services = [];
+    
     /**
      *
      * @return UserTable
@@ -33,6 +36,24 @@ class UsersController extends AbstractActionController
         $this->userTable = $userTable;
     }
 
+    public function setServices($services)
+    {
+        $this->services = $services;
+    }
+    
+    public function hasService($identifier)
+    {
+        return array_key_exists($identifier, $this->services);
+    }
+    
+    public function getService($identifier)
+    {
+        if (!array_key_exists($identifier, $this->services)) {
+            throw new \Exception("No service `$identifier` found.");
+        }
+        return $this->services[$identifier];
+    }
+    
     public function changePasswordAction()
     {
     	$id = (int)$this->params('user_id');
@@ -41,8 +62,8 @@ class UsersController extends AbstractActionController
     		return $this->redirect()->toRoute('juser');
     	}
     	/** @var UserTable $table */
-    	$table = $this->getServiceLocator()->get('JUser\Model\UserTable');
-    	$zfcOptions = $this->getServiceLocator()->get('zfcuser_module_options');
+    	$table = $this->getService(UserTable::class);
+    	$zfcOptions = $this->getService('zfcuser_module_options');
     	$form = new ChangeOtherPasswordForm($zfcOptions);
     	$request = $this->getRequest();
     	if ($request->isPost()) {
@@ -78,15 +99,14 @@ class UsersController extends AbstractActionController
 
     public function indexAction()
     {
-    	$sm = $this->getServiceLocator();
     	$persons = null;
 
-		$config = $sm->get('JUser\Config');
+    	$config = $this->getService('JUser\Config');
 		if (key_exists('person_provider', $config)) {
     		$personProvider = $config['person_provider'];
-            if ($sm->has ($personProvider)) {
+            if ($this->hasService($personProvider)) {
                 /** @var PersonValueOptionsProviderInterface $provider **/
-            	$provider = $sm->get($personProvider);
+            	$provider = $this->getService($personProvider);
                 if (!$provider instanceof PersonValueOptionsProviderInterface) {
             	   throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not implement the PersonValueOptionsProviderInterface.');
                 }
@@ -102,9 +122,8 @@ class UsersController extends AbstractActionController
 
     public function editAction()
     {
-		$sm = $this->getServiceLocator ();
 		/** @var UserTable $table **/
-		$table = $sm->get ( 'JUser\Model\UserTable' );
+		$table = $this->userTable;
 		$id = ( int ) $this->params ()->fromRoute ( 'user_id' );
 		if (! $id) {
 			$this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_ERROR )->addMessage ( 'User not found.' );
@@ -117,7 +136,7 @@ class UsersController extends AbstractActionController
 		}
 
 		/** @var EditUserForm $form */
-		$form = $sm->get('JUser\Form\EditUserForm');
+		$form = $this->getService(EditUserForm::class);
 		$form->setData($user);
 		$request = $this->getRequest ();
 		if ($request->isPost ()) {
@@ -160,12 +179,11 @@ class UsersController extends AbstractActionController
 
     public function createAction()
     {
-		$sm = $this->getServiceLocator ();
 		/** @var UserTable $table **/
-		$table = $sm->get ( 'JUser\Model\UserTable' );
+		$table = $this->userTable;
 
         /** @var EditUserForm $form */
-        $form = $sm->get('JUser\Form\EditUserForm');
+		$form = $this->getService(EditUserForm::class);
         $form->setValidatorsForCreate();
         $form->setName('create_user');
         $request = $this->getRequest();
@@ -198,7 +216,7 @@ class UsersController extends AbstractActionController
 
     protected function hashPassword($password)
     {
-        $zfcOptions = $this->getServiceLocator()->get('zfcuser_module_options');
+        $zfcOptions = $this->getService('zfcuser_module_options');
         $bcrypt = new Bcrypt();
         $bcrypt->setCost($zfcOptions->getPasswordCost());
         $pass = $bcrypt->create($password);
@@ -212,12 +230,11 @@ class UsersController extends AbstractActionController
 
     public function createRoleAction()
     {
-        $sm = $this->getServiceLocator ();
         /** @var UserTable $table **/
-        $table = $sm->get ( 'JUser\Model\UserTable' );
+        $table = $this->userTable;
 
         /** @var EditUserForm $form */
-        $form = $sm->get('JUser\Form\CreateRoleForm');
+        $form = $this->getService(CreateRoleForm::class);
         $request = $this->getRequest();
         if ($request->isPost ()) {
             $data = $request->getPost ()->toArray ();
@@ -248,7 +265,7 @@ class UsersController extends AbstractActionController
             return $this->redirect()->toRoute('juser');
         }
 
-        $table = $this->getServiceLocator()->get('JUser\Model\UserTable');
+        $table = $this->userTable;
         $form = new DeleteUserForm();
         $request = $this->getRequest();
         if ($request->isPost()) {
