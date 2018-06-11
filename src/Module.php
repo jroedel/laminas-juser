@@ -12,15 +12,20 @@ class Module
     
     public function onBootstrap(MvcEvent $e)
     {
-        //The static adapter is needed for the EditUserForm
         $sm = $e->getApplication()->getServiceManager();
+        
+        //enable session manager
+        $manager = $sm->get(ManagerInterface::class);
+        
+        //The static adapter is needed for the EditUserForm
         $config = $sm->get('Config');
         if (isset($config['zfcuser']['zend_db_adapter']) &&
-            $sm->has($config['zfcuser']['zend_db_adapter'])) {
-                $adapter = $sm->get($config['zfcuser']['zend_db_adapter']);
-                GlobalAdapterFeature::setStaticAdapter($adapter);
-            } else {
-                throw new \Exception('Please set the [\'zfcuser\'][\'zend_db_adapter\'] config key for use with the JUser module.');
-            }
+            $sm->has($config['zfcuser']['zend_db_adapter'])
+        ) {
+            $adapter = $sm->get($config['zfcuser']['zend_db_adapter']);
+            GlobalAdapterFeature::setStaticAdapter($adapter);
+        } else {
+            throw new \Exception('Please set the [\'zfcuser\'][\'zend_db_adapter\'] config key for use with the JUser module.');
+        }
     }
 }

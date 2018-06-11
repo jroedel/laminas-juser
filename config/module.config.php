@@ -23,6 +23,9 @@ use JUser\Form\CreateRoleForm;
 use JUser\Service\ConfigServiceFactory;
 use Zend\ServiceManager\Proxy\LazyServiceFactory;
 use Zend\Session;
+use Zend\Session\Storage\SessionArrayStorage;
+use Zend\Session\Validator\RemoteAddr;
+use Zend\Session\Validator\HttpUserAgent;
 
 return [
     'zfcuser' => [
@@ -278,11 +281,17 @@ return [
         ],
     ],
     'session_manager' => [
-        // SessionManager config: validators, etc
+        'validators' => [
+            HttpUserAgent::class,
+        ]
+    ],
+    'session_storage' => [
+        'type' => SessionArrayStorage::class
     ],
     'session_config' => [
         // Set the session and cookie expiries to 30 days
         'cache_expire' => 30*24*60*60,
         'cookie_lifetime' => 30*24*60*60,
+        'gc_maxlifetime'      => 30*24*60*60
     ],
 ];
