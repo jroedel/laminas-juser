@@ -22,6 +22,7 @@ use JUser\Service\CreateRoleFormFactory;
 use JUser\Form\CreateRoleForm;
 use JUser\Service\ConfigServiceFactory;
 use Zend\ServiceManager\Proxy\LazyServiceFactory;
+use Zend\Session;
 
 return [
     'zfcuser' => [
@@ -251,6 +252,10 @@ return [
             EditUserForm::class     => EditUserFormFactory::class,
             CreateRoleForm::class   => CreateRoleFormFactory::class,
             'JUser\Config'          => ConfigServiceFactory::class,
+            // Configures the default SessionManager instance
+            Session\ManagerInterface::class => Session\Service\SessionManagerFactory::class,
+            // Provides session configuration to SessionManagerFactory
+            Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
         ],
         'invokables'  => [
             RedirectionStrategy::class => RedirectionStrategy::class,
@@ -271,5 +276,13 @@ return [
                 LazyServiceFactory::class,
             ],
         ],
+    ],
+    'session_manager' => [
+        // SessionManager config: validators, etc
+    ],
+    'session_config' => [
+        // Set the session and cookie expiries to 30 days
+        'cache_expire' => 30*24*60*60,
+        'cookie_lifetime' => 30*24*60*60,
     ],
 ];
