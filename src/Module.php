@@ -3,6 +3,7 @@ namespace JUser;
 
 use Zend\Mvc\MvcEvent;
 use Zend\Db\TableGateway\Feature\GlobalAdapterFeature;
+use Zend\Session\ManagerInterface;
 class Module
 {
     public function getConfig()

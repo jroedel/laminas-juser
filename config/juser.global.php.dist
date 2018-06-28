@@ -143,4 +143,9 @@ return [
             ],
         ],
 	],
+    'session_manager' => [
+        'validators' => [
+            HttpUserAgent::class,
+        ]
+    ],
 ];

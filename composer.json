@@ -8,15 +8,16 @@
     ],
     "homepage": "https://github.com/jroedel/zf2-juser",
     "require": {
-        "php": ">=5.3.3",
+        "php": "^5.6 || ^7.0",
         "zendframework/zend-db": "^2.4.0",
+        "zendframework/zend-mvc-form": "^1.0",
         "zendframework/zend-form": "^2.4.0",
         "zendframework/zend-crypt": "^2.4.0 || ^3.1.0",
         "kokspflanze/bjy-authorize": "dev-master",
-        "snapshotpl/zf-snap-geoip": "2.*",
-    	"goalio/goalio-rememberme": "dev-master",
-        "zf-commons/zfc-user": "1.0.0",
-        "jroedel/locale": "dev-master@dev"
+        "jroedel/zf-snap-geoip": "^3.0",
+        "zf-commons/zfc-user": "3.x@dev",
+        "jroedel/locale": "dev-master@dev",
+        "beaucal/beaucal-invalid-session": "^0.3.0"
     },
 	"autoload": {
     	"psr-4": {
@@ -30,11 +31,11 @@
 	   },
 	   {
 	     "type": "vcs",
-	     "url": "https://github.com/kokspflanze/BjyAuthorize"
+	     "url": "https://github.com/jroedel/ZfSnapGeoip"
 	   },
 	   {
 	     "type": "vcs",
-	     "url": "https://github.com/jroedel/GoalioRememberMe"
+	     "url": "https://github.com/kokspflanze/BjyAuthorize"
 	   }
 	]
 }

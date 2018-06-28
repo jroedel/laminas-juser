@@ -35,7 +35,6 @@ return [
 
         'auth_adapters' => [
             100 => Db::class,
-            //50 => 'GoalioRememberMe\Authentication\Adapter\Cookie',
         ],
 
         'enable_default_entities' => false,
@@ -242,8 +241,6 @@ return [
         ],
     ],
     'view_helpers' => [
-        'factories' => [
-        ],
         'invokables' => [
             'ipPlace'		        => IpPlace::class,
             'userWithIp'		    => UserWithIp::class,
@@ -279,11 +276,10 @@ return [
                 LazyServiceFactory::class,
             ],
         ],
-    ],
-    'session_manager' => [
-        'validators' => [
-            HttpUserAgent::class,
-        ]
+        'aliases' => [
+            \Zend\Session\SessionManager::class => Session\ManagerInterface::class,
+        ],
+        
     ],
     'session_storage' => [
         'type' => SessionArrayStorage::class
