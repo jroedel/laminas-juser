@@ -6,6 +6,7 @@ use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use Zend\Db\TableGateway\TableGateway;
 use Zend\Db\Adapter\Adapter;
+use Zend\Mvc\MvcEvent;
 
 class UserTableFactory implements FactoryInterface
 {
@@ -20,9 +21,12 @@ class UserTableFactory implements FactoryInterface
         $user = $authService->getIdentity();
 		
         $dbAdapter = $container->get(Adapter::class);
-        $userGateway = new TableGateway('user', $dbAdapter);
-        $userRoleGateway = new TableGateway('user_role_linker', $dbAdapter);
-        $table = new UserTable($userGateway, $userRoleGateway, $user);
+        $table = new UserTable($dbAdapter, $user);
+        
+        $cache = $container->get('JUser\Cache');
+        $table->setPersistentCache($cache);
+        $em = $container->get('Application')->getEventManager();
+        $em->attach( MvcEvent::EVENT_FINISH, [$table, 'onFinish'], -1);
         return $table;
     }
 }

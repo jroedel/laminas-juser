@@ -25,11 +25,11 @@ class EditUserFormFactory implements FactoryInterface
         /** @var UserTable $userTable **/
 		$userTable = $container->get ( UserTable::class );
 		$form = new EditUserForm();
-		$config = $$container->get('JUser\Config');
+		$config = $container->get('JUser\Config');
 		$personProvider = $config['person_provider'];
-        if ($$container->has ($personProvider)) {
+        if ($container->has ($personProvider)) {
             /** @var PersonValueOptionsProviderInterface $provider **/
-        	$provider = $$container->get($personProvider);
+        	$provider = $container->get($personProvider);
             if (!$provider instanceof PersonValueOptionsProviderInterface) {
         	   throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not implement the PersonValueOptionsProviderInterface.');
             }
@@ -39,7 +39,7 @@ class EditUserFormFactory implements FactoryInterface
             throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not exist.');
         }
 		$roles = $userTable->getRolesValueOptions();
-		$form->get('roles')->setValueOptions($roles);
+		$form->get('rolesList')->setValueOptions($roles);
 
 		return $form;
     }

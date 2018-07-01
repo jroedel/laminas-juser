@@ -13,7 +13,7 @@ echo $this->formRow($form->get('displayName'));
 echo $this->formRow($form->get('password'));
 echo $this->formRow($form->get('passwordVerify'));
 $this->formSelect()->setTranslatorEnabled(false);
-echo $this->formRow($form->get('roles')); ?>
+echo $this->formRow($form->get('rolesList')); ?>
 <p><a href="<?php echo $this->url('juser/create-role');?>"><?php 
     echo $this->translate("Create new role");?></a></p>
 <?php echo $this->formRow($form->get('personId'));

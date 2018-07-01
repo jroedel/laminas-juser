@@ -87,6 +87,32 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 		        'value'           => 0,
 		    ),
 		));
+        $this->add([
+            'name' => 'mustChangePassword',
+            'type' => 'Checkbox',
+            'options' => [
+                'label' => 'Must change password at next logon?',
+                'checked_value' => '1',
+                'unchecked_value' => '0',
+                'use_hidden_element' => true,
+            ],
+            'attributes' => [
+                'value'   => '0',
+            ],
+        ]);
+        $this->add([
+            'name' => 'isMultiPersonUser',
+            'type' => 'Checkbox',
+            'options' => [
+                'label' => 'Multi-person user?',
+                'checked_value' => '1',
+                'unchecked_value' => '0',
+                'use_hidden_element' => true,
+            ],
+            'attributes' => [
+                'value'   => '1',
+            ],
+        ]);
 		$this->add(array(
 			'name' => 'active',
 			'type' => 'Checkbox',
@@ -101,7 +127,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 		    ),
 		));
 		$this->add ( array(
-		    'name' => 'roles',
+		    'name' => 'rolesList',
 		    'type' => 'Select',
             'attributes' => array(
                 'multiple' => 'multiple',
@@ -228,6 +254,12 @@ class EditUserForm extends Form implements InputFilterProviderInterface
 		            array('name' => 'Boolean'),
 		        )
 		    ),
+		    'mustChangePassword' => [
+		        'required' => false,
+		    ],
+		    'isMultiPersonUser' => [
+		        'required' => false,
+		    ],
 		    'active' => array(
 		        'required' => false,
 		        'filters' => array(

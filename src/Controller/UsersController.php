@@ -145,7 +145,7 @@ class UsersController extends AbstractActionController
 				$this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_ERROR )->addMessage ( 'Error in form submission, please try again later.' );
 				return $this->redirect ()->toRoute ( 'juser' );
 			}
-			$isPersonIdSet = key_exists('personId', $data);
+			$isPersonIdSet = isset($data['personId']);
 			$form->setData ( $data );
 			if ($form->isValid ()) {
 			    $data = $form->getData();
@@ -163,7 +163,7 @@ class UsersController extends AbstractActionController
 			}
 		}
         $userIdData = ['userId' => $id];
-        $changePasswordForm = new ChangeOtherPasswordForm();
+        $changePasswordForm = new ChangeOtherPasswordForm($this->getService('zfcuser_module_options'));
         $changePasswordForm->setData($userIdData);
         $deleteUserForm = new DeleteUserForm();
         $deleteUserForm->setData($userIdData);

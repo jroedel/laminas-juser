@@ -26,17 +26,14 @@ $this->headTitle($title);
 	<td><?php echo $this->escapeHtml($user['email']);?></td>
 	<td><?php echo $this->escapeHtml($user['displayName']);?></td>
 	<td><?php echo $user['active'] ? '✓' : '&times;';?></td>
-	<td><?php if (is_array($user['roles'])) {
-        if (count($user['roles']) == 0) {
-            echo $this->translate('none');
-        } else {
-            echo $this->escapeHtml(implode(', ', $user['roles']));
-        }} ?></td>
-	<td><?php if ($user['personId'] &&
-			!is_null($this->persons) &&
+	<td><?php $rolesText = [];
+	foreach ($user['roles'] as $role) {
+	    $rolesText[] = $this->escapeHtml($role['name']);
+	}
+	echo implode(', ', $rolesText);?></td>
+	<td><?php if (isset($user['personId']) &&
 			isset($this->persons[$user['personId']])) {
-	    $phone['person'] = $this->persons[$user['personId']];
-	    echo $this->formatPerson($phone['person'], ['editPencil' => true]);
+	    echo $this->formatPerson($this->persons[$user['personId']], ['editPencil' => true]);
     }?></td>
 </tr>
 <?php endforeach; ?>

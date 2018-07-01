@@ -12,11 +12,13 @@ echo $this->formRow($form->get('username'));
 echo $this->formRow($form->get('email'));
 echo $this->formRow($form->get('displayName'));
 $this->formSelect()->setTranslatorEnabled(false);
-echo $this->formRow($form->get('roles'));
+echo $this->formRow($form->get('rolesList'));
 if (!empty($form->get('personId')->getValueOptions())) {
     echo $this->formRow($form->get('personId'));
 }
+echo $this->formRow($form->get('isMultiPersonUser'));
 echo $this->formRow($form->get('emailVerified'));
+echo $this->formRow($form->get('mustChangePassword'));
 echo $this->formRow($form->get('active'));
 echo $this->formRow($form->get('security'));
 echo $this->formSubmit($form->get('submit')); ?>

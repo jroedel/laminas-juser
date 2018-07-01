@@ -17,7 +17,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
 		
 		$this->setAttribute ( 'method', 'post' );
 		$this->add ( array (
-			'name' => 'roleId',
+			'name' => 'name',
 			'attributes' => array (
 				'type' => 'text',
 				'size' => '30' 
@@ -55,7 +55,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
 	public function getInputFilterSpecification()
 	{
 	    return array(
-			'roleId' => array(
+			'name' => array(
 				'required' => true,
 				'filters'  => array(
 					array('name' => 'StripTags'),

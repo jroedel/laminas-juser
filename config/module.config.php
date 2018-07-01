@@ -26,6 +26,7 @@ use Zend\Session;
 use Zend\Session\Storage\SessionArrayStorage;
 use Zend\Session\Validator\RemoteAddr;
 use Zend\Session\Validator\HttpUserAgent;
+use JUser\Service\CacheFactory;
 
 return [
     'zfcuser' => [
@@ -252,6 +253,7 @@ return [
             EditUserForm::class     => EditUserFormFactory::class,
             CreateRoleForm::class   => CreateRoleFormFactory::class,
             'JUser\Config'          => ConfigServiceFactory::class,
+            'JUser\Cache'           => CacheFactory::class,
             // Configures the default SessionManager instance
             Session\ManagerInterface::class => Session\Service\SessionManagerFactory::class,
             // Provides session configuration to SessionManagerFactory
