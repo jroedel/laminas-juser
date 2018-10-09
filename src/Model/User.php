@@ -3,56 +3,69 @@
 namespace JUser\Model;
 
 use ZfcUser\Entity\UserInterface;
+use Zend\Math\Rand;
 
 class User implements UserInterface
 {
     /**
      * Id 0 means to be inserted
-     * @var int
+     * @var int $id
      */
     public $id = 0;
 
     /**
-     * @var string
+     * @var string $username
      */
     public $username;
 
     /**
-     * @var string
+     * @var string $email
      */
     public $email;
 
     /**
-     * @var string
+     * @var string $displayName
      */
     public $displayName;
 
     /**
-     * @var string
+     * @var string $password
      */
     public $password;
 
     /**
      * One state must mean change password
-     * @var int
+     * @var int $state
      */
-    public $state;
+    public $state = 0;
     
     /**
      * Force user to change password if this bit is set
-     * @var bool
+     * @var bool $mustChangePassword
      */
-    public $mustChangePassword;
-
+    public $mustChangePassword = false;
+    
+    /**
+     * 32-character random alphanumeric nonce for verifying email addresses
+     * @var string $verificationToken
+     */
+    public $verificationToken;
+    
+    /**
+     * The time when the token will no longer be valid
+     * @var string $verificationExpiration
+     */
+    public $verificationExpiration;
+    
     /**
      * denotes a user used by multiple people, these shouldn't be able to change the password
-     * @var bool
+     * @var bool $multiPersonUser
      */
-    public $multiPersonUser;
+    public $multiPersonUser = false;
     
-    public $updateDateTime;
+    public $updateDatetime;
     
-    public $createDateTime;
+    public $createDatetime;
     
     public $roles = null;
     
@@ -61,53 +74,6 @@ class User implements UserInterface
      * @var bool
      */
     public $rolesLoaded = false;
-    
-    //I don't think this is used
-//     public function exchangeArray($data)
-//     {
-//         $this->id  = (isset($data['user_id'])) ? $data['user_id'] : null;
-//         $this->username  = (isset($data['username'])) ? $data['username'] : null;
-//         $this->email  = (isset($data['email'])) ? $data['email'] : null;
-//         $this->displayName  = (isset($data['display_name'])) ? $data['display_name'] : null;
-//         $this->password  = (isset($data['password'])) ? $data['password'] : null;
-//         $this->state  = (isset($data['state'])) ? $data['state'] : null;
-//         $this->mustChangePassword  = (isset($data['must_change_password'])) ? (bool)$data['must_change_password'] : false;
-//         $this->multiPersonUser  = (isset($data['multi_person_user'])) ? (bool)$data['multi_person_user'] : false;
-//         $this->updateDateTime = (isset($data['update_datetime'])) ? new \DateTime($data['update_datetime'], new \DateTimeZone('UTC')) : null;
-//         $this->createDateTime = (isset($data['create_datetime'])) ? new \DateTime($data['create_datetime'], new \DateTimeZone('UTC')) : null;
-//     }
-    
-    /**
-     * Magic getter to expose protected properties.
-     *
-     * @param string $property
-     * @return mixed
-     */
-    public function __get($property)
-    {
-        return $this->$property;
-    }
-    /**
-     * Magic setter to save protected properties.
-     *
-     * @param string $property
-     * @param mixed $value
-     */
-    public function __set($property, $value)
-    {
-        $this->$property = $value;
-    }
-
-    public function setInputFilter(InputFilterInterface $inputFilter)
-    {
-        throw new \Exception("Not used");
-    }
-    
-    public function getInputFilter()
-    {
-        //put stuff here
-    }
-    
 
     /**
      * Get id.
@@ -284,4 +250,114 @@ class User implements UserInterface
         $this->multiPersonUser = (bool)$multiPersonUser;
         return $this;
     }
+    
+    /**
+     * Get the verificationToken value
+     * @return string
+     */
+    public function getVerificationToken()
+    {
+        if (!isset($this->verificationToken)) {
+            //if we don't have one, make one up (mainly for registration)
+            //@todo make sure in the end this can't be leveraged in some clever way that the user can set their own
+            $charList = implode(array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
+            $this->verificationToken = Rand::getString(32);
+        }
+        return $this->verificationToken;
+    }
+    
+    /**
+     * Set the verificationToken value
+     * @param string $verificationToken
+     * @return self
+     */
+    public function setVerificationToken(?string $verificationToken)
+    {
+        $this->verificationToken = $verificationToken;
+        return $this;
+    }
+    
+    /**
+     * Get the verificationExpiration date value in format 'Y-m-d H:i:s'
+     * @return string
+     */
+    public function getVerificationExpiration()
+    {
+        if (!isset($this->verificationExpiration)) {
+            //if we don't have one, make one up (mainly for registration)
+            //@todo make sure in the end this can't be leveraged in some clever way that the user can set their own
+            $dt = new \DateTime(null, new \DateTimeZone('UTC'));
+            $dt->add(new \DateInterval('P1D'));
+            $this->verificationExpiration = $dt->format('Y-m-d H:i:s');
+        }
+        return $this->verificationExpiration;
+    }
+    
+    /**
+     * Set the verificationExpiration value
+     * @param \DateTime $verificationExpiration
+     * @return self
+     */
+    public function setVerificationExpiration($verificationExpiration)
+    {
+        $this->verificationExpiration = $verificationExpiration;
+        return $this;
+    }
+    
+    /**
+     * Get the updateDatetime value
+     * @return string
+     */
+    public function getUpdateDatetime()
+    {
+        if (!isset($this->updateDatetime)) {
+            $dt = new \DateTime(null, new \DateTimeZone('UTC'));
+            $this->updateDatetime = $dt->format('Y-m-d H:i:s');
+        }
+        return $this->updateDatetime;
+    }
+    
+    /**
+     * Set the updateDatetime value
+     * @param string $updateDatetime
+     * @return self
+     */
+    public function setUpdateDatetime($updateDatetime)
+    {
+        $this->updateDatetime = $updateDatetime;
+        return $this;
+    }
+    
+    /**
+     * Get the createDatetime value
+     * @return string
+     */
+    public function getCreateDatetime()
+    {
+        if (!isset($this->createDatetime)) {
+            $dt = new \DateTime(null, new \DateTimeZone('UTC'));
+            $this->createDatetime = $dt->format('Y-m-d H:i:s');
+        }
+        return $this->createDatetime;
+    }
+    
+    /**
+     * Set the createDatetime value
+     * @param string $createDatetime
+     * @return self
+     */
+    public function setCreateDatetime($createDatetime)
+    {
+        $this->createDatetime = $createDatetime;
+        return $this;
+    }
+    
+    public function setNewVerificationToken()
+    {
+        $this->verificationToken = null;
+        $this->verificationExpiration = null;
+        $this->getVerificationToken();
+        $this->getVerificationExpiration();
+    }
+    
 }

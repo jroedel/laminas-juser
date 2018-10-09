@@ -131,6 +131,8 @@ class UserTable
             'emailVerified'     => $this->filterDbBool($row['email_verified']),
             'mustChangePassword'=> $this->filterDbBool($row['must_change_password']),
             'isMultiPersonUser' => $this->filterDbBool($row['multi_person_user']),
+            'verificationToken' => $row['verification_token'],
+            'verificationExpiration' => $this->filterDbDate($row['verification_expiration']),
             'active'            => $this->filterDbBool($row['state']),
 //            'languages'         => $this->filterDbArray($row['lang'], ';'),
             'personId'          => $this->filterDbId($row['PersID']),
@@ -160,6 +162,24 @@ class UserTable
     }
     
     /**
+     * Get user from token, doesn't include roles
+     * @param int|string $id
+     */
+    public function getUserFromToken($token)
+    {
+        $gateway = $this->getTableGateway(self::USER_TABLE_NAME);
+        $select = $this->getUsersSelectPrototype();
+            $select->where(['verification_token' => $token]);
+        $results = $gateway->selectWith($select);
+        //manipulate column names
+        if (0 !== $results->count()) {
+            $row = $results->current();
+            return $this->getUser($row['user_id']); //@todo make this more efficient, but we need roles too
+        }
+        return null;
+    }
+    
+    /**
      *
      * @param string[][] $data
      */
@@ -182,6 +202,8 @@ class UserTable
             'emailVerified'=> 'email_verified',
             'mustChangePassword'=> 'must_change_password',
             'isMultiPersonUser' => 'multi_person_user',
+            'verificationToken' => 'verification_token',
+            'verificationExpiration' => 'verification_expiration',
             'active'       => 'state',
             //'languages'    => 'lang',
             'personId'     => 'PersID',
@@ -223,6 +245,8 @@ class UserTable
             'emailVerified'=> 'email_verified',
             'mustChangePassword'=> 'must_change_password',
             'isMultiPersonUser' => 'multi_person_user',
+            'verificationToken' => 'verification_token',
+            'verificationExpiration' => 'verification_expiration',
             'active'       => 'state',
             //'languages'    => 'lang',
             'personId'     => 'PersID',
@@ -375,13 +399,13 @@ class UserTable
         if (!$roleId) {
             throw new \InvalidArgumentException('Invalid role passed.');
         }
-         $user = $this->getUser($userId);
-         if (!$user) {
-             return false;
-         }
-         if (isset($user['roles'][$roleId])) {
-             return true;
-         }
+        $user = $this->getUser($userId);
+        if (!$user) {
+            return false;
+        }
+        if (isset($user['roles'][$roleId])) {
+            return true;
+        }
         return false;
     }
 
@@ -469,7 +493,8 @@ class UserTable
             //         $select->columns(['TheMonth' => new Expression('MONTH(`modified_on`)'), 'TheYear' => new Expression('YEAR(`modified_on`)'), 'Count' => new Expression('Count(*)')]);
             $select->columns(['user_id', 'username', 'email', 'display_name', 'password',
                 'create_datetime', 'update_datetime', 'state', 'lang', 'email_verified',
-                'must_change_password', 'multi_person_user', 'PersID', 'create_by', 'update_by']);//, 'CurrentCheckouts' => new Expression('(SELECT MAX(`CheckoutId`) FROM `lib_checkouts` WHERE (`BookId` = `book_id` AND ISNULL(`CheckedInOn`)))')]);
+                'must_change_password', 'multi_person_user', 'PersID', 'verification_token', 
+                'verification_expiration', 'create_by', 'update_by']);//, 'CurrentCheckouts' => new Expression('(SELECT MAX(`CheckoutId`) FROM `lib_checkouts` WHERE (`BookId` = `book_id` AND ISNULL(`CheckedInOn`)))')]);
             //         $select->group(['TheMonth', 'TheYear']);
             //         $select->where($predicate->in('ChangedEntity', $tableEntities));
             $select->order(['username']);

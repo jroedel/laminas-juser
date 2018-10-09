@@ -110,7 +110,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
                 'use_hidden_element' => true,
             ],
             'attributes' => [
-                'value'   => '1',
+                'value'   => '0',
             ],
         ]);
 		$this->add(array(

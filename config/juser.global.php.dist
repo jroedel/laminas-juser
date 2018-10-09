@@ -131,7 +131,6 @@ return [
                 ['route' => 'zfcuser/logout', 'roles' => ['user']],
                 ['route' => 'change-password', 'roles' => ['user']],
 //                 ['route' => 'change-email', 'roles' => ['user']],
-                ['route' => 'register', 'roles' => ['guest']],
 //                 ['route' => 'zfcuser/register', 'roles' => ['guest']],
                 ['route' => 'juser', 'roles' => ['administrator']],
                 ['route' => 'juser/user/edit', 'roles' => ['administrator']],

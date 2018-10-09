@@ -13,11 +13,13 @@
         "zendframework/zend-mvc-form": "^1.0",
         "zendframework/zend-form": "^2.4.0",
         "zendframework/zend-crypt": "^2.4.0 || ^3.1.0",
+        "zendframework/zend-math": "^2.7 || ^3.0",
         "kokspflanze/bjy-authorize": "dev-master",
         "jroedel/zf-snap-geoip": "^3.0",
         "zf-commons/zfc-user": "3.x@dev",
         "jroedel/locale": "dev-master@dev",
-        "beaucal/beaucal-invalid-session": "^0.3.0"
+        "beaucal/beaucal-invalid-session": "^0.3.0",
+        "swiftmailer/swiftmailer": "^6.0"
     },
 	"autoload": {
     	"psr-4": {

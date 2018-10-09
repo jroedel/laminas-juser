@@ -13,6 +13,9 @@ use Zend\Mvc\Plugin\FlashMessenger\FlashMessenger;
 use Zend\Crypt\Password\Bcrypt;
 use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
+use Zend\I18n\Translator\Translator;
+use Zend\I18n\Translator\TranslatorInterface;
+use JUser\Service\Mailer;
 
 /**
  *
@@ -23,6 +26,9 @@ use JUser\Form\CreateRoleForm;
  */
 class UsersController extends AbstractActionController
 {
+    const VERIFICATION_VERIFIED = 'verified';
+    const VERIFICATION_EXPIRED = 'expired';
+    
     protected $userTable;
     
     protected $services = [];
@@ -53,6 +59,9 @@ class UsersController extends AbstractActionController
         }
         return $this->services[$identifier];
     }
+    
+    public function thanksAction()
+    {}
     
     public function changePasswordAction()
     {
@@ -91,12 +100,60 @@ class UsersController extends AbstractActionController
     	$user = $table->getUser($id);
 
     	return [
-    			'userId' => $id,
-    			'user' => $user,
-    			'form' => $form,
+    		'userId' => $id,
+    		'user' => $user,
+    		'form' => $form,
     	];
     }
 
+    public function verifyEmailAction()
+    {
+        $token = $this->params()->fromQuery('token');
+        if (!isset($token)) {
+            $this->redirect()->toRoute('welcome');
+        }
+        
+        /** @var UserTable $table */
+        $table = $this->getService(UserTable::class);
+        $user = $table->getUserFromToken($token);
+        if (!isset($user)) {
+            //@todo add an requestEmailVerificationAction(), redirect users to this
+            $this->flashMessenger ()->setNamespace ( FlashMessenger::NAMESPACE_ERROR )->addMessage ( 'Unable to verify email address.' );
+            return $this->redirect()->toRoute('juser');
+        }
+        
+        //expired or validated
+        $status = null;
+        $now = new \DateTime(null, new \DateTimeZone('UTC'));
+        if (!isset($user['verificationExpiration']) || $now > $user['verificationExpiration']) {
+            $status = self::VERIFICATION_EXPIRED;
+            $user = self::setNewVerificationToken($user);
+            $table->updateUser($user['userId'], $user);
+            $mailer = $this->getService(Mailer::class);
+            $mailer->sendVerificationEmail($user);
+        } else {
+            $status = self::VERIFICATION_VERIFIED;
+            
+            //give them permissions upon verification
+            if (!in_array(7, $user['rolesList'])) { //lib_user
+                $user['rolesList'][] = 7;
+            }
+            $user['active'] = true;
+            $user['emailVerified'] = true;
+            //update status
+            $table->updateUser($user['userId'], $user);
+            
+            //@todo spontaeneously log them in
+            
+        }
+        $mailer = $this->getService(Mailer::class);
+        $mailer->sendVerificationEmail($user);
+        return new ViewModel([
+            'user' => $user,
+            'status' => $status,
+        ]);
+    }
+    
     public function indexAction()
     {
     	$persons = null;
@@ -292,5 +349,15 @@ class UsersController extends AbstractActionController
         	'user' => $user,
             'form' => $form,
         ];
+    }
+    
+    protected static function setNewVerificationToken($user)
+    {
+        $charList = implode(array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
+        $user['verificationToken'] = Rand::getString(32);
+        $dt = new \DateTime(new \DateTimeZone(null, 'UTC'));
+        $dt->add(new \DateInterval('P1D'));
+        $user['verificationExpiration'] = $dt->format('Y-m-d H:i:s');
+        return $user;
     }
 }

@@ -12,11 +12,13 @@ echo $this->formRow($form->get('email'));
 echo $this->formRow($form->get('displayName'));
 echo $this->formRow($form->get('password'));
 echo $this->formRow($form->get('passwordVerify'));
+echo $this->formRow($form->get('mustChangePassword'));
 $this->formSelect()->setTranslatorEnabled(false);
 echo $this->formRow($form->get('rolesList')); ?>
 <p><a href="<?php echo $this->url('juser/create-role');?>"><?php 
     echo $this->translate("Create new role");?></a></p>
 <?php echo $this->formRow($form->get('personId'));
+echo $this->formRow($form->get('isMultiPersonUser'));
 echo $this->formRow($form->get('emailVerified'));
 echo $this->formRow($form->get('active'));
 echo $this->formRow($form->get('security'));

@@ -4,6 +4,10 @@ namespace JUser;
 use Zend\Mvc\MvcEvent;
 use Zend\Db\TableGateway\Feature\GlobalAdapterFeature;
 use Zend\Session\ManagerInterface;
+use JUser\Model\UserTable;
+use Zend\Math\Rand;
+use ZfcUser\Service\User;
+use JUser\Service\Mailer;
 class Module
 {
     public function getConfig()
@@ -28,5 +32,12 @@ class Module
         } else {
             throw new \Exception('Please set the [\'zfcuser\'][\'zend_db_adapter\'] config key for use with the JUser module.');
         }
+                
+        /** @var User $userService */
+        $userService = $sm->get('zfcuser_user_service');
+        
+        //the mailer will listen on zfcUser events to dispatch relevant emails
+        $listener = $sm->get(Mailer::class);
+        $listener->attach($userService->getEventManager());
     }
 }

@@ -27,6 +27,10 @@ use Zend\Session\Storage\SessionArrayStorage;
 use Zend\Session\Validator\RemoteAddr;
 use Zend\Session\Validator\HttpUserAgent;
 use JUser\Service\CacheFactory;
+use JUser\Form\RegisterForm;
+use JUser\Service\SwiftMailerFactory;
+use JUser\Service\Mailer;
+use JUser\Service\MailerFactory;
 
 return [
     'zfcuser' => [
@@ -40,7 +44,7 @@ return [
 
         'enable_default_entities' => false,
 
-        'enable_registration' => false,
+        'enable_registration' => true,
 
         'use_registration_form_captcha' => true,
 
@@ -155,6 +159,24 @@ return [
                 ],
                 'may_terminate' => true,
                 'child_routes' => [
+                    'verify-email' => [
+                        'type'    => Literal::class,
+                        'options' => [
+                            'route'    => '/verify-email',
+                            'defaults' => [
+                                'action'     => 'verifyEmail',
+                            ],
+                        ],
+                    ],
+                    'thanks' => [
+                        'type'    => Literal::class,
+                        'options' => [
+                            'route'    => '/thanks',
+                            'defaults' => [
+                                'action'     => 'thanks',
+                            ],
+                        ],
+                    ],
                     'user' => [
                         'type'    => Segment::class,
                         'options' => [
@@ -258,6 +280,10 @@ return [
             Session\ManagerInterface::class => Session\Service\SessionManagerFactory::class,
             // Provides session configuration to SessionManagerFactory
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
+            Mailer::class           => MailerFactory::class,
+            \Swift_Mailer::class    => SwiftMailerFactory::class,
+            //use this to override zfcuser's register form
+            //'zfcuser_register_form' => RegisterForm::class,
         ],
         'invokables'  => [
             RedirectionStrategy::class => RedirectionStrategy::class,
@@ -266,8 +292,9 @@ return [
             // Mapping services to their class names is required
             // since the ServiceManager is not a declarative DIC.
             'class_map' => [
-                CreateRoleForm::class => CreateRoleForm::class,
-                EditUserForm::class => EditUserForm::class,
+                CreateRoleForm::class   => CreateRoleForm::class,
+                EditUserForm::class     => EditUserForm::class,
+                Mailer::class           => Mailer::class,
             ],
         ],
         'delegators' => [
@@ -275,6 +302,9 @@ return [
                 LazyServiceFactory::class,
             ],
             EditUserForm::class => [
+                LazyServiceFactory::class,
+            ],
+            Mailer::class => [
                 LazyServiceFactory::class,
             ],
         ],
