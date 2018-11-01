@@ -3,10 +3,6 @@ namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
-use Patres\Form\EditCourseForm;
-use JUser\Form\EditUserForm;
-use JUser\Model\UserTable;
-use JUser\Model\PersonValueOptionsProviderInterface;
 use Zend\I18n\Translator\TranslatorInterface;
 use Zend\View\Helper\Url;
 use Zend\Router\RouteStackInterface;
@@ -37,12 +33,12 @@ class MailerFactory implements FactoryInterface
         if (isset($matches)) {
             $urlHelper->setRouteMatch($matches);
         }
-        
+
         $mailer = new Mailer();
         $mailer->setTranslator($translator);
         $mailer->setMailer($swift);
         $mailer->setUrlHelper($urlHelper);
-        
+
         return $mailer;
     }
 }

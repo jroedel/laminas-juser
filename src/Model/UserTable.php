@@ -7,13 +7,14 @@ use Zend\Filter\Boolean;
 use Zend\Cache\Storage\StorageInterface;
 use Zend\Db\Adapter\AdapterInterface;
 use Zend\Db\Sql\Select;
+use Zend\Db\Sql\Where;
 
 class UserTable
 {
     const USER_TABLE_NAME = 'user';
     const ROLE_TABLE_NAME = 'user_role';
     const USER_ROLE_LINKER_TABLE_NAME = 'user_role_linker';
-    
+
     /**
      *
      * @var AdapterInterface
@@ -21,14 +22,14 @@ class UserTable
     protected $adapter;
 
     /**
-     * 
+     *
      * @var array $tableGatewaysCache
      */
     protected $tableGatewaysCache = [];
 
     /**
      *
-     * @var \JUser\Entity\User
+     * @var User
      */
     protected $actingUser;
 
@@ -36,12 +37,12 @@ class UserTable
      * @var StorageInterface $cache
      */
     protected $persistentCache;
-    
+
     /**
      * @var int $maxItemsToCache
      */
     protected $maxItemsToCache = 2;
-    
+
     /**
      * For each cache key, the list of entities they depend on.
      * For example:
@@ -54,29 +55,29 @@ class UserTable
      * @var array
      */
     protected $cacheDependencies = [];
-    
+
     /**
      * List of keys that should be persisted onFinish
      * @var array
      */
     protected $newPersistentCacheItems = [];
-    
+
     /**
      * @var mixed[] $memoryCache
      */
     protected $memoryCache = [];
-    
+
     /**
      * @param TableGateway $userGateway
      * @param TableGateway $userRoleGateway
      * @param \JUser\Entity\User
      */
-    public function __construct(AdapterInterface $adapter, $actingUser = null)
+    public function __construct(AdapterInterface $adapter, User $actingUser = null)
     {
         $this->adapter = $adapter;
         $this->actingUser = $actingUser;
     }
-    
+
     /**
      * Gets list of users
      *
@@ -86,7 +87,7 @@ class UserTable
     {
         $cacheKey = 'users';
         if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
-           return $cache;
+            return $cache;
         }
         $gateway = $this->getTableGateway(self::USER_TABLE_NAME);
         $select = $this->getUsersSelectPrototype();
@@ -111,11 +112,11 @@ class UserTable
         foreach ($objects as $id => $object) {
             $objects[$id]['rolesList'] = array_keys($objects[$id]['roles']);
         }
-        
+
         $this->cacheEntityObjects($cacheKey, $objects, ['user']);
         return $objects;
     }
-    
+
     protected function processUserRow($row)
     {
         $processedRow = [
@@ -160,7 +161,7 @@ class UserTable
             return null;
         }
     }
-    
+
     /**
      * Get user from token, doesn't include roles
      * @param int|string $id
@@ -174,16 +175,18 @@ class UserTable
         //manipulate column names
         if (0 !== $results->count()) {
             $row = $results->current();
-            return $this->getUser($row['user_id']); //@todo make this more efficient, but we need roles too
+            //@todo make this more efficient, but we need roles too
+            return $this->getUser($row['user_id']);
         }
         return null;
     }
-    
+
     /**
      *
      * @param string[][] $data
      */
-    public function createUser($data) {
+    public function createUser($data)
+    {
         $tableName     = self::USER_TABLE_NAME;
         $tableGateway  = $this->getTableGateway($tableName);
         $requiredCols  = [
@@ -214,17 +217,18 @@ class UserTable
         $this->removeDependentCacheItems('user');
         return $return;
     }
-    
+
     /**
      *
      * @param int|string $id
      * @param string[][] $data
      */
-    public function updateUser($id, $data) {
+    public function updateUser($id, $data)
+    {
         $tableName     = self::USER_TABLE_NAME;
         $tableKey      = 'user_id';
         $tableGateway  = $this->getTableGateway($tableName);
-        
+
         if (!is_numeric($id)) {
             throw new \InvalidArgumentException('Invalid user id provided.');
         }
@@ -256,7 +260,7 @@ class UserTable
         $this->removeDependentCacheItems('user');
         return $return;
     }
-    
+
     /**
      * no validation of id
      * @todo report errors
@@ -271,7 +275,7 @@ class UserTable
         $this->removeDependentCacheItems('user');
         return $result;
     }
-    
+
     /**
      * Gets list of roles
      * @return mixed[]
@@ -297,11 +301,11 @@ class UserTable
                 $objects[$roleId]['parentName'] = $objects[$object['parentId']]['name'];
             }
         }
-        
+
         $this->cacheEntityObjects($cacheKey, $objects, ['role']);
         return $objects;
     }
-    
+
     protected function processRoleRow($row)
     {
         $processedRow = [
@@ -311,7 +315,7 @@ class UserTable
             'parentId'          => $this->filterDbId($row['parent_id']),
             'createdOn'         => $this->filterDbDate($row['create_datetime']),
             'createdBy'         => $this->filterDbInt($row['create_by']),
-            
+
             'parentName'        => null,
         ];
         return $processedRow;
@@ -372,7 +376,7 @@ class UserTable
         $this->cacheEntityObjects($cacheKey, $objects, ['user', 'role']);
         return $objects;
     }
-    
+
     protected function processUserRoleLinkerRow($row)
     {
         $processedRow = [
@@ -413,8 +417,7 @@ class UserTable
     {
         if (!$newUser || !is_array($newUser) ||
             !isset($newUser['userId']) ||
-            !isset($newUser['rolesList']))
-        {
+            !isset($newUser['rolesList'])) {
             return 0;
         }
         $newRoles = $newUser['rolesList'];
@@ -434,15 +437,14 @@ class UserTable
         }
         $return = [];
         foreach ($roles as $roleId => $oldNew) {
-            if ($oldNew['new'] === $oldNew['old'])
-            { //if they're the same, we don't need to do anything
+            if ($oldNew['new'] === $oldNew['old']) { //if they're the same, we don't need to do anything
                 continue;
             }
             $data = ['user_id' => $newUser['userId'], 'role_id' => $roleId];
             if ($oldNew['new'] && !$oldNew['old']) { //insert a role
                 $result = 0;
                 $data['create_datetime'] = $this->formatDbDate(new \DateTime(null, new \DateTimeZone('UTC')));
-                if(is_object($this->actingUser)) {
+                if (is_object($this->actingUser)) {
                     $data['create_by'] = $this->actingUser->id;
                 }
                 $result = $tableGateway->insert($data);
@@ -466,7 +468,7 @@ class UserTable
         $this->removeDependentCacheItems('user');
         return count($return);
     }
-    
+
     /**
      * no validation of id
      * @todo report errors
@@ -480,7 +482,7 @@ class UserTable
         $this->removeDependentCacheItems('user');
         return $result;
     }
-    
+
     /**
      * Get a standardized select object to retrieve records from the database
      * @return \Zend\Db\Sql\Select
@@ -490,19 +492,16 @@ class UserTable
         static $select;
         if (!isset($select)) {
             $select = new Select(self::USER_TABLE_NAME);
-            //         $select->columns(['TheMonth' => new Expression('MONTH(`modified_on`)'), 'TheYear' => new Expression('YEAR(`modified_on`)'), 'Count' => new Expression('Count(*)')]);
             $select->columns(['user_id', 'username', 'email', 'display_name', 'password',
                 'create_datetime', 'update_datetime', 'state', 'lang', 'email_verified',
-                'must_change_password', 'multi_person_user', 'PersID', 'verification_token', 
-                'verification_expiration', 'create_by', 'update_by']);//, 'CurrentCheckouts' => new Expression('(SELECT MAX(`CheckoutId`) FROM `lib_checkouts` WHERE (`BookId` = `book_id` AND ISNULL(`CheckedInOn`)))')]);
-            //         $select->group(['TheMonth', 'TheYear']);
-            //         $select->where($predicate->in('ChangedEntity', $tableEntities));
+                'must_change_password', 'multi_person_user', 'PersID', 'verification_token',
+                'verification_expiration', 'create_by', 'update_by']);
             $select->order(['username']);
         }
-        
+
         return clone $select;
     }
-    
+
     /**
      * Get a standardized select object to retrieve records from the database
      * @return \Zend\Db\Sql\Select
@@ -512,16 +511,13 @@ class UserTable
         static $select;
         if (!isset($select)) {
             $select = new Select(self::ROLE_TABLE_NAME);
-            //         $select->columns(['TheMonth' => new Expression('MONTH(`modified_on`)'), 'TheYear' => new Expression('YEAR(`modified_on`)'), 'Count' => new Expression('Count(*)')]);
-            $select->columns(['id', 'role_id', 'is_default', 'parent_id', 'create_by', 'create_datetime']);//, 'CurrentCheckouts' => new Expression('(SELECT MAX(`CheckoutId`) FROM `lib_checkouts` WHERE (`BookId` = `book_id` AND ISNULL(`CheckedInOn`)))')]);
-            //         $select->group(['TheMonth', 'TheYear']);
-            //         $select->where($predicate->in('ChangedEntity', $tableEntities));
+            $select->columns(['id', 'role_id', 'is_default', 'parent_id', 'create_by', 'create_datetime']);
             $select->order(['role_id']);
         }
-        
+
         return clone $select;
     }
-    
+
     /**
      * Get a standardized select object to retrieve records from the database
      * @return \Zend\Db\Sql\Select
@@ -531,16 +527,13 @@ class UserTable
         static $select;
         if (!isset($select)) {
             $select = new Select(self::USER_ROLE_LINKER_TABLE_NAME);
-            //         $select->columns(['TheMonth' => new Expression('MONTH(`modified_on`)'), 'TheYear' => new Expression('YEAR(`modified_on`)'), 'Count' => new Expression('Count(*)')]);
-            $select->columns(['user_id', 'role_id', 'create_by', 'create_datetime']);//, 'CurrentCheckouts' => new Expression('(SELECT MAX(`CheckoutId`) FROM `lib_checkouts` WHERE (`BookId` = `book_id` AND ISNULL(`CheckedInOn`)))')]);
-            //         $select->group(['TheMonth', 'TheYear']);
-            //         $select->where($predicate->in('ChangedEntity', $tableEntities));
+            $select->columns(['user_id', 'role_id', 'create_by', 'create_datetime']);
             $select->order(['user_id', 'role_id']);
         }
-        
+
         return clone $select;
     }
-    
+
     protected function createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway)
     {
         //make sure required cols are being passed
@@ -560,7 +553,8 @@ class UserTable
                 $data[$col] = $data[$col]->format('Y-m-d H:i:s');
             }
             $updateVals[$updateCols[$col]] = $data[$col];
-            if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) { //check if this column has updatedOn column
+            //check if this column has updatedOn column
+            if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
                 $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
             }
             if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
@@ -575,7 +569,8 @@ class UserTable
                 is_object($this->actingUser)) {
             $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
         }
-        if (key_exists('createdOn', $updateCols) && !key_exists('createdOn', $data)) { //check if this column has updatedOn column
+        //check if this column has updatedOn column
+        if (key_exists('createdOn', $updateCols) && !key_exists('createdOn', $data)) {
             $updateVals[$updateCols['createdOn']] = $now;
         }
         if (key_exists('createdBy', $updateCols) && !key_exists('createdBy', $data) &&
@@ -595,7 +590,7 @@ class UserTable
         }
         return false;
     }
-    
+
     protected function updateHelper($id, $data, $tableName, $tableKey, $tableGateway, $updateCols, $referenceEntity)
     {
         if (is_null($tableName) || $tableName == '') {
@@ -615,7 +610,8 @@ class UserTable
                 $data[$col] = $data[$col]->format('Y-m-d H:i:s');
             }
             $updateVals[$updateCols[$col]] = $data[$col];
-            if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) { //check if this column has updatedOn column
+            //check if this column has updatedOn column
+            if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
                 $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
             }
             if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
@@ -637,7 +633,7 @@ class UserTable
             if (isset($updateCols['updatedBy']) && !isset($updateVals[$updateCols['updatedBy']]) &&
                 is_object($this->actingUser)) {
                     $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
-                }
+            }
                 $result = $tableGateway->update($updateVals, array($tableKey => $id));
                 //             $this->reportChange($changes);
                 return $result;
@@ -656,8 +652,7 @@ class UserTable
         if (null === $where && null === $sql) {
             throw new \InvalidArgumentException('No query requested.');
         }
-        if (null !== $sql)
-        {
+        if (null !== $sql) {
             if (null === $sqlArgs) {
                 $sqlArgs = Adapter::QUERY_MODE_EXECUTE; //make sure query executes
             }
@@ -665,14 +660,14 @@ class UserTable
         } else {
             $result = $this->tableGateway->select($where);
         }
-        
+
         $return = [];
         foreach ($result as $row) {
             $return[] = $row;
         }
         return $return;
     }
-    
+
     /**
      * Cache some entities. A simple proxy of the cache's setItem method with dependency support.
      *
@@ -692,7 +687,7 @@ class UserTable
         $this->cacheDependencies[$cacheKey] = $cacheDependencies;
         return true;
     }
-    
+
     /**
      * Retrieve a cache item. A simple proxy of the cache's getItem method.
      * First we check the memoryCache, if it's not there, we look in the
@@ -721,7 +716,7 @@ class UserTable
         $null = null;
         return $null;
     }
-    
+
     /**
      * Examine the $this->cacheDependencies array to see if any depends on the entity passed.
      * @param string $entity
@@ -740,10 +735,10 @@ class UserTable
                 }
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * At the end of the page load, cache any uncached items up to max_number_of_items_to_cache.
      * This is because serializing big objects can be very memory expensive.
@@ -765,7 +760,7 @@ class UserTable
             }
         }
     }
-    
+
     /**
      * Filter a database int
      * @param string $str
@@ -778,7 +773,7 @@ class UserTable
         }
         return (int) $str;
     }
-    
+
     /**
      * Filter a database int
      * @param string $str
@@ -791,7 +786,7 @@ class UserTable
         }
         return (int) $str;
     }
-    
+
     /**
      * Filter a database boolean
      * @param string $str
@@ -825,7 +820,7 @@ class UserTable
         }
         try {
             $return = new \DateTime($str, $tz);
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             $return = null;
         }
         return $return;
@@ -862,7 +857,7 @@ class UserTable
         }
         return $object->format('Y-m-d H:i:s');
     }
-    
+
     protected function formatDbArray($arr, $delimiter = '|', $trim = true)
     {
         if (!is_array($arr)) {
@@ -896,7 +891,7 @@ class UserTable
         }
         return $return;
     }
-    
+
     /**
      * Get an instance of a TableGateway for a particular table name
      * @param string $tableName
@@ -910,7 +905,7 @@ class UserTable
         //@todo is there a way to make sure the table exists?
         return $this->tableGatewaysCache[$tableName] = $gateway;
     }
-    
+
     /**
      * Get the cache value
      * @return StorageInterface
@@ -919,7 +914,7 @@ class UserTable
     {
         return $this->persistentCache;
     }
-    
+
     /**
      *
      * @param StorageInterface $cache
@@ -930,7 +925,7 @@ class UserTable
         $this->persistentCache = $cache;
         return $this;
     }
-    
+
     /**
      * Get the maxItemsToCache value
      * @return int
@@ -939,7 +934,7 @@ class UserTable
     {
         return $this->maxItemsToCache;
     }
-    
+
     /**
      *
      * @param int $maxItemsToCache

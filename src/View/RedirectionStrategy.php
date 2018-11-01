@@ -36,7 +36,7 @@ class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggreg
     protected $redirectUri;
 
     /**
-     * @var \Zend\Stdlib\CallbackHandler[]
+     * @var ListenerAggregateInterface[]
      */
     protected $listeners = array();
 

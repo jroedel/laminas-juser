@@ -3,10 +3,6 @@ namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
-use Patres\Form\EditCourseForm;
-use JUser\Form\EditUserForm;
-use JUser\Model\UserTable;
-use JUser\Model\PersonValueOptionsProviderInterface;
 
 /**
  * Factory responsible of priming the Swift Mailer service
@@ -24,16 +20,16 @@ class SwiftMailerFactory implements FactoryInterface
     {
         $config = $container->get('Config');
         $smtpOptions = $config['smtp_options'];
-        
+
         // Create the Transport
         $transport = (new \Swift_SmtpTransport($smtpOptions['server'], $smtpOptions['port'], $smtpOptions['ssl']))
             ->setUsername($smtpOptions['username'])
             ->setPassword($smtpOptions['password'])
         ;
-        
+
         // Create the Mailer using your created Transport
         $mailer = new \Swift_Mailer($transport);
-        
+
         return $mailer;
     }
 }

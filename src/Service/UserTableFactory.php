@@ -4,7 +4,6 @@ namespace JUser\Service;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
-use Zend\Db\TableGateway\TableGateway;
 use Zend\Db\Adapter\Adapter;
 use Zend\Mvc\MvcEvent;
 
@@ -19,14 +18,14 @@ class UserTableFactory implements FactoryInterface
     {
         $authService = $container->get('zfcuser_auth_service');
         $user = $authService->getIdentity();
-		
+
         $dbAdapter = $container->get(Adapter::class);
         $table = new UserTable($dbAdapter, $user);
-        
+
         $cache = $container->get('JUser\Cache');
         $table->setPersistentCache($cache);
         $em = $container->get('Application')->getEventManager();
-        $em->attach( MvcEvent::EVENT_FINISH, [$table, 'onFinish'], -1);
+        $em->attach(MvcEvent::EVENT_FINISH, [$table, 'onFinish'], -1);
         return $table;
     }
 }

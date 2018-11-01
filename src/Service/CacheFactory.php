@@ -1,14 +1,7 @@
 <?php
-/**
- * BjyAuthorize Module (https://github.com/bjyoungblood/BjyAuthorize)
- *
- * @link https://github.com/bjyoungblood/BjyAuthorize for the canonical source repository
- * @license http://framework.zend.com/license/new-bsd New BSD License
- */
 
 namespace JUser\Service;
 
-use Zend\Cache\Storage\StorageInterface;
 use Zend\Cache\StorageFactory;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;

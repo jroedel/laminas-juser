@@ -359,5 +359,4 @@ class User implements UserInterface
         $this->getVerificationToken();
         $this->getVerificationExpiration();
     }
-    
 }

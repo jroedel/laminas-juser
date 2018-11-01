@@ -1,42 +1,21 @@
 <?php
 namespace JUser;
 
-use JUser\Model\User;
 use Zend\Db\Adapter\Adapter;
 use ZfcUser\Authentication\Adapter\Db;
-use GoalioRememberMe\Authentication\Adapter\Cookie;
-use JUser\View\RedirectionStrategy;
 use BjyAuthorize\Provider\Identity\ZfcUserZendDb;
 use BjyAuthorize\Provider\Role\ZendDb;
 use Zend\Router\Http\Literal;
 use Zend\Router\Http\Segment;
-use JUser\Service\UsersControllerFactory;
-use JUser\Controller\UsersController;
-use JUser\View\Helper\IpPlace;
-use JUser\View\Helper\UserWithIp;
-use JUser\Service\UserTableFactory;
-use JUser\Model\UserTable;
-use JUser\Form\EditUserForm;
-use JUser\Service\EditUserFormFactory;
-use JUser\Service\CreateRoleFormFactory;
-use JUser\Form\CreateRoleForm;
-use JUser\Service\ConfigServiceFactory;
 use Zend\ServiceManager\Proxy\LazyServiceFactory;
 use Zend\Session;
 use Zend\Session\Storage\SessionArrayStorage;
-use Zend\Session\Validator\RemoteAddr;
-use Zend\Session\Validator\HttpUserAgent;
-use JUser\Service\CacheFactory;
-use JUser\Form\RegisterForm;
-use JUser\Service\SwiftMailerFactory;
-use JUser\Service\Mailer;
-use JUser\Service\MailerFactory;
 
 return [
     'zfcuser' => [
         'zend_db_adapter' => Adapter::class,
         // telling ZfcUser to use our own class
-        'user_entity_class'       => User::class,
+        'user_entity_class'       => Model\User::class,
 
         'auth_adapters' => [
             100 => Db::class,
@@ -78,7 +57,7 @@ return [
     ],
 
     'bjyauthorize' => [
-        'unauthorized_strategy' => RedirectionStrategy::class,
+        'unauthorized_strategy' => View\RedirectionStrategy::class,
 
 //         'cache_options'         => [
 //                 'adapter'   => [
@@ -137,7 +116,7 @@ return [
                 'identifier_field_name' => 'id',
                 'parent_role_field' => 'parent',
             ],
-            
+
             \BjyAuthorize\Provider\Role\ZendDb::class => [
                 'table'                 => 'user_role',
                 'identifier_field_name' => 'id',
@@ -153,7 +132,7 @@ return [
                 'options' => [
                     'route'    => '/users',
                     'defaults' => [
-                        'controller' => UsersController::class,
+                        'controller' => Controller\UsersController::class,
                         'action'     => 'index',
                     ],
                 ],
@@ -185,7 +164,7 @@ return [
                                 'user_id' => '[0-9]{1,5}',
                             ],
                             'defaults' => [
-                                'controller' => UsersController::class,
+                                'controller' => Controller\UsersController::class,
                             ],
                         ],
                         'may_terminate' => false,
@@ -233,7 +212,7 @@ return [
                         'options' => [
                             'route'    => '/create',
                             'defaults' => [
-                                'controller' => UsersController::class,
+                                'controller' => Controller\UsersController::class,
                                 'action'     => 'create',
                             ],
                         ],
@@ -243,7 +222,7 @@ return [
                         'options' => [
                             'route'    => '/roles/create',
                             'defaults' => [
-                                'controller' => UsersController::class,
+                                'controller' => Controller\UsersController::class,
                                 'action'     => 'createRole',
                             ],
                         ],
@@ -254,7 +233,7 @@ return [
     ],
     'controllers' => [
         'factories' => [
-            UsersController::class => UsersControllerFactory::class,
+            Controller\UsersController::class => Service\UsersControllerFactory::class,
         ],
     ],
     'view_manager' => [
@@ -265,53 +244,53 @@ return [
     ],
     'view_helpers' => [
         'invokables' => [
-            'ipPlace'		        => IpPlace::class,
-            'userWithIp'		    => UserWithIp::class,
-       	],
+            'ipPlace'               => View\Helper\IpPlace::class,
+            'userWithIp'            => View\Helper\UserWithIp::class,
+        ],
     ],
     'service_manager' => [
         'factories' => [
-            UserTable::class        => UserTableFactory::class,
-            EditUserForm::class     => EditUserFormFactory::class,
-            CreateRoleForm::class   => CreateRoleFormFactory::class,
-            'JUser\Config'          => ConfigServiceFactory::class,
-            'JUser\Cache'           => CacheFactory::class,
+            Model\UserTable::class          => Service\UserTableFactory::class,
+            Form\EditUserForm::class        => Service\EditUserFormFactory::class,
+            Form\CreateRoleForm::class      => Service\CreateRoleFormFactory::class,
+            'JUser\Config'                  => Service\ConfigServiceFactory::class,
+            'JUser\Cache'                   => Service\CacheFactory::class,
             // Configures the default SessionManager instance
             Session\ManagerInterface::class => Session\Service\SessionManagerFactory::class,
             // Provides session configuration to SessionManagerFactory
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
-            Mailer::class           => MailerFactory::class,
-            \Swift_Mailer::class    => SwiftMailerFactory::class,
+            Service\Mailer::class           => Service\MailerFactory::class,
+            \Swift_Mailer::class            => Service\SwiftMailerFactory::class,
             //use this to override zfcuser's register form
             //'zfcuser_register_form' => RegisterForm::class,
         ],
         'invokables'  => [
-            RedirectionStrategy::class => RedirectionStrategy::class,
+            View\RedirectionStrategy::class => View\RedirectionStrategy::class,
         ],
         'lazy_services' => [
             // Mapping services to their class names is required
             // since the ServiceManager is not a declarative DIC.
             'class_map' => [
-                CreateRoleForm::class   => CreateRoleForm::class,
-                EditUserForm::class     => EditUserForm::class,
-                Mailer::class           => Mailer::class,
+                Form\CreateRoleForm::class   => Form\CreateRoleForm::class,
+                Form\EditUserForm::class     => Form\EditUserForm::class,
+                Service\Mailer::class        => Service\Mailer::class,
             ],
         ],
         'delegators' => [
-            CreateRoleForm::class => [
+            Form\CreateRoleForm::class => [
                 LazyServiceFactory::class,
             ],
-            EditUserForm::class => [
+            Form\EditUserForm::class => [
                 LazyServiceFactory::class,
             ],
-            Mailer::class => [
+            Service\Mailer::class => [
                 LazyServiceFactory::class,
             ],
         ],
         'aliases' => [
             \Zend\Session\SessionManager::class => Session\ManagerInterface::class,
         ],
-        
+
     ],
     'session_storage' => [
         'type' => SessionArrayStorage::class

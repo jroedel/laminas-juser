@@ -3,7 +3,6 @@ namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
-use Patres\Form\EditCourseForm;
 use JUser\Form\EditUserForm;
 use JUser\Model\UserTable;
 use JUser\Model\PersonValueOptionsProviderInterface;
@@ -23,24 +22,29 @@ class EditUserFormFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         /** @var UserTable $userTable **/
-		$userTable = $container->get ( UserTable::class );
-		$form = new EditUserForm();
-		$config = $container->get('JUser\Config');
-		$personProvider = $config['person_provider'];
-        if ($container->has ($personProvider)) {
+        $userTable = $container->get(UserTable::class);
+        $form = new EditUserForm();
+        $config = $container->get('JUser\Config');
+        $personProvider = $config['person_provider'];
+        if ($container->has($personProvider)) {
             /** @var PersonValueOptionsProviderInterface $provider **/
-        	$provider = $container->get($personProvider);
+            $provider = $container->get($personProvider);
             if (!$provider instanceof PersonValueOptionsProviderInterface) {
-        	   throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not implement the PersonValueOptionsProviderInterface.');
+                throw new \InvalidArgumentException(
+                    '`person_provider` specified in the JUser config does not implement'
+                    .' the PersonValueOptionsProviderInterface.'
+                );
             }
             $persons = $provider->getPersonValueOptions();
-        	$form->setPersonValueOptions($persons);
+            $form->setPersonValueOptions($persons);
         } else {
-            throw new \InvalidArgumentException('`person_provider` specified in the JUser config does not exist.');
+            throw new \InvalidArgumentException(
+                '`person_provider` specified in the JUser config does not exist.'
+            );
         }
-		$roles = $userTable->getRolesValueOptions();
-		$form->get('rolesList')->setValueOptions($roles);
+        $roles = $userTable->getRolesValueOptions();
+        $form->get('rolesList')->setValueOptions($roles);
 
-		return $form;
+        return $form;
     }
 }

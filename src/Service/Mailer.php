@@ -4,7 +4,6 @@ namespace JUser\Service;
 use Zend\I18n\Translator\TranslatorInterface;
 use Zend\I18n\Translator\TranslatorAwareInterface;
 use Zend\EventManager\AbstractListenerAggregate;
-use JUser\Model\User;
 use Zend\EventManager\EventManagerInterface;
 use JUser\Model\UserTable;
 use Zend\View\Helper\Url;
@@ -13,23 +12,23 @@ class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterfa
 {
     /** @var \Swift_Mailer $mailer */
     protected $mailer;
-    
+
     /** @var TranslatorInterface $translator */
     protected $translator;
-    
+
     protected $translatorEnabled = true;
-    
+
     protected $textDomain = 'JUser';
-    
+
     protected $userTable;
-    
+
     protected $urlHelper;
-    
+
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $this->listeners[] = $events->attach('register.post', array($this, 'listenOnRegisterPost'), $priority);
     }
-    
+
     public function listenOnRegisterPost($event)
     {
         /** @var User $user */
@@ -40,10 +39,13 @@ class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterfa
         $userArray['email'] = $user->getEmail();
         $this->sendVerificationEmail($userArray);
     }
-    
+
     public function sendVerificationEmail($user)
     {
-        $link = $this->urlHelper->__invoke('juser/verify-email', [], ['force_canonical' => true, 'query' => ['token' => $user['verificationToken']]]);
+        $link = $this->urlHelper->__invoke('juser/verify-email', [], [
+            'force_canonical' => true,
+            'query' => ['token' => $user['verificationToken']]
+        ]);
         $body = <<<EOT
 Hey! Welcome to Schoenstatt Link! Before we get started, please confirm
 your e-mail address by clicking on the this link:
@@ -55,35 +57,35 @@ If you have any questions or comments, please contact support at support@schoens
 EOT;
         $translator = $this->getTranslator();
         $body = sprintf($translator->translate($body), $link);
-        
+
         // Create the Transport
         /** @var \Swift_Mailer $mailer */
         $mailer = $this->getMailer();
-        
+
         // Create the message
         $message = (new \Swift_Message())
-        
+
         // Give the message a subject
         ->setSubject('Please confirm your email address')
-        
+
         // Set the From address with an associative array
         ->setFrom(['webmaster@schoenstatt.link' => 'Schoenstatt Link'])
-        
+
         // Set the To addresses with an associative array (setTo/setCc/setBcc)
         ->setTo([$user['email'] => $user['displayName']])
         ->setBcc('webmaster@schoenstatt.link')
-        
+
         // Give it a body
-        ->setBody($body )
+        ->setBody($body)
         // And optionally an alternative body
         //->addPart('<q>Here is the message itself</q>', 'text/html')
-        
+
         // Optionally add any attachments
         //->attach(Swift_Attachment::fromPath('my-document.pdf'))
         ;
         $result = $mailer->send($message);
     }
-    
+
     /**
      * Get the translator value
      * @return TranslatorInterface
@@ -95,7 +97,7 @@ EOT;
         }
         return $this->translator;
     }
-    
+
     /**
      * Set the translator value
      * @param TranslatorInterface $translator
@@ -106,7 +108,7 @@ EOT;
         $this->translator = $translator;
         return $this;
     }
-    
+
     /**
      * Checks if the object has a translator
      *
@@ -116,7 +118,7 @@ EOT;
     {
         return is_object($this->translator);
     }
-    
+
     /**
      * Sets whether translator is enabled and should be used
      *
@@ -129,7 +131,7 @@ EOT;
         $this->translatorEnabled = $enabled;
         return $this;
     }
-    
+
     /**
      * Returns whether translator is enabled and should be used
      *
@@ -139,7 +141,7 @@ EOT;
     {
         return (bool) $this->translatorEnabled;
     }
-    
+
     /**
      * Set translation text domain
      *
@@ -151,7 +153,7 @@ EOT;
         $this->textDomain = $textDomain;
         return $this;
     }
-    
+
     /**
      * Return the translation text domain
      *
@@ -161,7 +163,7 @@ EOT;
     {
         return $this->textDomain;
     }
-    
+
     /**
      * Get the mailer value
      * @return \Swift_Mailer
@@ -173,7 +175,7 @@ EOT;
         }
         return $this->mailer;
     }
-    
+
     /**
      * Set the mailer value
      * @param \Swift_Mailer $mailer
@@ -184,7 +186,7 @@ EOT;
         $this->mailer = $mailer;
         return $this;
     }
-    
+
     /**
      * Get the userTable value
      * @return UserTable
@@ -196,7 +198,7 @@ EOT;
         }
         return $this->userTable;
     }
-    
+
     /**
      * Set the userTable value
      * @param UserTable $userTable
@@ -207,7 +209,7 @@ EOT;
         $this->userTable = $userTable;
         return $this;
     }
-    
+
     /**
      * Get the urlHelper value
      * @return Url
@@ -219,7 +221,7 @@ EOT;
         }
         return $this->urlHelper;
     }
-    
+
     /**
      * Set the urlHelper value
      * @param Url $urlHelper

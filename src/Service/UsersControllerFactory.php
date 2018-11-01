@@ -5,9 +5,6 @@ use JUser\Controller\UsersController;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
-use Zend\I18n\Translator\Translator;
-use Zend\I18n\Translator\TranslatorAwareInterface;
-use Zend\I18n\Translator\TranslatorInterface;
 
 class UsersControllerFactory implements FactoryInterface
 {
@@ -25,7 +22,7 @@ class UsersControllerFactory implements FactoryInterface
         $controller->setUserTable($userTable);
 
         $config = $serviceLocator->get('JUser\Config');
-        
+
         $services = [];
         $services['JUser\Config'] = $config;
         if (key_exists('person_provider', $config)) {
@@ -34,15 +31,15 @@ class UsersControllerFactory implements FactoryInterface
                 $services[$personProvider] = $serviceLocator->get($personProvider);
             }
         }
-        
+
         $services[\JUser\Form\EditUserForm::class] = $serviceLocator->get(\JUser\Form\EditUserForm::class);
         $services[\JUser\Form\CreateRoleForm::class] = $serviceLocator->get(\JUser\Form\CreateRoleForm::class);
         $services['zfcuser_module_options'] = $serviceLocator->get('zfcuser_module_options');
         $services[UserTable::class] = $userTable;
         $services[Mailer::class] = $serviceLocator->get(Mailer::class);
-        
+
         $controller->setServices($services);
-        
+
         return $controller;
     }
 }
