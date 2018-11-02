@@ -10,5 +10,6 @@ echo $this->form()->openTag($form);
 echo $this->formRow($form->get('name'));
 $this->formSelect()->setTranslatorEnabled(false);
 echo $this->formRow($form->get('parentId'));
+echo $this->formRow($form->get('isDefault'));
 echo $this->formRow($form->get('security'));
 echo $this->formSubmit($form->get('submit')); ?>

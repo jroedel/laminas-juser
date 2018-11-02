@@ -37,6 +37,20 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
         ]);
 
         $this->add([
+            'name' => 'isDefault',
+            'type' => 'Checkbox',
+            'options' => [
+                'label' => 'Automatically give to new users?',
+                'checked_value' => '1',
+                'unchecked_value' => '0',
+                'use_hidden_element' => true,
+            ],
+            'attributes' => [
+                'value'   => '0',
+            ],
+        ]);
+
+        $this->add([
             'name' => 'security',
             'type' => 'csrf',
         ]);
@@ -83,6 +97,9 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
                         ],
                     ],
                 ],
+            ],
+            'isDefault' => [
+                'required' => false,
             ],
             'parentId' => [
                 'required' => false,

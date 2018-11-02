@@ -306,12 +306,28 @@ class UserTable
         return $objects;
     }
 
+    public function getDefaultRoles()
+    {
+        $gateway = $this->getTableGateway(self::ROLE_TABLE_NAME);
+        $select = $this->getRolesSelectPrototype();
+        $select->where(['is_default' => '1']);
+        $results = $gateway->selectWith($select);
+        //manipulate column names
+        $objects = [];
+        foreach ($results as $row) {
+            $processedRow = $this->processRoleRow($row);
+            $id = $processedRow['roleId'];
+            $objects[$id] = $processedRow;
+        }
+        return $objects;
+    }
+
     protected function processRoleRow($row)
     {
         $processedRow = [
             'roleId'            => $this->filterDbId($row['id']),
             'name'              => $row['role_id'],
-            //'isDefault'         => $this->filterDbBool($row['is_default']),
+            'isDefault'         => $this->filterDbBool($row['is_default']),
             'parentId'          => $this->filterDbId($row['parent_id']),
             'createdOn'         => $this->filterDbDate($row['create_datetime']),
             'createdBy'         => $this->filterDbInt($row['create_by']),
@@ -331,9 +347,9 @@ class UserTable
         $updateCols = [
             'name'       => 'role_id',
             'parentId'     => 'parent_id',
-            //'isDefault'     => 'is_default',
-             'createdOn'    => 'create_datetime',
-             'createdBy'    => 'create_by',
+            'isDefault'     => 'is_default',
+            'createdOn'    => 'create_datetime',
+            'createdBy'    => 'create_by',
         ];
         $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway);
         $this->removeDependentCacheItems('role');

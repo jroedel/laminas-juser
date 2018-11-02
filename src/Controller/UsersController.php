@@ -136,18 +136,19 @@ class UsersController extends AbstractActionController
             $mailer->sendVerificationEmail($user);
         } else {
             $status = self::VERIFICATION_VERIFIED;
-
+            $defaultRoles = $table->getDefaultRoles();
             //give them permissions upon verification
-            if (!in_array(7, $user['rolesList'])) {
-                $user['rolesList'][] = 7; //lib_user
-                $user['rolesList'][] = 13; //pub_moderator
+            foreach ($defaultRoles as $roleId => $roleObject) {
+                if (!in_array($roleId, $user['rolesList'])) {
+                    $user['rolesList'][] = $roleId;
+                }
             }
             $user['active'] = true;
             $user['emailVerified'] = true;
             //update status
             $table->updateUser($user['userId'], $user);
 
-            //@todo spontaeneously log them in
+            //@todo allow spontaeneous login
         }
         $mailer = $this->getService(Mailer::class);
         $mailer->sendVerificationEmail($user);
