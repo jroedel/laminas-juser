@@ -1,8 +1,9 @@
 <?php
 
-return array(
+return [
     'Fr.' => 'P.',
+    'Role successfully created.' => 'Rol creado exitósamente.',
     'Schoenstatt Link' => 'Schoenstatt Link',
     'Sr.' => 'Hna.',
-    'User deleted.' => 'Usuario elminado.',
-);
+    'User deleted.' => 'Utilizador borrado.',
+];

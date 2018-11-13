@@ -1,7 +1,8 @@
 <?php
 
-return array(
+return [
     'Fr.' => 'P.',
     'Schoenstatt Link' => 'Schoenstatt Link',
-    'Sr.' => 'Sr.',
-);
+    'Sr.' => 'Schw.',
+    'User deleted.' => 'Benutzer gelöscht.',
+];
