@@ -3,13 +3,15 @@ namespace JUser;
 
 use Zend\Db\Adapter\Adapter;
 use ZfcUser\Authentication\Adapter\Db;
-use BjyAuthorize\Provider\Identity\ZfcUserZendDb;
-use BjyAuthorize\Provider\Role\ZendDb;
 use Zend\Router\Http\Literal;
 use Zend\Router\Http\Segment;
 use Zend\ServiceManager\Proxy\LazyServiceFactory;
 use Zend\Session;
 use Zend\Session\Storage\SessionArrayStorage;
+use JUser\Provider\Identity\ZfcUserZendDbPlusSelfAsRole;
+use JUser\Service\ZfcUserZendDbPlusSelfAsRoleFactory;
+use JUser\Provider\Role\UserIdRoles;
+use JUser\Service\UserIdRolesFactory;
 
 return [
     'zfcuser' => [
@@ -80,7 +82,7 @@ return [
          *
          * for ZfcUser, this will be your default identity provider
         */
-        'identity_provider' => ZfcUserZendDb::class,
+        'identity_provider' => ZfcUserZendDbPlusSelfAsRole::class,
 
         /* If you only have a default role and an authenticated role, you can
          * use the 'AuthenticationIdentityProvider' to allow/restrict access
@@ -97,7 +99,6 @@ return [
          * Zend\Db adapter.
         */
         'role_providers' => [
-
             /* here, 'guest' and 'user are defined as top-level roles, with
              * 'admin' inheriting from user
             */
@@ -107,16 +108,7 @@ return [
             //                'admin' => [],
             //        ]],
             //],
-
-            // this will load roles from the user_role table in a database
-            // format: user_role(role_id(varchar], parent(varchar]]
-            ZendDb::class => [
-                'table'             => 'user_role',
-                'role_id_field'     => 'role_id',
-                'identifier_field_name' => 'id',
-                'parent_role_field' => 'parent',
-            ],
-
+            UserIdRoles::class => [], 
             \BjyAuthorize\Provider\Role\ZendDb::class => [
                 'table'                 => 'user_role',
                 'identifier_field_name' => 'id',
@@ -261,6 +253,8 @@ return [
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
             Service\Mailer::class           => Service\MailerFactory::class,
             \Swift_Mailer::class            => Service\SwiftMailerFactory::class,
+            ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
+            UserIdRoles::class              => UserIdRolesFactory::class,
             //use this to override zfcuser's register form
             //'zfcuser_register_form' => RegisterForm::class,
         ],
