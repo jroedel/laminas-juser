@@ -85,10 +85,13 @@ class UserTable
      */
     public function getUsers(array $ids = [])
     {
-        $cacheKey = 'users';
-        if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
-            return $cache;
+        if (empty($ids)) {
+            $cacheKey = 'users';
+            if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+                return $cache;
+            }
         }
+        
         $gateway = $this->getTableGateway(self::USER_TABLE_NAME);
         $select = $this->getUsersSelectPrototype();
         if (!empty($ids)) {
@@ -112,8 +115,41 @@ class UserTable
         foreach ($objects as $id => $object) {
             $objects[$id]['rolesList'] = array_keys($objects[$id]['roles']);
         }
-
-        $this->cacheEntityObjects($cacheKey, $objects, ['user']);
+        
+        if (empty($ids)) {
+            $this->cacheEntityObjects($cacheKey, $objects, ['user']);
+        }
+        return $objects;
+    }
+    
+    /**
+     * Get an associative array of giving the username of each user_id in the user table
+     * @param array $ids
+     * @return string[]
+     */
+    public function getUsernames(array $ids = [])
+    {
+        if (empty($ids)) {
+            $cacheKey = 'usernames';
+            if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+                return $cache;
+            }
+        }
+        $gateway = $this->getTableGateway(self::USER_TABLE_NAME);
+        $select = $this->getUsersSelectPrototype();
+        if (!empty($ids)) {
+            $select->where(['user_id' => $ids]);
+        }
+        $results = $gateway->selectWith($select);
+        //manipulate results
+        $objects = [];
+        foreach ($results as $row) {
+            $objects[$row['user_id']] = $row['username'];
+        }
+        
+        if (empty($ids)) {
+            $this->cacheEntityObjects($cacheKey, $objects, ['user']);
+        }
         return $objects;
     }
 
