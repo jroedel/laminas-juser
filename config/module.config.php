@@ -293,6 +293,7 @@ return [
         // Set the session and cookie expiries to 30 days
         'cache_expire' => 30*24*60*60,
         'cookie_lifetime' => 30*24*60*60,
-        'gc_maxlifetime'      => 30*24*60*60
+        'gc_maxlifetime'      => 30*24*60*60,
+//         'cookie_secure' => true,
     ],
 ];

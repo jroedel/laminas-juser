@@ -16,8 +16,13 @@ class ZfcUserZendDbPlusSelfAsRole extends ZfcUserZendDb
     {
         $roles = parent::getIdentityRoles();
         $authService = $this->userService->getAuthService();
-        $userId = $authService->getIdentity()->getId();
-        $roles[] = "user_$userId";
+        $identity = $authService->getIdentity();
+        if (isset($identity)) {
+            $userId = $identity->getId();
+            if (isset($userId)) {
+                $roles[] = "user_$userId";
+            }
+        }
         return $roles;
     }
 }
