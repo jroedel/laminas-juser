@@ -47,16 +47,18 @@ class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterfa
             'query' => ['token' => $user['verificationToken']]
         ]);
         $body = <<<EOT
-Hey! Welcome to Schoenstatt Link! Before we get started, please confirm
-your e-mail address by clicking on the this link:
+Dear %s,
+
+Welcome to Schoenstatt Link! Before we get started, please confirm
+your e-mail address by clicking on this link:
 
 %s
 
-If you haven't registered with Schoenstatt Link, please just ignore this message.
+If you haven't registered with Schoenstatt Link, please ignore this message.
 If you have any questions or comments, please contact support at support@schoenstatt.link.
 EOT;
         $translator = $this->getTranslator();
-        $body = sprintf($translator->translate($body), $link);
+        $body = sprintf($translator->translate($body), $user['displayName'], $link);
 
         // Create the Transport
         /** @var \Swift_Mailer $mailer */
@@ -84,6 +86,7 @@ EOT;
         //->attach(Swift_Attachment::fromPath('my-document.pdf'))
         ;
         $result = $mailer->send($message);
+        return $result;
     }
 
     /**
