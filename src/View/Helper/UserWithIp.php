@@ -12,10 +12,10 @@ class UserWithIp extends AbstractHelper
         $geo = $this->view->geoip($ipAddress);
         $place = '';
         if ($geo&&$geo->getCity()) {
-            $place .= $this->view->escapeHtml(mb_convert_encoding($geo->getCity(), "UTF-8", "auto")).", ";
+            $place .= $this->view->escapeHtml(mb_convert_encoding($geo->getCity(), "UTF-8", "ISO-8859-1")).", ";
         }
         if ($geo&&$geo->getCountryName()) {
-            $place .= $this->view->escapeHtml(mb_convert_encoding($geo->getCountryName(), "UTF-8", "auto"));
+            $place .= $this->view->escapeHtml(mb_convert_encoding($geo->getCountryName(), "UTF-8", "ISO-8859-1"));
         }
         
         //if they didn't pass us a user name print the place and/or ipAddress
