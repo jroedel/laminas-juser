@@ -259,9 +259,8 @@ class User implements UserInterface
     {
         if (!isset($this->verificationToken)) {
             //if we don't have one, make one up (mainly for registration)
-            //@todo make sure in the end this can't be leveraged in some clever way that the user can set their own
-            $charList = implode(array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
-            $this->verificationToken = Rand::getString(32);
+            $charList = implode('', array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
+            $this->verificationToken = Rand::getString(32, $charList);
         }
         return $this->verificationToken;
     }

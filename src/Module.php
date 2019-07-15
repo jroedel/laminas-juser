@@ -5,7 +5,6 @@ use Zend\Mvc\MvcEvent;
 use Zend\Db\TableGateway\Feature\GlobalAdapterFeature;
 use Zend\Session\ManagerInterface;
 use JUser\Service\Mailer;
-use ZfcUser\Service\User;
 use Zend\Mvc\Controller\PluginManager;
 
 class Module

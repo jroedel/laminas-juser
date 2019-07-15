@@ -16,6 +16,5 @@ class RegisterForm extends Register
     public function __construct($name, RegistrationOptionsInterface $options)
     {
         parent::__construct($name, $options);
-        $this->add();
     }
 }
