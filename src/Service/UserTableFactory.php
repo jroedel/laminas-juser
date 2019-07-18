@@ -5,7 +5,6 @@ use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use Zend\Db\Adapter\Adapter;
-use Zend\Mvc\MvcEvent;
 
 class UserTableFactory implements FactoryInterface
 {
@@ -16,16 +15,21 @@ class UserTableFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        $authService = $container->get('zfcuser_auth_service');
-        $user = $authService->getIdentity();
+        //@todo how can we get an identity if the process requires this very UserTable?
+//         $authService = $container->get('zfcuser_auth_service');
+//         if ($user = $authService->getIdentity()) {
+//             $userId = $user->getId();
+//         } else {
+//             $userId = null;
+//         }
 
         $dbAdapter = $container->get(Adapter::class);
-        $table = new UserTable($dbAdapter, $user);
+        $table = new UserTable($dbAdapter, $container, null);
 
         $cache = $container->get('JUser\Cache');
-        $table->setPersistentCache($cache);
         $em = $container->get('Application')->getEventManager();
-        $em->attach(MvcEvent::EVENT_FINISH, [$table, 'onFinish'], -1);
+        $table->setPersistentCache($cache);
+        $table->wireOnFinishTrigger($em);
         return $table;
     }
 }

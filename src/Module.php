@@ -5,10 +5,12 @@ use Zend\Mvc\MvcEvent;
 use Zend\Db\TableGateway\Feature\GlobalAdapterFeature;
 use Zend\Session\ManagerInterface;
 use JUser\Service\Mailer;
-use Zend\Mvc\Controller\PluginManager;
+use ZfcUser\Controller\UserController;
 
 class Module
 {
+    protected $isMailerWired = false;
+    
     public function getConfig()
     {
         return include __DIR__ . '/../config/module.config.php';
@@ -16,10 +18,11 @@ class Module
 
     public function onBootstrap(MvcEvent $e)
     {
-        $sm = $e->getApplication()->getServiceManager();
+        $app = $e->getApplication();
+        $sm = $app->getServiceManager();
 
         //enable session manager
-        $manager = $sm->get(ManagerInterface::class);
+        $sm->get(ManagerInterface::class);
 
         //The static adapter is needed for the EditUserForm
         $config = $sm->get('Config');
@@ -33,21 +36,41 @@ class Module
                 'Please set the [\'zfcuser\'][\'zend_db_adapter\'] config key for use with the JUser module.'
             );
         }
-
+        $app->getEventManager()->attach(MvcEvent::EVENT_DISPATCH, [$this, 'onDispatch'], -100);
+    }
+    
+    public function onDispatch(MvcEvent $e)
+    {
+        //theoretically I believe there could be more than 1 dispatch in a call
+        if ($this->isMailerWired) {
+            return;
+        }
+        
+        $matches = $e->getRouteMatch();
+        $controller = $matches->getParam('controller');
+        if (UserController::class !== $controller && 'zfcuser' !== $controller) {
+            // not ZfcUser's controller, we're not interested
+            return;
+        }
+        
+        $sm = $e->getApplication()->getServiceManager();
+        
         /** @var User $userService */
         $userService = $sm->get('zfcuser_user_service');
         $events = $userService->getEventManager();
-        $plugins = $sm->get(PluginManager::class);
-        /** @var \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger */
-        $flashMessenger = $plugins->get('flashmessenger');
+        
         //the mailer will listen on zfcUser events to dispatch relevant emails
-        $listener = $sm->get(Mailer::class);
-        $listener->attach($events);
-        //Let the user know that they should look for an email
-        $events->attach('register.post', function($e) use ($flashMessenger) {
-            $flashMessenger->addInfoMessage('Thanks so much for registering! '
-                .'Please check your email for a verification link. '
-                .'Make sure to check the spam folder if you don\'t see it.');
-        }, 100);
+        /** @var Mailer $mailer */
+        $mailer = $sm->get(Mailer::class);
+        $mailer->attach($events);
+        $this->isMailerWired = true;
+        
+//         $user = [
+//             'email' => 'hallo@schoenstatt-fathers.link',
+//             'displayName' => 'Hallo',
+//             'verificationToken' => User::generateVerificationToken(),
+//         ];
+//         $result = $mailer->sendVerificationEmail($user);
+//         var_dump($result);
     }
 }

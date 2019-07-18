@@ -4,7 +4,8 @@
     "license": "MIT",
     "keywords": [
         "framework",
-        "zf2"
+        "zf2",
+        "zf3"
     ],
     "homepage": "https://github.com/jroedel/zf2-juser",
     "require": {
@@ -19,7 +20,8 @@
         "zf-commons/zfc-user": "3.x@dev",
         "jroedel/locale": "dev-master@dev",
         "beaucal/beaucal-invalid-session": "^0.3.0",
-        "swiftmailer/swiftmailer": "^6.0"
+        "swiftmailer/swiftmailer": "^6.0",
+        "jroedel/zf2-sion-model": "dev-master"
     },
 	"autoload": {
     	"psr-4": {
@@ -34,6 +36,10 @@
 	   {
 	     "type": "vcs",
 	     "url": "https://github.com/jroedel/ZfSnapGeoip"
+	   },
+	   {
+	     "type": "vcs",
+	     "url": "https://github.com/jroedel/zf2-sion-model"
 	   },
 	   {
 	     "type": "vcs",

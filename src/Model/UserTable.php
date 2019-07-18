@@ -1,81 +1,115 @@
 <?php
 namespace JUser\Model;
 
-use Zend\Db\Adapter\Adapter;
-use Zend\Db\TableGateway\TableGateway;
-use Zend\Filter\Boolean;
-use Zend\Cache\Storage\StorageInterface;
-use Zend\Db\Adapter\AdapterInterface;
 use Zend\Db\Sql\Select;
-use Zend\Db\Sql\Where;
+use SionModel\Db\Model\SionCacheTrait;
+use ZfcUser\Mapper\UserInterface as UserMapperInterface;
+use SionModel\Db\Model\SionTable;
 
-class UserTable
+class UserTable extends SionTable implements UserMapperInterface
 {
+    use SionCacheTrait;
+    
     const USER_TABLE_NAME = 'user';
     const ROLE_TABLE_NAME = 'user_role';
     const USER_ROLE_LINKER_TABLE_NAME = 'user_role_linker';
-
+    
     /**
-     *
-     * @var AdapterInterface
+     * @param $email
+     * @return \ZfcUser\Entity\UserInterface
      */
-    protected $adapter;
-
-    /**
-     *
-     * @var array $tableGatewaysCache
-     */
-    protected $tableGatewaysCache = [];
-
-    /**
-     *
-     * @var User
-     */
-    protected $actingUser;
-
-    /**
-     * @var StorageInterface $cache
-     */
-    protected $persistentCache;
-
-    /**
-     * @var int $maxItemsToCache
-     */
-    protected $maxItemsToCache = 2;
-
-    /**
-     * For each cache key, the list of entities they depend on.
-     * For example:
-     * [
-     *      'events' => ['event', 'dates',  'emails', 'persons'],
-     *      'unlinked-events => ['event'],
-     * ]
-     * That is to say, each time an entity of that type is created or updated,
-     * the cache will be invalidated.
-     * @var array
-     */
-    protected $cacheDependencies = [];
-
-    /**
-     * List of keys that should be persisted onFinish
-     * @var array
-     */
-    protected $newPersistentCacheItems = [];
-
-    /**
-     * @var mixed[] $memoryCache
-     */
-    protected $memoryCache = [];
-
-    /**
-     * @param TableGateway $userGateway
-     * @param TableGateway $userRoleGateway
-     * @param \JUser\Entity\User
-     */
-    public function __construct(AdapterInterface $adapter, User $actingUser = null)
+    public function findByEmail($email)
     {
-        $this->adapter = $adapter;
-        $this->actingUser = $actingUser;
+        if ($this->logger) {
+            $this->logger->debug("Looking up user by email", ['email' => $email]);
+        }
+        $results = $this->queryObjects('user', ['email' => $email]);
+        if (!isset($results) || empty($results)) {
+            return null;
+        }
+        $this->linkUsers($results);
+        $userArray = current($results);
+        $userObject = null;
+        if (isset($userArray) && is_array($userArray)) {
+            $userObject = new User($userArray);
+        }
+        //@todo trigger find event
+        return $userObject;
+    }
+    
+    /**
+     * @param string $username
+     * @return \ZfcUser\Entity\UserInterface
+     */
+    public function findByUsername($username)
+    {
+        if ($this->logger) {
+            $this->logger->debug("Looking up user by username", ['username' => $username]);
+        }
+        $results = $this->queryObjects('user', ['username' => $username]);
+        if (!isset($results) || empty($results)) {
+            return null;
+        }
+        $this->linkUsers($results);
+        $userArray = current($results);
+        $userObject = null;
+        if (isset($userArray) && is_array($userArray)) {
+            $userObject = new User($userArray);
+        }
+        //@todo trigger find event
+        return $userObject;
+    }
+    
+    /**
+     * @param string|int $id
+     * @return \ZfcUser\Entity\UserInterface
+     */
+    public function findById($id)
+    {
+        if ($this->logger) {
+            $this->logger->debug("Looking up user by id", ['id' => $id]);
+        }
+        $userArray = $this->getUser($id);
+        $userObject = null;
+        if (isset($userArray) && is_array($userArray)) {
+            $userObject = new User($userArray);
+        }
+        //@todo trigger find event
+        return $userObject;
+    }
+    
+    /**
+     * @param \ZfcUser\Entity\UserInterface $user
+     */
+    public function insertUser(\ZfcUser\Entity\UserInterface $user)
+    {
+        //figure out what the calling function is. If a user is registering, trigger the email here
+        $data = $user->getArrayCopy();
+        if (isset($this->logger)) {
+            $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+            $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
+            $this->logger->info("About to insert a new user.", ['caller' => $caller, 'user' => $user]);
+        }
+        $result = $this->createEntity('user', $data);
+        if (false === $result) {
+            if (isset($this->logger)) {
+                $this->logger->err("Failed inserting a new user.", ['result' => $result, 'user' => $user]);
+            }
+            throw new \Exception('Error inserting a new user.');
+        } else {
+            if (isset($this->logger)) {
+                $this->logger->info("Finished inserting a new user.", ['result' => $result]);
+            }
+        }
+        return $result;
+    }
+    
+    /**
+     * @param \ZfcUser\Entity\UserInterface $user
+     */
+    public function updateUser(\ZfcUser\Entity\UserInterface $user)
+    {
+        
     }
 
     /**
@@ -86,44 +120,53 @@ class UserTable
     public function getUsers(array $ids = [])
     {
         if (empty($ids)) {
-            $cacheKey = 'users';
+            $cacheKey = 'all-linked-users';
             if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
                 return $cache;
             }
         }
-        
-        $gateway = $this->getTableGateway(self::USER_TABLE_NAME);
-        $select = $this->getUsersSelectPrototype();
+        $query = [];
         if (!empty($ids)) {
-            $select->where(['user_id' => $ids]);
-        }
-        $results = $gateway->selectWith($select);
-        //manipulate column names
-        $objects = [];
-        foreach ($results as $row) {
-            $processedRow = $this->processUserRow($row);
-            $id = $processedRow['userId'];
-            $objects[$id] = $processedRow;
-        }
-        $links = $this->getUserRoleLinker();
-        $roles = $this->getRoles();
-        foreach ($links as $link) {
-            if (isset($objects[$link['userId']]) && isset($roles[$link['roleId']])) {
-                $objects[$link['userId']]['roles'][$link['roleId']] = $roles[$link['roleId']];
+            if (1 === count($ids)) {
+                $query['userId'] = current($ids);
+            } else {
+                $query['userId'] = $ids;
             }
         }
-        foreach ($objects as $id => $object) {
-            $objects[$id]['rolesList'] = array_keys($objects[$id]['roles']);
-        }
+        $objects = $this->queryObjects('user', $query);
+        $this->linkUsers($objects);
         
-        if (empty($ids)) {
-            $this->cacheEntityObjects($cacheKey, $objects, ['user']);
+        if (isset($cacheKey)) {
+            $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role']);
         }
         return $objects;
     }
     
     /**
-     * Get an associative array of giving the username of each user_id in the user table
+     * Add role data to an array of user arrays
+     * @param array $users
+     */
+    public function linkUsers(array &$users)
+    {
+        if (empty($users)) {
+            return;
+        }
+        //first compile list of user id to get just the rows we need
+        $userIds = array_keys($users);
+        $roleLinks = $this->queryObjects('user-role-link', ['userId' => $userIds]);
+        foreach ($roleLinks as $key => $link) {
+            if (isset($users[$link['userId']])) {
+                $users[$link['userId']]['roles'][$key] = $roleLinks[$key];
+            }
+        }
+        
+        foreach ($userIds as $id) {
+            $users[$id]['rolesList'] = array_keys($users[$id]['roles']);
+        }
+    }
+    
+    /**
+     * Get an associative array of giving the username of each userId in the user table
      * @param array $ids
      * @return string[]
      */
@@ -135,22 +178,21 @@ class UserTable
                 return $cache;
             }
         }
-        $gateway = $this->getTableGateway(self::USER_TABLE_NAME);
-        $select = $this->getUsersSelectPrototype();
+        $query = [];
         if (!empty($ids)) {
-            $select->where(['user_id' => $ids]);
+            $query['userId'] = $ids;
         }
-        $results = $gateway->selectWith($select);
+        $objects = $this->getObjects('user', $query);
         //manipulate results
-        $objects = [];
-        foreach ($results as $row) {
-            $objects[$row['user_id']] = $row['username'];
+        $usernames = [];
+        foreach ($objects as $object) {
+            $usernames[$object['userId']] = $object['username'];
         }
         
         if (empty($ids)) {
-            $this->cacheEntityObjects($cacheKey, $objects, ['user']);
+            $this->cacheEntityObjects($cacheKey, $usernames, ['user']);
         }
-        return $objects;
+        return $usernames;
     }
 
     protected function processUserRow($row)
@@ -182,119 +224,40 @@ class UserTable
     /**
      * Get user properties
      * @param int|string $id
+     * @return mixed[]
      */
     public function getUser($id)
     {
-        //this function gets called a lot so let's make this efficient
-        if (isset($this->memoryCache['users']) && isset($this->memoryCache['users'][$id])) {
-            return $this->memoryCache['users'][$id];
+        //see if we can grab the user out of the cache
+        $cacheKey = 'all-linked-users';
+        if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+            if (isset($cache[$id])) {
+                return $cache[$id];
+            }
         }
-        $results = $this->getUsers();
-        //manipulate column names
-        if (isset($results) && isset($results[$id])) {
-            return $results[$id];
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Get user from token, doesn't include roles
-     * @param int|string $id
-     */
-    public function getUserFromToken($token)
-    {
-        $gateway = $this->getTableGateway(self::USER_TABLE_NAME);
-        $select = $this->getUsersSelectPrototype();
-            $select->where(['verification_token' => $token]);
-        $results = $gateway->selectWith($select);
-        //manipulate column names
-        if (0 !== $results->count()) {
-            $row = $results->current();
-            //@todo make this more efficient, but we need roles too
-            return $this->getUser($row['user_id']);
+        
+        $objects = $this->queryObjects('user', ['userId' => $id]);
+        $this->linkUsers($objects);
+        if (isset($objects[$id])) {
+            return $objects[$id];
         }
         return null;
     }
 
     /**
-     *
-     * @param string[][] $data
-     */
-    public function createUser($data)
-    {
-        $tableName     = self::USER_TABLE_NAME;
-        $tableGateway  = $this->getTableGateway($tableName);
-        $requiredCols  = [
-            'username', 'email', 'displayName', 'password'
-        ];
-        $updateCols = [
-            'userId'       => 'user_id',
-            'username'     => 'username',
-            'email'        => 'email',
-            'displayName'  => 'display_name',
-            'password'     => 'password',
-            'createdOn'    => 'create_datetime',
-            'createdBy'    => 'create_by',
-            'updatedOn'    => 'update_datetime',
-            'updatedBy'    => 'update_by',
-            'emailVerified'=> 'email_verified',
-            'mustChangePassword'=> 'must_change_password',
-            'isMultiPersonUser' => 'multi_person_user',
-            'verificationToken' => 'verification_token',
-            'verificationExpiration' => 'verification_expiration',
-            'active'       => 'state',
-            //'languages'    => 'lang',
-            'personId'     => 'PersID',
-        ];
-        $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway);
-        $data['userId'] = $return;
-        $this->updateUserRoles($data, null);
-        $this->removeDependentCacheItems('user');
-        return $return;
-    }
-
-    /**
-     *
+     * Get user from token, including roles
      * @param int|string $id
-     * @param string[][] $data
      */
-    public function updateUser($id, $data)
+    public function getUserFromToken($token)
     {
-        $tableName     = self::USER_TABLE_NAME;
-        $tableKey      = 'user_id';
-        $tableGateway  = $this->getTableGateway($tableName);
-
-        if (!is_numeric($id)) {
-            throw new \InvalidArgumentException('Invalid user id provided.');
+        $results = $this->queryObjects('user', ['verification_token' => $token]);
+        //it should be exactly 1. If there are duplicate tokens floating, we err on the safe side
+        if (1 === count($results)) {
+            $this->linkUsers($results);
+            $user = current($results);
+            return $user;
         }
-        $user = $this->getUser($id);
-        if (!$user) {
-            throw new \InvalidArgumentException('No user provided.');
-        }
-        $updateCols = array(
-            'userId'       => 'user_id',
-            'username'     => 'username',
-            'email'        => 'email',
-            'displayName'  => 'display_name',
-//            'password'     => 'password', whenever we update the password we don't use this function
-            'createdOn'    => 'create_datetime',
-            'createdBy'    => 'create_by',
-            'updatedOn'    => 'update_datetime',
-            'updatedBy'    => 'update_by',
-            'emailVerified'=> 'email_verified',
-            'mustChangePassword'=> 'must_change_password',
-            'isMultiPersonUser' => 'multi_person_user',
-            'verificationToken' => 'verification_token',
-            'verificationExpiration' => 'verification_expiration',
-            'active'       => 'state',
-            //'languages'    => 'lang',
-            'personId'     => 'PersID',
-        );
-        $return = $this->updateHelper($id, $data, $tableName, $tableKey, $tableGateway, $updateCols, $user);
-        $this->updateUserRoles($data, $user);
-        $this->removeDependentCacheItems('user');
-        return $return;
+        return null;
     }
 
     /**
@@ -322,30 +285,41 @@ class UserTable
         if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
             return $cache;
         }
-        $gateway = $this->getTableGateway(self::ROLE_TABLE_NAME);
-        $select = $this->getRolesSelectPrototype();
-        $results = $gateway->selectWith($select);
-        //manipulate column names
-        $objects = [];
-        foreach ($results as $row) {
-            $processedRow = $this->processRoleRow($row);
-            $id = $processedRow['roleId'];
-            $objects[$id] = $processedRow;
-        }
+//         $gateway = $this->getTableGateway(self::ROLE_TABLE_NAME);
+//         $select = $this->getSelectPrototype('user-role');
+//         $results = $gateway->selectWith($select);
+//         //manipulate column names
+//         $objects = [];
+//         foreach ($results as $row) {
+//             $processedRow = $this->processRoleRow($row);
+//             $id = $processedRow['roleId'];
+//             $objects[$id] = $processedRow;
+//         }
+//         foreach ($objects as $roleId => $object) {
+//             if (isset($object['parentId']) && isset($objects[$object['parentId']])) {
+//                 $objects[$roleId]['parentName'] = $objects[$object['parentId']]['name'];
+//             }
+//         }
+        $objects = $this->getObjects('user-role');
+        $this->linkRoles($objects);
+
+        $this->cacheEntityObjects($cacheKey, $objects, ['user-role']);
+        return $objects;
+    }
+    
+    public function linkRoles(&$objects)
+    {
         foreach ($objects as $roleId => $object) {
             if (isset($object['parentId']) && isset($objects[$object['parentId']])) {
                 $objects[$roleId]['parentName'] = $objects[$object['parentId']]['name'];
             }
         }
-
-        $this->cacheEntityObjects($cacheKey, $objects, ['role']);
-        return $objects;
     }
 
     public function getDefaultRoles()
     {
         $gateway = $this->getTableGateway(self::ROLE_TABLE_NAME);
-        $select = $this->getRolesSelectPrototype();
+        $select = $this->getSelectPrototype('user-role');
         $select->where(['is_default' => '1']);
         $results = $gateway->selectWith($select);
         //manipulate column names
@@ -373,33 +347,19 @@ class UserTable
         return $processedRow;
     }
 
-    public function createRole($data)
-    {
-        $tableName     = self::ROLE_TABLE_NAME;
-        $tableGateway  = $this->getTableGateway($tableName);
-        $requiredCols  = array(
-            'name'
-        );
-        $updateCols = [
-            'name'       => 'role_id',
-            'parentId'     => 'parent_id',
-            'isDefault'     => 'is_default',
-            'createdOn'    => 'create_datetime',
-            'createdBy'    => 'create_by',
-        ];
-        $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway);
-        $this->removeDependentCacheItems('role');
-        return $return;
-    }
-
     public function getRolesValueOptions()
     {
+        $cacheKey = 'roles-value-options';
+        if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+            return $cache;
+        }
         $roles = $this->getRoles();
         $return = [];
         foreach ($roles as $role) {
             $return[$role['roleId']] = $role['name'].
                ($role['parentId'] ? ' (child of '.$role['parentName'].')' : '');
         }
+        $this->cacheEntityObjects($cacheKey, $return, ['user-role']);
         return $return;
     }
 
@@ -414,7 +374,7 @@ class UserTable
             return $cache;
         }
         $gateway = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME);
-        $select = $this->getUserRoleLinkerSelectPrototype();
+        $select = $this->getSelectPrototype('user-role-link');
         if (!empty($userIds)) {
             $select->where(['user_id' => $userIds]);
         }
@@ -425,20 +385,27 @@ class UserTable
             $processedRow = $this->processUserRoleLinkerRow($row);
             $objects[] = $processedRow;
         }
-        $this->cacheEntityObjects($cacheKey, $objects, ['user', 'role']);
+        $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role']);
         return $objects;
     }
 
     protected function processUserRoleLinkerRow($row)
     {
         $processedRow = [
+            'linkId'            => $this->filterDbId($row['id']),
             'userId'            => $this->filterDbId($row['user_id']),
             'roleId'            => $this->filterDbId($row['role_id']),
             'createdOn'         => $this->filterDbDate($row['create_datetime']),
             'createdBy'         => $this->filterDbInt($row['create_by']),
+            
+            //from user_role
+            'name'              => $row['role_name'],
+            'isDefault'         => $this->filterDbBool($row['is_default']),
+            'parentId'          => $this->filterDbId($row['parent_id']),
         ];
         return $processedRow;
     }
+    
     /**
      * Check if a user has a certain role
      * @param int $userId
@@ -447,6 +414,7 @@ class UserTable
      */
     public function userHasRole($userId, $roleId)
     {
+        //@todo this could be done with a simple SQL (if it's not called too often)
         $userId = $this->filterDbId($userId);
         $roleId = $this->filterDbId($roleId);
         if (!$userId) {
@@ -479,9 +447,10 @@ class UserTable
             $oldRoles = [];
         }
         $allRoles = $this->getRoles();
+        $allRoleIds = array_keys($allRoles);
         $tableGateway = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME);
         $roles = [];
-        foreach ($allRoles as $roleId => $roleObject) {
+        foreach ($allRoleIds as $roleId) {
             $roles[$roleId] = [
                 'old' => in_array($roleId, $oldRoles),
                 'new' => in_array($roleId, $newRoles),
@@ -535,163 +504,268 @@ class UserTable
         return $result;
     }
 
-    /**
-     * Get a standardized select object to retrieve records from the database
-     * @return \Zend\Db\Sql\Select
-     */
-    protected function getUsersSelectPrototype()
+    protected function getSelectPrototype($entity)
     {
-        static $select;
-        if (!isset($select)) {
-            $select = new Select(self::USER_TABLE_NAME);
-            $select->columns(['user_id', 'username', 'email', 'display_name', 'password',
-                'create_datetime', 'update_datetime', 'state', 'lang', 'email_verified',
-                'must_change_password', 'multi_person_user', 'PersID', 'verification_token',
-                'verification_expiration', 'create_by', 'update_by']);
+        $select = parent::getSelectPrototype($entity);
+        if ('user' === $entity) {
             $select->order(['username']);
         }
-
-        return clone $select;
-    }
-
-    /**
-     * Get a standardized select object to retrieve records from the database
-     * @return \Zend\Db\Sql\Select
-     */
-    protected function getRolesSelectPrototype()
-    {
-        static $select;
-        if (!isset($select)) {
-            $select = new Select(self::ROLE_TABLE_NAME);
-            $select->columns(['id', 'role_id', 'is_default', 'parent_id', 'create_by', 'create_datetime']);
+        if ('user-role' === $entity) {
             $select->order(['role_id']);
         }
-
-        return clone $select;
+        if ('user-role-link' === $entity) {
+            $select->join(
+                'user_role',
+                'user_role.id = user_role_linker.role_id',
+                ['role_name' => 'role_id', 'is_default', 'parent_id'],
+                Select::JOIN_INNER
+                );
+            $select->order(['user_id', 'role_id']);
+        }
+        return $select;
     }
+    
+    //     public function createRole($data)
+    //     {
+    //         $tableName     = self::ROLE_TABLE_NAME;
+    //         $tableGateway  = $this->getTableGateway($tableName);
+    //         $requiredCols  = array(
+    //             'name'
+    //         );
+    //         $updateCols = [
+        //             'name'      => 'role_id',
+    //             'parentId'  => 'parent_id',
+    //             'isDefault' => 'is_default',
+    //             'createdOn' => 'create_datetime',
+    //             'createdBy' => 'create_by',
+    //         ];
+    //         $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway);
+    //         $this->removeDependentCacheItems('role');
+    //         return $return;
+    //     }
+    
+    /**
+     *
+     * @param string[][] $data
+     */
+    //     public function createUser($data)
+    //     {
+    //         $tableName     = self::USER_TABLE_NAME;
+    //         $tableGateway  = $this->getTableGateway($tableName);
+    //         $requiredCols  = [
+    //             'username', 'email', 'displayName', 'password'
+    //         ];
+    //         $updateCols = [
+        //             'userId'       => 'user_id',
+    //             'username'     => 'username',
+    //             'email'        => 'email',
+    //             'displayName'  => 'display_name',
+    //             'password'     => 'password',
+    //             'createdOn'    => 'create_datetime',
+    //             'createdBy'    => 'create_by',
+    //             'updatedOn'    => 'update_datetime',
+    //             'updatedBy'    => 'update_by',
+    //             'emailVerified'=> 'email_verified',
+    //             'mustChangePassword'=> 'must_change_password',
+    //             'isMultiPersonUser' => 'multi_person_user',
+    //             'verificationToken' => 'verification_token',
+    //             'verificationExpiration' => 'verification_expiration',
+    //             'active'       => 'state',
+    //             //'languages'    => 'lang',
+    //             'personId'     => 'PersID',
+    //         ];
+    //         $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway);
+    //         $data['userId'] = $return;
+    //         $this->updateUserRoles($data, null);
+    //         $this->removeDependentCacheItems('user');
+    //         return $return;
+    //     }
+    
+    /**
+     *
+     * @param int|string $id
+     * @param string[][] $data
+     */
+    //     public function updateUser($id, $data)
+    //     {
+    //         $tableName     = self::USER_TABLE_NAME;
+    //         $tableKey      = 'user_id';
+    //         $tableGateway  = $this->getTableGateway($tableName);
+    
+    //         if (!is_numeric($id)) {
+    //             throw new \InvalidArgumentException('Invalid user id provided.');
+    //         }
+    //         $user = $this->getUser($id);
+    //         if (!$user) {
+    //             throw new \InvalidArgumentException('No user provided.');
+    //         }
+    //         $updateCols = array(
+    //             'userId'       => 'user_id',
+    //             'username'     => 'username',
+    //             'email'        => 'email',
+    //             'displayName'  => 'display_name',
+    // //            'password'     => 'password', whenever we update the password we don't use this function
+    //             'createdOn'    => 'create_datetime',
+    //             'createdBy'    => 'create_by',
+    //             'updatedOn'    => 'update_datetime',
+    //             'updatedBy'    => 'update_by',
+    //             'emailVerified'=> 'email_verified',
+    //             'mustChangePassword'=> 'must_change_password',
+    //             'isMultiPersonUser' => 'multi_person_user',
+    //             'verificationToken' => 'verification_token',
+    //             'verificationExpiration' => 'verification_expiration',
+    //             'active'       => 'state',
+    //             //'languages'    => 'lang',
+    //             'personId'     => 'PersID',
+    //         );
+    //         $return = $this->updateHelper($id, $data, $tableName, $tableKey, $tableGateway, $updateCols, $user);
+    //         $this->updateUserRoles($data, $user);
+    //         $this->removeDependentCacheItems('user');
+    //         return $return;
+    //     }
+    
+    /**
+     * Get a standardized select object to retrieve records from the database
+     * @return \Zend\Db\Sql\Select
+     */
+//     protected function getUsersSelectPrototype()
+//     {
+//         static $select;
+//         if (!isset($select)) {
+//             $select = new Select(self::USER_TABLE_NAME);
+//             $select->columns(['user_id', 'username', 'email', 'display_name', 'password',
+//                 'create_datetime', 'update_datetime', 'state', 'lang', 'email_verified',
+//                 'must_change_password', 'multi_person_user', 'PersID', 'verification_token',
+//                 'verification_expiration', 'create_by', 'update_by']);
+//             $select->order(['username']);
+//         }
+
+//         return clone $select;
+//     }
 
     /**
      * Get a standardized select object to retrieve records from the database
      * @return \Zend\Db\Sql\Select
      */
-    protected function getUserRoleLinkerSelectPrototype()
-    {
-        static $select;
-        if (!isset($select)) {
-            $select = new Select(self::USER_ROLE_LINKER_TABLE_NAME);
-            $select->columns(['user_id', 'role_id', 'create_by', 'create_datetime']);
-            $select->order(['user_id', 'role_id']);
-        }
+//     protected function getRolesSelectPrototype()
+//     {
+//         static $select;
+//         if (!isset($select)) {
+//             $select = new Select(self::ROLE_TABLE_NAME);
+//             $select->columns(['id', 'role_id', 'is_default', 'parent_id', 'create_by', 'create_datetime']);
+//             $select->order(['role_id']);
+//         }
 
-        return clone $select;
-    }
+//         return clone $select;
+//     }
 
-    protected function createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway)
-    {
-        //make sure required cols are being passed
-        foreach ($requiredCols as $colName) {
-            if (!isset($data[$colName])) {
-                return false;
-            }
-        }
+    /**
+     * Get a standardized select object to retrieve records from the database
+     * @return \Zend\Db\Sql\Select
+     */
+//     protected function getUserRoleLinkerSelectPrototype()
+//     {
+//         static $select;
+//         if (!isset($select)) {
+//             $select = new Select(self::USER_ROLE_LINKER_TABLE_NAME);
+//             $select->columns(['user_id', 'role_id', 'create_by', 'create_datetime']);
+//             $select->order(['user_id', 'role_id']);
+//         }
 
-        $now = (new \DateTime(null, new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-        $updateVals = array();
-        foreach ($data as $col => $value) {
-            if (!key_exists($col, $updateCols)) {
-                continue;
-            }
-            if ($data[$col] instanceof \DateTime) {
-                $data[$col] = $data[$col]->format('Y-m-d H:i:s');
-            }
-            $updateVals[$updateCols[$col]] = $data[$col];
-            //check if this column has updatedOn column
-            if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
-                $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
-            }
-            if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
-                is_object($this->actingUser)) { //check if this column has updatedOn column
-                    $updateVals[$updateCols[$col.'UpdatedBy']] = $this->actingUser->id;
-            }
-        }
-        if (isset($updateCols['updatedOn']) && !isset($updateVals[$updateCols['updatedOn']])) {
-            $updateVals[$updateCols['updatedOn']] = $now;
-        }
-        if (isset($updateCols['updatedBy']) && !isset($updateVals[$updateCols['updatedBy']]) &&
-                is_object($this->actingUser)) {
-            $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
-        }
-        //check if this column has updatedOn column
-        if (key_exists('createdOn', $updateCols) && !key_exists('createdOn', $data)) {
-            $updateVals[$updateCols['createdOn']] = $now;
-        }
-        if (key_exists('createdBy', $updateCols) && !key_exists('createdBy', $data) &&
-            is_object($this->actingUser)) { //check if this column has updatedOn column
-                $updateVals[$updateCols['createdBy']] = $this->actingUser->id;
-        }
-        if (count($updateVals) > 0) {
-            $resultsInsert = $tableGateway->insert($updateVals);
-            $newId = $tableGateway->getLastInsertValue();
-            $changeVals = array(array(
-                'table'    => $tableName,
-                'column'   => 'newEntry',
-                'id'       => $newId
-            ));
-//             $this->reportChange($changeVals);
-            return $newId;
-        }
-        return false;
-    }
+//         return clone $select;
+//     }
 
-    protected function updateHelper($id, $data, $tableName, $tableKey, $tableGateway, $updateCols, $referenceEntity)
-    {
-        if (is_null($tableName) || $tableName == '') {
-            throw new \Exception('No table name provided.');
-        }
-        if (is_null($tableKey) || $tableKey == '') {
-            throw new \Exception('No table key provided');
-        }
-        $now = (new \DateTime(null, new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-        $updateVals = array();
-        $changes = array();
-        foreach ($referenceEntity as $col => $value) {
-            if (!key_exists($col, $updateCols) || !key_exists($col, $data) || $value == $data[$col]) {
-                continue;
-            }
-            if ($data[$col] instanceof \DateTime) {
-                $data[$col] = $data[$col]->format('Y-m-d H:i:s');
-            }
-            $updateVals[$updateCols[$col]] = $data[$col];
-            //check if this column has updatedOn column
-            if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
-                $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
-            }
-            if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
-                is_object($this->actingUser)) { //check if this column has updatedOn column
-                    $updateVals[$updateCols[$col.'UpdatedBy']] = $this->actingUser->id;
-            }
-            $changes[] = array(
-                'table'    => $tableName,
-                'column'   => $col,
-                'id'       => $id,
-                'oldValue' => $value,
-                'newValue' => $data[$col],
-            );
-        }
-        if (count($updateVals) > 0) {
-            if (isset($updateCols['updatedOn']) && !isset($updateVals[$updateCols['updatedOn']])) {
-                $updateVals[$updateCols['updatedOn']] = $now;
-            }
-            if (isset($updateCols['updatedBy']) && !isset($updateVals[$updateCols['updatedBy']]) &&
-                is_object($this->actingUser)) {
-                    $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
-            }
-                $result = $tableGateway->update($updateVals, array($tableKey => $id));
-                //             $this->reportChange($changes);
-                return $result;
-        }
-        return true;
-    }
+//     protected function createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway)
+//     {
+//         //make sure required cols are being passed
+//         foreach ($requiredCols as $colName) {
+//             if (!isset($data[$colName])) {
+//                 return false;
+//             }
+//         }
+
+//         $now = (new \DateTime(null, new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+//         $updateVals = array();
+//         foreach ($data as $col => $value) {
+//             if (!key_exists($col, $updateCols)) {
+//                 continue;
+//             }
+//             if ($data[$col] instanceof \DateTime) {
+//                 $data[$col] = $data[$col]->format('Y-m-d H:i:s');
+//             }
+//             $updateVals[$updateCols[$col]] = $data[$col];
+//             //check if this column has updatedOn column
+//             if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
+//                 $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
+//             }
+//             if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
+//                 is_object($this->actingUser)) { //check if this column has updatedOn column
+//                     $updateVals[$updateCols[$col.'UpdatedBy']] = $this->actingUser->id;
+//             }
+//         }
+//         if (isset($updateCols['updatedOn']) && !isset($updateVals[$updateCols['updatedOn']])) {
+//             $updateVals[$updateCols['updatedOn']] = $now;
+//         }
+//         if (isset($updateCols['updatedBy']) && !isset($updateVals[$updateCols['updatedBy']]) &&
+//                 is_object($this->actingUser)) {
+//             $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
+//         }
+//         //check if this column has updatedOn column
+//         if (key_exists('createdOn', $updateCols) && !key_exists('createdOn', $data)) {
+//             $updateVals[$updateCols['createdOn']] = $now;
+//         }
+//         if (key_exists('createdBy', $updateCols) && !key_exists('createdBy', $data) &&
+//             is_object($this->actingUser)) { //check if this column has updatedOn column
+//                 $updateVals[$updateCols['createdBy']] = $this->actingUser->id;
+//         }
+//         if (count($updateVals) > 0) {
+//             $tableGateway->insert($updateVals);
+//             $newId = $tableGateway->getLastInsertValue();
+//             return $newId;
+//         }
+//         return false;
+//     }
+
+//     protected function updateHelper($id, $data, $tableName, $tableKey, $tableGateway, $updateCols, $referenceEntity)
+//     {
+//         if (is_null($tableName) || $tableName == '') {
+//             throw new \Exception('No table name provided.');
+//         }
+//         if (is_null($tableKey) || $tableKey == '') {
+//             throw new \Exception('No table key provided');
+//         }
+//         $now = (new \DateTime(null, new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+//         $updateVals = array();
+//         foreach ($referenceEntity as $col => $value) {
+//             if (!key_exists($col, $updateCols) || !key_exists($col, $data) || $value == $data[$col]) {
+//                 continue;
+//             }
+//             if ($data[$col] instanceof \DateTime) {
+//                 $data[$col] = $data[$col]->format('Y-m-d H:i:s');
+//             }
+//             $updateVals[$updateCols[$col]] = $data[$col];
+//             //check if this column has updatedOn column
+//             if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
+//                 $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
+//             }
+//             if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
+//                 is_object($this->actingUser)) { //check if this column has updatedOn column
+//                     $updateVals[$updateCols[$col.'UpdatedBy']] = $this->actingUser->id;
+//             }
+//         }
+//         if (count($updateVals) > 0) {
+//             if (isset($updateCols['updatedOn']) && !isset($updateVals[$updateCols['updatedOn']])) {
+//                 $updateVals[$updateCols['updatedOn']] = $now;
+//             }
+//             if (isset($updateCols['updatedBy']) && !isset($updateVals[$updateCols['updatedBy']]) &&
+//                 is_object($this->actingUser)) {
+//                     $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
+//             }
+//             $result = $tableGateway->update($updateVals, array($tableKey => $id));
+//             return $result;
+//         }
+//         return true;
+//     }
 
     /**
      * @param Where|\Closure|string|array $where
@@ -699,302 +773,169 @@ class UserTable
      * @param null|array
      * @return array
      */
-    public function fetchSome($where, $sql = null, $sqlArgs = null)
-    {
-        if (null === $where && null === $sql) {
-            throw new \InvalidArgumentException('No query requested.');
-        }
-        if (null !== $sql) {
-            if (null === $sqlArgs) {
-                $sqlArgs = Adapter::QUERY_MODE_EXECUTE; //make sure query executes
-            }
-            $result = $this->tableGateway->getAdapter()->query($sql, $sqlArgs);
-        } else {
-            $result = $this->tableGateway->select($where);
-        }
+//     public function fetchSome($where, $sql = null, $sqlArgs = null)
+//     {
+//         if (null === $where && null === $sql) {
+//             throw new \InvalidArgumentException('No query requested.');
+//         }
+//         if (null !== $sql) {
+//             if (null === $sqlArgs) {
+//                 $sqlArgs = Adapter::QUERY_MODE_EXECUTE; //make sure query executes
+//             }
+//             $result = $this->tableGateway->getAdapter()->query($sql, $sqlArgs);
+//         } else {
+//             $result = $this->tableGateway->select($where);
+//         }
 
-        $return = [];
-        foreach ($result as $row) {
-            $return[] = $row;
-        }
-        return $return;
-    }
-
-    /**
-     * Cache some entities. A simple proxy of the cache's setItem method with dependency support.
-     *
-     * @param string $cacheKey
-     * @param mixed[] $objects
-     * @param array $entityDependencies
-     * @return boolean
-     */
-    public function cacheEntityObjects($cacheKey, &$objects, array $cacheDependencies = [])
-    {
-        if (!isset($this->persistentCache)) {
-            throw new \Exception('The cache must be configured to cache entites.');
-        }
-        //$cacheKey = $this->getSionTableIdentifier().'-'.$cacheKey;
-        $this->memoryCache[$cacheKey] = $objects;
-        $this->newPersistentCacheItems[] = $cacheKey;
-        $this->cacheDependencies[$cacheKey] = $cacheDependencies;
-        return true;
-    }
-
-    /**
-     * Retrieve a cache item. A simple proxy of the cache's getItem method.
-     * First we check the memoryCache, if it's not there, we look in the
-     * persistent cache. If it's in the persistent cache, we set it in the
-     * memory cache and return the objects. If we don't find the key we
-     * return null.
-     * @param string $key
-     * @param bool $success
-     * @param mixed $casToken
-     * @throws \Exception
-     * @return mixed|null
-     */
-    public function &fetchCachedEntityObjects($key, &$success = null, $casToken = null)
-    {
-        if (null === $this->persistentCache) {
-            throw new \Exception('Please set a cache before fetching cached entities.');
-        }
-        //$key = $this->getSionTableIdentifier().'-'.$key;
-        if (isset($this->memoryCache[$key])) {
-            return $this->memoryCache[$key];
-        }
-        $objects = $this->persistentCache->getItem($key, $success, $casToken);
-        if ($success) {
-            return $this->memoryCache[$key];
-        }
-        $null = null;
-        return $null;
-    }
-
-    /**
-     * Examine the $this->cacheDependencies array to see if any depends on the entity passed.
-     * @param string $entity
-     * @return bool
-     */
-    public function removeDependentCacheItems($entity)
-    {
-        $cache = $this->getPersistentCache();
-        foreach ($this->cacheDependencies as $key => $dependentEntities) {
-            if (in_array($entity, $dependentEntities) || $key == 'changes' || $key == 'problems') {
-                if (is_object($cache)) {
-                    $cache->removeItem($key);
-                }
-                if (isset($this->memoryCache[$key])) {
-                    unset($this->memoryCache[$key]);
-                }
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * At the end of the page load, cache any uncached items up to max_number_of_items_to_cache.
-     * This is because serializing big objects can be very memory expensive.
-     */
-    public function onFinish()
-    {
-        $maxObjects = $this->getMaxItemsToCache();
-        $count = 0;
-        if (is_object($this->persistentCache)) {
-            $this->persistentCache->setItem('cachedependencies', $this->cacheDependencies);
-            foreach ($this->newPersistentCacheItems as $key) {
-                if (key_exists($key, $this->memoryCache)) {
-                    $this->persistentCache->setItem($key, $this->memoryCache[$key]);
-                    $count++;
-                }
-                if ($count >= $maxObjects) {
-                    break;
-                }
-            }
-        }
-    }
+//         $return = [];
+//         foreach ($result as $row) {
+//             $return[] = $row;
+//         }
+//         return $return;
+//     }
 
     /**
      * Filter a database int
      * @param string $str
      * @return NULL|number
      */
-    protected function filterDbId($str)
-    {
-        if (null === $str || $str === '' || $str == '0') {
-            return null;
-        }
-        return (int) $str;
-    }
+//     protected function filterDbId($str)
+//     {
+//         if (null === $str || $str === '' || $str == '0') {
+//             return null;
+//         }
+//         return (int) $str;
+//     }
 
     /**
      * Filter a database int
      * @param string $str
      * @return NULL|number
      */
-    protected function filterDbInt($str)
-    {
-        if (null === $str || $str === '') {
-            return null;
-        }
-        return (int) $str;
-    }
+//     protected function filterDbInt($str)
+//     {
+//         if (null === $str || $str === '') {
+//             return null;
+//         }
+//         return (int) $str;
+//     }
 
     /**
      * Filter a database boolean
      * @param string $str
      * @return boolean
      */
-    protected function filterDbBool($str)
-    {
-        if (null === $str || $str === '' || $str == '0') {
-            return false;
-        }
-        static $filter;
-        if (!is_object($filter)) {
-            $filter = new Boolean();
-        }
-        return $filter->filter($str);
-    }
+//     protected function filterDbBool($str)
+//     {
+//         if (null === $str || $str === '' || $str == '0') {
+//             return false;
+//         }
+//         static $filter;
+//         if (!is_object($filter)) {
+//             $filter = new Boolean();
+//         }
+//         return $filter->filter($str);
+//     }
 
     /**
      *
      * @param string $str
      * @return \DateTime
      */
-    protected function filterDbDate($str)
-    {
-        static $tz;
-        if (!isset($tz)) {
-            $tz = new \DateTimeZone('UTC');
-        }
-        if (null === $str || $str === '' || $str == '0000-00-00' || $str == '0000-00-00 00:00:00') {
-            return null;
-        }
-        try {
-            $return = new \DateTime($str, $tz);
-        } catch (\Exception $e) {
-            $return = null;
-        }
-        return $return;
-    }
+//     protected function filterDbDate($str)
+//     {
+//         static $tz;
+//         if (!isset($tz)) {
+//             $tz = new \DateTimeZone('UTC');
+//         }
+//         if (null === $str || $str === '' || $str == '0000-00-00' || $str == '0000-00-00 00:00:00') {
+//             return null;
+//         }
+//         try {
+//             $return = new \DateTime($str, $tz);
+//         } catch (\Exception $e) {
+//             $return = null;
+//         }
+//         return $return;
+//     }
 
     /**
      *
      * @param string $str
      * @return \DateTime
      */
-    protected function filterDbArray($str, $delimiter = '|', $trim = true)
-    {
-        if (!isset($str) || $str == '') {
-            return [];
-        }
-        $return = explode($delimiter, $str);
-        if ($trim) {
-            foreach ($return as $value) {
-                $value = trim($value);
-            }
-        }
-        return $return;
-    }
+//     protected function filterDbArray($str, $delimiter = '|', $trim = true)
+//     {
+//         if (!isset($str) || $str == '') {
+//             return [];
+//         }
+//         $return = explode($delimiter, $str);
+//         if ($trim) {
+//             foreach ($return as $value) {
+//                 $value = trim($value);
+//             }
+//         }
+//         return $return;
+//     }
 
     /**
      *
      * @param \DateTime $object
      * @return string
      */
-    protected function formatDbDate($object)
-    {
-        if (!$object instanceof \DateTime) {
-            return $object;
-        }
-        return $object->format('Y-m-d H:i:s');
-    }
+//     protected function formatDbDate($object)
+//     {
+//         if (!$object instanceof \DateTime) {
+//             return $object;
+//         }
+//         return $object->format('Y-m-d H:i:s');
+//     }
 
-    protected function formatDbArray($arr, $delimiter = '|', $trim = true)
-    {
-        if (!is_array($arr)) {
-            return $arr;
-        }
-        if (empty($arr)) {
-            return null;
-        }
-        if ($trim) {
-            foreach ($arr as $value) {
-                $value = trim($value);
-            }
-        }
-        $return = implode($delimiter, $arr);
-        return $return;
-    }
+//     protected function formatDbArray($arr, $delimiter = '|', $trim = true)
+//     {
+//         if (!is_array($arr)) {
+//             return $arr;
+//         }
+//         if (empty($arr)) {
+//             return null;
+//         }
+//         if ($trim) {
+//             foreach ($arr as $value) {
+//                 $value = trim($value);
+//             }
+//         }
+//         $return = implode($delimiter, $arr);
+//         return $return;
+//     }
 
-    protected function keyArray(array $a, $key, $unique = true)
-    {
-        $return = array();
-        foreach ($a as $item) {
-            if (!$unique) {
-                if (isset($return[$item[$key]])) {
-                    $return[$item[$key]][] = $item;
-                } else {
-                    $return[$item[$key]] = array($item);
-                }
-            } else {
-                $return[$item[$key]] = $item;
-            }
-        }
-        return $return;
-    }
+//     protected function keyArray(array $a, $key, $unique = true)
+//     {
+//         $return = array();
+//         foreach ($a as $item) {
+//             if (!$unique) {
+//                 if (isset($return[$item[$key]])) {
+//                     $return[$item[$key]][] = $item;
+//                 } else {
+//                     $return[$item[$key]] = array($item);
+//                 }
+//             } else {
+//                 $return[$item[$key]] = $item;
+//             }
+//         }
+//         return $return;
+//     }
 
     /**
      * Get an instance of a TableGateway for a particular table name
      * @param string $tableName
      */
-    protected function getTableGateway($tableName)
-    {
-        if (key_exists($tableName, $this->tableGatewaysCache)) {
-            return $this->tableGatewaysCache[$tableName];
-        }
-        $gateway = new TableGateway($tableName, $this->adapter);
-        //@todo is there a way to make sure the table exists?
-        return $this->tableGatewaysCache[$tableName] = $gateway;
-    }
-
-    /**
-     * Get the cache value
-     * @return StorageInterface
-     */
-    public function getPersistentCache()
-    {
-        return $this->persistentCache;
-    }
-
-    /**
-     *
-     * @param StorageInterface $cache
-     * @return self
-     */
-    public function setPersistentCache($cache)
-    {
-        $this->persistentCache = $cache;
-        return $this;
-    }
-
-    /**
-     * Get the maxItemsToCache value
-     * @return int
-     */
-    public function getMaxItemsToCache()
-    {
-        return $this->maxItemsToCache;
-    }
-
-    /**
-     *
-     * @param int $maxItemsToCache
-     * @return self
-     */
-    public function setMaxItemsToCache($maxItemsToCache)
-    {
-        $this->maxItemsToCache = $maxItemsToCache;
-        return $this;
-    }
+//     protected function getTableGateway($tableName)
+//     {
+//         if (key_exists($tableName, $this->tableGatewaysCache)) {
+//             return $this->tableGatewaysCache[$tableName];
+//         }
+//         $gateway = new TableGateway($tableName, $this->adapter);
+//         //@todo is there a way to make sure the table exists?
+//         return $this->tableGatewaysCache[$tableName] = $gateway;
+//     }
 }

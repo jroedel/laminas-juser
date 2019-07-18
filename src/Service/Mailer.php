@@ -6,7 +6,8 @@ use Zend\I18n\Translator\TranslatorAwareInterface;
 use Zend\EventManager\AbstractListenerAggregate;
 use Zend\EventManager\EventManagerInterface;
 use JUser\Model\UserTable;
-use Zend\View\Helper\Url;
+use Zend\Router\RouteStackInterface;
+use Zend\Log\LoggerInterface;
 
 class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterface
 {
@@ -16,21 +17,46 @@ class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterfa
     /** @var TranslatorInterface $translator */
     protected $translator;
 
+    /**
+     * @var string $translatorEnabled
+     */
     protected $translatorEnabled = true;
 
     protected $textDomain = 'JUser';
 
+    /**
+     * @var UserTable $userTable
+     */
     protected $userTable;
 
-    protected $urlHelper;
+    /**
+     * @var RouteStackInterface $router
+     */
+    protected $router;
+    
+    /**
+     * @var \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
+     */
+    protected $flashMessenger;
+    
+    /**
+     * @var LoggerInterface $logger
+     */
+    protected $logger;
 
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->listeners[] = $events->attach('register.post', array($this, 'listenOnRegisterPost'), $priority);
+        if ($this->logger) {
+            $this->logger->debug("JUser: Attaching listener for register.post");
+        }
+        $this->listeners[] = $events->attach('register.post', [$this, 'listenOnRegisterPost'], $priority);
     }
 
     public function listenOnRegisterPost($event)
     {
+        if ($this->logger) {
+            $this->logger->debug("JUser: Recieved a trigger for register.post");
+        }
         /** @var User $user */
         $user = $event->getParam('user');
         $userArray = [];
@@ -38,11 +64,25 @@ class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterfa
         $userArray['displayName'] = $user->getDisplayName();
         $userArray['email'] = $user->getEmail();
         $this->sendVerificationEmail($userArray);
+        
+        //Let the user know that they should look for an email
+        $flashMessenger = $this->getFlashMessenger();
+        if (isset($flashMessenger)) {
+            $flashMessenger->addInfoMessage('Thanks so much for registering! '
+                .'Please check your email for a verification link. '
+                .'Make sure to check the spam folder if you don\'t see it.');
+        }
     }
 
     public function sendVerificationEmail($user)
     {
-        $link = $this->urlHelper->__invoke('juser/verify-email', [], [
+        if (isset($this->logger)) {
+            $this->logger->info("JUser: Sending a verification email.", ['email' => $user['email']]);
+        }
+        $start = microtime(true);
+        
+        $link = $this->router->assemble([], [
+            'name' => 'juser/verify-email',
             'force_canonical' => true,
             'query' => ['token' => $user['verificationToken']]
         ]);
@@ -57,8 +97,13 @@ your e-mail address by clicking on this link:
 If you haven't registered with Schoenstatt Link, please ignore this message.
 If you have any questions or comments, please contact support at support@schoenstatt.link.
 EOT;
-        $translator = $this->getTranslator();
-        $body = sprintf($translator->translate($body), $user['displayName'], $link);
+        $subject = 'Please confirm your email address';
+        if ($this->isTranslatorEnabled()) {
+            $translator = $this->getTranslator();
+            $body = $translator->translate($body);
+            $subject = $translator->translate($subject);
+        }
+        $body = sprintf($body, $user['displayName'], $link);
 
         // Create the Transport
         /** @var \Swift_Mailer $mailer */
@@ -68,7 +113,7 @@ EOT;
         $message = (new \Swift_Message())
 
         // Give the message a subject
-        ->setSubject('Please confirm your email address')
+        ->setSubject($subject)
 
         // Set the From address with an associative array
         ->setFrom(['webmaster@schoenstatt.link' => 'Schoenstatt Link'])
@@ -78,14 +123,23 @@ EOT;
         ->setBcc('webmaster@schoenstatt.link')
 
         // Give it a body
-        ->setBody($body)
+        ->setBody($body);
         // And optionally an alternative body
         //->addPart('<q>Here is the message itself</q>', 'text/html')
 
         // Optionally add any attachments
         //->attach(Swift_Attachment::fromPath('my-document.pdf'))
-        ;
+        
         $result = $mailer->send($message);
+        $timeElapsedSecs = microtime(true) - $start;
+        if (isset($this->logger)) {
+            $this->logger->debug("JUser: Finished sending verification email.", [
+                'email' => $user['email'],
+                'verificationToken' => substr($user['verificationToken'], 0, 4).'...',
+                'result' => $result,
+                'elapsedSeconds' => $timeElapsedSecs,
+            ]);
+        }
         return $result;
     }
 
@@ -214,25 +268,65 @@ EOT;
     }
 
     /**
-     * Get the urlHelper value
-     * @return Url
+     * Get the router
+     * @return RouteStackInterface
      */
-    public function getUrlHelper()
+    public function getRouter()
     {
-        if (!isset($this->urlHelper)) {
-            throw new \Exception('Something went wrong, no urlHelper available');
+        if (!isset($this->router)) {
+            throw new \Exception('Something went wrong, no router available');
         }
-        return $this->urlHelper;
+        return $this->router;
     }
 
     /**
-     * Set the urlHelper value
-     * @param Url $urlHelper
+     * Set the router
+     * @param RouteStackInterface $router
      * @return self
      */
-    public function setUrlHelper(?Url $urlHelper)
+    public function setRouter(?RouteStackInterface $router)
     {
-        $this->urlHelper = $urlHelper;
+        $this->router = $router;
+        return $this;
+    }
+    
+    /**
+     * Get the flashMessenger object
+     * @return \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger
+     */
+    public function getFlashMessenger()
+    {
+        return $this->flashMessenger;
+    }
+    
+    /**
+     * Set the flashMessenger object
+     * @param \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
+     * @return self
+     */
+    public function setFlashMessenger(\Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger)
+    {
+        $this->flashMessenger = $flashMessenger;
+        return $this;
+    }
+    
+    /**
+     * Get the logger object
+     * @return LoggerInterface
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
+    
+    /**
+     * Set the logger object
+     * @param LoggerInterface $flashMessenger
+     * @return self
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
         return $this;
     }
 }

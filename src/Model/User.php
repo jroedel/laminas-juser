@@ -7,6 +7,8 @@ use Zend\Math\Rand;
 
 class User implements UserInterface
 {
+    //@todo make length configurable
+    const VERIFICATION_TOKEN_LENGTH = 32;
     /**
      * Id 0 means to be inserted
      * @var int $id
@@ -53,7 +55,7 @@ class User implements UserInterface
     
     /**
      * The time when the token will no longer be valid
-     * @var string $verificationExpiration
+     * @var \DateTime $verificationExpiration
      */
     public $verificationExpiration;
     
@@ -63,8 +65,14 @@ class User implements UserInterface
      */
     public $multiPersonUser = false;
     
+    /**
+     * @var string $updateDatetime
+     */
     public $updateDatetime;
     
+    /**
+     * @var string $createDatetime
+     */
     public $createDatetime;
     
     public $roles = null;
@@ -75,6 +83,66 @@ class User implements UserInterface
      */
     public $rolesLoaded = false;
 
+    public function __construct($data = [])
+    {
+        if (is_array($data) && !empty($data)) {
+            $this->exchangeArray($data);
+        }
+    }
+    
+    public function exchangeArray($data)
+    {
+        $this->id = isset($data['userId']) ? $data['userId'] : null;
+        $this->username = isset($data['username']) ? $data['username'] : null;
+        $this->email = isset($data['email']) ? $data['email'] : null;
+        $this->displayName = isset($data['displayName']) ? $data['displayName'] : null;
+        $this->password = isset($data['password']) ? $data['password'] : null;
+        $this->state = isset($data['active']) ? $data['active'] : null;
+        $this->mustChangePassword = isset($data['mustChangePassword']) ? $data['mustChangePassword'] : null;
+        $this->multiPersonUser = isset($data['isMultiPersonUser']) ? $data['isMultiPersonUser'] : null;
+        $this->verificationToken = isset($data['verificationToken']) ? $data['verificationToken'] : null;
+        $this->verificationExpiration = isset($data['verificationExpiration'])
+            ? $data['verificationExpiration']->format('Y-m-d H:i:s') : null;
+        $this->createDatetime = isset($data['createdOn'])
+            ? $data['createdOn']->format('Y-m-d H:i:s') : null;
+        $this->updateDatetime = isset($data['updatedOn'])
+            ? $data['updatedOn']->format('Y-m-d H:i:s') : null;
+        $this->roles = isset($data['roles']) ? $data['roles'] : null;
+//         'createdBy'         => $this->filterDbInt($row['create_by']),
+//         'updatedBy'         => $this->filterDbInt($row['update_by']),
+//         'emailVerified'     => $this->filterDbBool($row['email_verified']),
+//            'languages'         => $this->filterDbArray($row['lang'], ';'),
+//         'personId'          => $this->filterDbId($row['PersID']),
+//         'roles'             => [],
+//         'rolesList'         => [],
+    }
+    
+    public function getArrayCopy()
+    {
+        $data = [
+            'userId'            => $this->id,
+            'username'          => $this->username,
+            'email'             => $this->email,
+            'displayName'       => $this->displayName,
+            'password'          => $this->password,
+            'createdOn'         => $this->createDatetime,
+//             'createdBy'         => $this->filterDbInt($row['create_by']),
+            'updatedOn'         => $this->updateDatetime,
+//             'updatedBy'         => $this->filterDbInt($row['update_by']),
+//             'emailVerified'     => $this->filterDbBool($row['email_verified']),
+            'mustChangePassword'=> $this->mustChangePassword,
+            'isMultiPersonUser' => $this->multiPersonUser,
+            'verificationToken' => $this->verificationToken,
+            'verificationExpiration' => $this->verificationExpiration,
+            'active'            => $this->state,
+//            'languages'         => $this->filterDbArray($row['lang'], ';'),
+//             'personId'          => $this->filterDbId($row['PersID']),
+//             'roles'             => [],
+//             'rolesList'         => [],            
+        ];
+        return $data;
+    }
+    
     /**
      * Get id.
      *
@@ -259,10 +327,23 @@ class User implements UserInterface
     {
         if (!isset($this->verificationToken)) {
             //if we don't have one, make one up (mainly for registration)
-            $charList = implode('', array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
-            $this->verificationToken = Rand::getString(32, $charList);
+            $this->verificationToken = static::generateVerificationToken();
         }
         return $this->verificationToken;
+    }
+    
+    /**
+     * Force the generation of a new verification token. The expiration is automatically reset.
+     * @return void
+     */
+    public static function generateVerificationToken()
+    {
+        static $charList;
+        if (!isset($charList)) {
+            $charList = implode('', array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
+        }
+        $verificationToken = Rand::getString(self::VERIFICATION_TOKEN_LENGTH, $charList);
+        return $verificationToken;
     }
     
     /**
@@ -285,11 +366,21 @@ class User implements UserInterface
         if (!isset($this->verificationExpiration)) {
             //if we don't have one, make one up (mainly for registration)
             //@todo make sure in the end this can't be leveraged in some clever way that the user can set their own
-            $dt = new \DateTime(null, new \DateTimeZone('UTC'));
-            $dt->add(new \DateInterval('P1D'));
-            $this->verificationExpiration = $dt->format('Y-m-d H:i:s');
+            $this->resetVerificationExpiration();
         }
         return $this->verificationExpiration;
+    }
+    
+    /**
+     * Force the reset of the verification token expiration
+     * @return void
+     */
+    public function resetVerificationExpiration()
+    {
+        $dt = new \DateTime(null, new \DateTimeZone('UTC'));
+        //@todo make interval configurable
+        $dt->add(new \DateInterval('P1D'));
+        $this->verificationExpiration = $dt->format('Y-m-d H:i:s');
     }
     
     /**

@@ -13,13 +13,12 @@ use Zend\Crypt\Password\Bcrypt;
 use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
 use JUser\Service\Mailer;
-use Zend\Math\Rand;
+use JUser\Model\User;
 
 /**
  *
- * @author Jeff Roedel <jeff.roedel@gmail.com>
+ * @author Jeff Ro <jeff.roedel@gmail.com>
  * @todo   fix activation
- * @todo   user email verification
  * @todo   email admins to alert new user request
  */
 class UsersController extends AbstractActionController
@@ -119,9 +118,10 @@ class UsersController extends AbstractActionController
         $table = $this->getService(UserTable::class);
         $user = $table->getUserFromToken($token);
         if (!isset($user)) {
-            //@todo add an requestEmailVerificationAction(), redirect users to this
+            //@todo add a requestEmailVerificationAction(), redirect users to this
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('Unable to verify email address.');
+            //@todo log this!
             return $this->redirect()->toRoute('juser');
         }
 
@@ -132,13 +132,15 @@ class UsersController extends AbstractActionController
             $status = self::VERIFICATION_EXPIRED;
             $user = self::setNewVerificationToken($user);
             $table->updateUser($user['userId'], $user);
+            /** @var Mailer $mailer */
             $mailer = $this->getService(Mailer::class);
             $mailer->sendVerificationEmail($user);
         } else {
             $status = self::VERIFICATION_VERIFIED;
             $defaultRoles = $table->getDefaultRoles();
             //give them permissions upon verification
-            foreach ($defaultRoles as $roleId => $roleObject) {
+            $roleIds = array_keys($defaultRoles);
+            foreach ($roleIds as $roleId) {
                 if (!in_array($roleId, $user['rolesList'])) {
                     $user['rolesList'][] = $roleId;
                 }
@@ -150,8 +152,6 @@ class UsersController extends AbstractActionController
 
             //@todo allow spontaeneous login
         }
-        $mailer = $this->getService(Mailer::class);
-        $mailer->sendVerificationEmail($user);
         return new ViewModel([
             'user' => $user,
             'status' => $status,
@@ -188,14 +188,14 @@ class UsersController extends AbstractActionController
     {
         /** @var UserTable $table **/
         $table = $this->userTable;
-        $id = ( int ) $this->params()->fromRoute('user_id');
-        if (! $id) {
+        $id = (int) $this->params()->fromRoute('user_id');
+        if (!$id) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
-        $user  = $table->getUser($id);
-        if (! $user) {
+        $user = $table->getUser($id);
+        if (!$user) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
@@ -219,7 +219,7 @@ class UsersController extends AbstractActionController
                 if (!$isPersonIdSet) {
                     unset($data['personId']);
                 }
-                if ($table->updateUser($id, $data)) {
+                if ($table->updateEntity('user', $id, $data)) {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('User successfully updated.');
                     $this->redirect()->toUrl($this->url()->fromRoute('juser'));
@@ -254,6 +254,8 @@ class UsersController extends AbstractActionController
 
         /** @var EditUserForm $form */
         $form = $this->getService(EditUserForm::class);
+        
+        //@todo find a way to get this out of here
         $form->setValidatorsForCreate();
         $form->setName('create_user');
         $request = $this->getRequest();
@@ -263,11 +265,12 @@ class UsersController extends AbstractActionController
             if ($form->isValid()) {
                 $data = $form->getData();
                 //the validators should've already confirmed the passwordVerify field
+                //@todo move this to CreateUserForm
                 if (isset($data['password']) && $data['password']) {
                     $data['password'] = $this->hashPassword($data['password']);
                 }
                 try {
-                    if (!($newId = $table->createUser($data))) {
+                    if (!($table->createEntity('user', $data))) {
                         $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                             ->addMessage('Error in form submission, please review.');
                     } else {
@@ -284,9 +287,9 @@ class UsersController extends AbstractActionController
                     ->addMessage('Error in form submission, please review.');
             }
         }
-        return array (
+        return new ViewModel([
             'form' => $form,
-        );
+        ]);
     }
 
     protected function hashPassword($password)
@@ -316,7 +319,7 @@ class UsersController extends AbstractActionController
             if ($form->isValid()) {
                 $data = $form->getData();
                 try {
-                    $table->createRole($data);
+                    $table->createEntity('user-role', $data);
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('Role successfully created.');
                     $this->redirect()->toRoute('juser');
@@ -329,9 +332,9 @@ class UsersController extends AbstractActionController
                     ->addMessage('Error in form submission, please review.');
             }
         }
-        return [
+        return new ViewModel([
             'form' => $form,
-        ];
+        ]);
     }
 
     public function deleteAction()
@@ -368,17 +371,16 @@ class UsersController extends AbstractActionController
         }
         $user = $table->getUser($id);
 
-        return [
+        return new ViewModel([
             'userId' => $id,
             'user' => $user,
             'form' => $form,
-        ];
+        ]);
     }
 
     protected static function setNewVerificationToken($user)
     {
-        $charList = implode(array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
-        $user['verificationToken'] = Rand::getString(32);
+        $user['verificationToken'] = User::generateVerificationToken();
         $dt = new \DateTime(new \DateTimeZone(null, 'UTC'));
         $dt->add(new \DateInterval('P1D'));
         $user['verificationExpiration'] = $dt->format('Y-m-d H:i:s');
