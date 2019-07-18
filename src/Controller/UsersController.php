@@ -29,7 +29,7 @@ class UsersController extends AbstractActionController
     protected $userTable;
 
     protected $services = [];
-
+    
     /**
      *
      * @return UserTable
@@ -116,13 +116,19 @@ class UsersController extends AbstractActionController
 
         /** @var UserTable $table */
         $table = $this->getService(UserTable::class);
+        $logger = $table->getLogger();
+        if (isset($logger)) {
+            $logger->debug("JUser: receiving a request to verify user", ['verificationToken' => $token]);
+        }
         $user = $table->getUserFromToken($token);
         if (!isset($user)) {
+            if (isset($logger)) {
+                $logger->alert("JUser: we were unable to find the user based on their verification token.", ['verificationToken' => $token]);
+            }
             //@todo add a requestEmailVerificationAction(), redirect users to this
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                ->addMessage('Unable to verify email address.');
-            //@todo log this!
-            return $this->redirect()->toRoute('juser');
+            ->addMessage('Unable to verify email address.');
+            return $this->redirect()->toRoute('welcome'); //@todo make this configurable
         }
 
         //expired or validated
@@ -131,14 +137,26 @@ class UsersController extends AbstractActionController
         if (!isset($user['verificationExpiration']) || $now > $user['verificationExpiration']) {
             $status = self::VERIFICATION_EXPIRED;
             $user = self::setNewVerificationToken($user);
-            $table->updateUser($user['userId'], $user);
+            $table->updateEntity('user', $user['userId'], $user);
+            if (isset($logger)) {
+                $logger->alert(
+                    "JUser: The user's verification token was expired, we'll send them a new one.", 
+                    ['email' => $user['email']]
+                    );
+            }
             /** @var Mailer $mailer */
             $mailer = $this->getService(Mailer::class);
             $mailer->sendVerificationEmail($user);
         } else {
             $status = self::VERIFICATION_VERIFIED;
+            if (isset($logger)) {
+                $logger->info(
+                    "JUser: The user was successfully verified, we are giving them the default roles.",
+                    ['email' => $user['email']]
+                    );
+            }
             $defaultRoles = $table->getDefaultRoles();
-            //give them permissions upon verification
+            //give them permissions upon verification, @todo move this code to the insertUser
             $roleIds = array_keys($defaultRoles);
             foreach ($roleIds as $roleId) {
                 if (!in_array($roleId, $user['rolesList'])) {
@@ -148,7 +166,7 @@ class UsersController extends AbstractActionController
             $user['active'] = true;
             $user['emailVerified'] = true;
             //update status
-            $table->updateUser($user['userId'], $user);
+            $table->updateEntity('user', $user['userId'], $user);
 
             //@todo allow spontaeneous login
         }

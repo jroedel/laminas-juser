@@ -30,6 +30,10 @@ class UserTableFactory implements FactoryInterface
         $em = $container->get('Application')->getEventManager();
         $table->setPersistentCache($cache);
         $table->wireOnFinishTrigger($em);
+        
+        $mailer = $container->get(Mailer::class);
+        $table->setMailer($mailer);
+        
         return $table;
     }
 }

@@ -348,7 +348,7 @@ return [
 //                 'touch_json_route'                       => 'events/event/touch',
 //                 'touch_json_route_key'                    => 'event_id',
 //                 'database_bound_data_preprocessor'      => 'associationPreprocessor',
-//                 'database_bound_data_postprocessor'     => 'associationPostprocessor',
+                 'database_bound_data_postprocessor'     => 'userPostprocessor',
 //                 'moderate_route'                         => 'events/event/moderate',
 //                 'moderate_route_entity_key'             => 'event_id',
 //                 'suggest_form'                           => 'Project\Form\SuggestEventForm',

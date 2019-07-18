@@ -3,13 +3,12 @@ namespace JUser\Service;
 
 use Zend\I18n\Translator\TranslatorInterface;
 use Zend\I18n\Translator\TranslatorAwareInterface;
-use Zend\EventManager\AbstractListenerAggregate;
-use Zend\EventManager\EventManagerInterface;
 use JUser\Model\UserTable;
 use Zend\Router\RouteStackInterface;
 use Zend\Log\LoggerInterface;
+use JUser\Model\User;
 
-class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterface
+class Mailer implements TranslatorAwareInterface
 {
     /** @var \Swift_Mailer $mailer */
     protected $mailer;
@@ -44,21 +43,11 @@ class Mailer extends AbstractListenerAggregate implements TranslatorAwareInterfa
      */
     protected $logger;
 
-    public function attach(EventManagerInterface $events, $priority = 1)
-    {
-        if ($this->logger) {
-            $this->logger->debug("JUser: Attaching listener for register.post");
-        }
-        $this->listeners[] = $events->attach('register.post', [$this, 'listenOnRegisterPost'], $priority);
-    }
-
-    public function listenOnRegisterPost($event)
+    public function onRegister(User $user)
     {
         if ($this->logger) {
             $this->logger->debug("JUser: Recieved a trigger for register.post");
         }
-        /** @var User $user */
-        $user = $event->getParam('user');
         $userArray = [];
         $userArray['verificationToken'] = $user->getVerificationToken();
         $userArray['displayName'] = $user->getDisplayName();

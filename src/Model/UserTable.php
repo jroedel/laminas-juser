@@ -5,6 +5,7 @@ use Zend\Db\Sql\Select;
 use SionModel\Db\Model\SionCacheTrait;
 use ZfcUser\Mapper\UserInterface as UserMapperInterface;
 use SionModel\Db\Model\SionTable;
+use JUser\Service\Mailer;
 
 class UserTable extends SionTable implements UserMapperInterface
 {
@@ -13,6 +14,11 @@ class UserTable extends SionTable implements UserMapperInterface
     const USER_TABLE_NAME = 'user';
     const ROLE_TABLE_NAME = 'user_role';
     const USER_ROLE_LINKER_TABLE_NAME = 'user_role_linker';
+    
+    /** @var Mailer $mailer */
+    protected $mailer;
+    
+    protected $flashMessenger;
     
     /**
      * @param $email
@@ -44,7 +50,7 @@ class UserTable extends SionTable implements UserMapperInterface
     public function findByUsername($username)
     {
         if ($this->logger) {
-            $this->logger->debug("Looking up user by username", ['username' => $username]);
+            $this->logger->debug("JUser: Looking up user by username", ['username' => $username]);
         }
         $results = $this->queryObjects('user', ['username' => $username]);
         if (!isset($results) || empty($results)) {
@@ -67,7 +73,7 @@ class UserTable extends SionTable implements UserMapperInterface
     public function findById($id)
     {
         if ($this->logger) {
-            $this->logger->debug("Looking up user by id", ['id' => $id]);
+            $this->logger->debug("JUser: Looking up user by id", ['id' => $id]);
         }
         $userArray = $this->getUser($id);
         $userObject = null;
@@ -85,20 +91,30 @@ class UserTable extends SionTable implements UserMapperInterface
     {
         //figure out what the calling function is. If a user is registering, trigger the email here
         $data = $user->getArrayCopy();
+        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
         if (isset($this->logger)) {
-            $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-            $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
-            $this->logger->info("About to insert a new user.", ['caller' => $caller, 'user' => $user]);
+            $this->logger->info("JUser: About to insert a new user.", ['caller' => $caller, 'user' => $user]);
         }
         $result = $this->createEntity('user', $data);
         if (false === $result) {
             if (isset($this->logger)) {
-                $this->logger->err("Failed inserting a new user.", ['result' => $result, 'user' => $user]);
+                $this->logger->err("JUser: Failed inserting a new user.", ['result' => $result, 'user' => $user]);
             }
             throw new \Exception('Error inserting a new user.');
         } else {
             if (isset($this->logger)) {
-                $this->logger->info("Finished inserting a new user.", ['result' => $result]);
+                $this->logger->info("JUser: Finished inserting a new user.", ['result' => $result]);
+            }
+            if ('register' === $caller) {
+                //we need to send the registration email
+                try {
+                    $this->getMailer()->onRegister($user);
+                } catch (\Exception $e) {
+                    if (isset($this->logger)) {
+                        $this->logger->err("JUser: Exception thrown while triggering verification email.", ['exception' => $e]);
+                    }
+                }
             }
         }
         return $result;
@@ -109,7 +125,24 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function updateUser(\ZfcUser\Entity\UserInterface $user)
     {
-        
+        $data = $user->getArrayCopy();
+        if (isset($this->logger)) {
+            $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+            $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
+            $this->logger->info("About to update a user.", ['caller' => $caller, 'user' => $user]);
+        }
+        $result = $this->updateEntity('user', $data);
+        if (false === $result) {
+            if (isset($this->logger)) {
+                $this->logger->err("Failed updating a user.", ['result' => $result, 'user' => $user]);
+            }
+            throw new \Exception('Error inserting a new user.');
+        } else {
+            if (isset($this->logger)) {
+                $this->logger->info("Finished updating a user.", ['result' => $result]);
+            }
+        }
+        return $result;
     }
 
     /**
@@ -220,6 +253,12 @@ class UserTable extends SionTable implements UserMapperInterface
         ];
         return $processedRow;
     }
+    
+    protected function userPostprocessor($data, $newData, $entityAction)
+    {
+        //@todo we need to do something else when creating??
+        $this->updateUserRoles($data, $newData);
+    }
 
     /**
      * Get user properties
@@ -250,7 +289,7 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function getUserFromToken($token)
     {
-        $results = $this->queryObjects('user', ['verification_token' => $token]);
+        $results = $this->queryObjects('user', ['verificationToken' => $token]);
         //it should be exactly 1. If there are duplicate tokens floating, we err on the safe side
         if (1 === count($results)) {
             $this->linkUsers($results);
@@ -465,8 +504,8 @@ class UserTable extends SionTable implements UserMapperInterface
             if ($oldNew['new'] && !$oldNew['old']) { //insert a role
                 $result = 0;
                 $data['create_datetime'] = $this->formatDbDate(new \DateTime(null, new \DateTimeZone('UTC')));
-                if (is_object($this->actingUser)) {
-                    $data['create_by'] = $this->actingUser->id;
+                if (isset($this->actingUserId)) {
+                    $data['create_by'] = $this->actingUserId;
                 }
                 $result = $tableGateway->insert($data);
                 $return[] = [
@@ -485,6 +524,9 @@ class UserTable extends SionTable implements UserMapperInterface
                 ];
                 continue;
             }
+        }
+        if (isset($this->logger)) {
+            $this->logger->debug("JUser: Updated user roles.", ['result' => $return]);
         }
         $this->removeDependentCacheItems('user');
         return count($return);
@@ -523,6 +565,28 @@ class UserTable extends SionTable implements UserMapperInterface
             $select->order(['user_id', 'role_id']);
         }
         return $select;
+    }
+    
+    /**
+     * @throws \Exception
+     * @return \JUser\Service\Mailer
+     */
+    public function getMailer()
+    {
+        if (!isset($this->mailer)) {
+            throw new \Exception('The mailer is not set.');
+        }
+        return $this->mailer;
+    }
+    
+    /**
+     * @param Mailer $mailer
+     * @return self
+     */
+    public function setMailer(Mailer $mailer)
+    {
+        $this->mailer = $mailer;
+        return $this;
     }
     
     //     public function createRole($data)
