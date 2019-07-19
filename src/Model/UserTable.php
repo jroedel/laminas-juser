@@ -40,7 +40,7 @@ class UserTable extends SionTable implements UserMapperInterface
         }
         
         //if we've got an inactive user, notify the user to look for a verification email
-        if ('authenticate' === $caller && !$userArray['isActive'] && !$userArray['emailVerified']) {
+        if ('authenticate' === $caller && !$userArray['active'] && !$userArray['emailVerified']) {
             $this->getMailer()->onInactiveUser($userObject, $this);
         }
         
