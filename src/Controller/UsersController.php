@@ -151,7 +151,7 @@ class UsersController extends AbstractActionController
             $status = self::VERIFICATION_VERIFIED;
             if (isset($logger)) {
                 $logger->info(
-                    "JUser: The user was successfully verified, we are giving them the default roles.",
+                    "JUser: The user was successfully verified.",
                     ['email' => $user['email']]
                     );
             }
@@ -395,9 +395,9 @@ class UsersController extends AbstractActionController
     protected static function setNewVerificationToken($user)
     {
         $user['verificationToken'] = User::generateVerificationToken();
-        $dt = new \DateTime(new \DateTimeZone(null, 'UTC'));
+        $dt = new \DateTime(null, new \DateTimeZone('UTC'));
         $dt->add(new \DateInterval('P1D'));
-        $user['verificationExpiration'] = $dt->format('Y-m-d H:i:s');
+        $user['verificationExpiration'] = $dt;
         return $user;
     }
 }

@@ -96,6 +96,12 @@ class Mailer implements TranslatorAwareInterface
         }
     }
 
+    /**
+     * Send an email to the user to verify their account
+     * @todo add a beautified HTML version of the email. Add mailing address as required
+     * @param mixed $user
+     * @return number
+     */
     public function sendVerificationEmail($user)
     {
         if (isset($this->logger)) {
