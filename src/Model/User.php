@@ -75,13 +75,9 @@ class User implements UserInterface
      */
     public $createDatetime;
     
-    public $roles = null;
+    public $roles;
     
-    /**
-     * Indicates if we have loaded the roles yet
-     * @var bool
-     */
-    public $rolesLoaded = false;
+    public $rolesList;
 
     public function __construct($data = [])
     {
@@ -101,13 +97,13 @@ class User implements UserInterface
         $this->mustChangePassword = isset($data['mustChangePassword']) ? $data['mustChangePassword'] : null;
         $this->multiPersonUser = isset($data['isMultiPersonUser']) ? $data['isMultiPersonUser'] : null;
         $this->verificationToken = isset($data['verificationToken']) ? $data['verificationToken'] : null;
-        $this->verificationExpiration = isset($data['verificationExpiration'])
-            ? $data['verificationExpiration']->format('Y-m-d H:i:s') : null;
+        $this->verificationExpiration = $data['verificationExpiration'];
         $this->createDatetime = isset($data['createdOn'])
             ? $data['createdOn']->format('Y-m-d H:i:s') : null;
         $this->updateDatetime = isset($data['updatedOn'])
             ? $data['updatedOn']->format('Y-m-d H:i:s') : null;
         $this->roles = isset($data['roles']) ? $data['roles'] : null;
+        $this->rolesList = isset($data['rolesList']) ? $data['rolesList'] : null;
 //         'createdBy'         => $this->filterDbInt($row['create_by']),
 //         'updatedBy'         => $this->filterDbInt($row['update_by']),
 //         'emailVerified'     => $this->filterDbBool($row['email_verified']),
@@ -135,10 +131,10 @@ class User implements UserInterface
             'verificationToken' => $this->verificationToken,
             'verificationExpiration' => $this->verificationExpiration,
             'active'            => $this->state,
+            'roles'             => isset($this->roles) ? $this->roles : [],
+            'rolesList'         => isset($this->rolesList) ? $this->rolesList : [],
 //            'languages'         => $this->filterDbArray($row['lang'], ';'),
 //             'personId'          => $this->filterDbId($row['PersID']),
-//             'roles'             => [],
-//             'rolesList'         => [],            
         ];
         return $data;
     }
@@ -333,7 +329,7 @@ class User implements UserInterface
     }
     
     /**
-     * Force the generation of a new verification token. The expiration is automatically reset.
+     * Generate a verification token
      * @return void
      */
     public static function generateVerificationToken()
@@ -358,8 +354,8 @@ class User implements UserInterface
     }
     
     /**
-     * Get the verificationExpiration date value in format 'Y-m-d H:i:s'
-     * @return string
+     * Get the verificationExpiration date value 
+     * @return \DateTime
      */
     public function getVerificationExpiration()
     {
@@ -371,16 +367,26 @@ class User implements UserInterface
         return $this->verificationExpiration;
     }
     
+    public function isVerificationTokenValid()
+    {
+        if (!isset($this->verificationExpiration) || !$this->verificationExpiration instanceof \DateTime) {
+            return false;
+        }
+        $now = new \DateTime(null, new \DateTimeZone('UTC'));
+        return $now <= $this->verificationExpiration;
+    }
+    
     /**
      * Force the reset of the verification token expiration
-     * @return void
+     * @return self
      */
     public function resetVerificationExpiration()
     {
         $dt = new \DateTime(null, new \DateTimeZone('UTC'));
         //@todo make interval configurable
         $dt->add(new \DateInterval('P1D'));
-        $this->verificationExpiration = $dt->format('Y-m-d H:i:s');
+        $this->verificationExpiration = $dt;
+        return $this;
     }
     
     /**
@@ -442,11 +448,15 @@ class User implements UserInterface
         return $this;
     }
     
+    /**
+     * Generate and set a new verification token and reset the expiration for a day from now
+     * @return self
+     */
     public function setNewVerificationToken()
     {
         $this->verificationToken = null;
-        $this->verificationExpiration = null;
         $this->getVerificationToken();
-        $this->getVerificationExpiration();
+        $this->resetVerificationExpiration();
+        return $this;
     }
 }

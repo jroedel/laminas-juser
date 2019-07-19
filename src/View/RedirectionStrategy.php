@@ -106,7 +106,7 @@ class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggreg
         }
 
         // Work out where were we trying to get to
-        $options['name'] = $routeMatch->getMatchedRouteName();
+        $options = ['name' => $routeMatch->getMatchedRouteName()];
         $redirect = $router->assemble($routeMatch->getParams(), $options);
 
         $response = $response ?: new Response();

@@ -2,15 +2,12 @@
 namespace JUser\Model;
 
 use Zend\Db\Sql\Select;
-use SionModel\Db\Model\SionCacheTrait;
 use ZfcUser\Mapper\UserInterface as UserMapperInterface;
 use SionModel\Db\Model\SionTable;
 use JUser\Service\Mailer;
 
 class UserTable extends SionTable implements UserMapperInterface
 {
-    use SionCacheTrait;
-    
     const USER_TABLE_NAME = 'user';
     const ROLE_TABLE_NAME = 'user_role';
     const USER_ROLE_LINKER_TABLE_NAME = 'user_role_linker';
@@ -26,8 +23,10 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function findByEmail($email)
     {
+        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
         if ($this->logger) {
-            $this->logger->debug("Looking up user by email", ['email' => $email]);
+            $this->logger->debug("JUser: Looking up user by email", ['email' => $email, 'caller' => $caller]);
         }
         $results = $this->queryObjects('user', ['email' => $email]);
         if (!isset($results) || empty($results)) {
@@ -39,6 +38,12 @@ class UserTable extends SionTable implements UserMapperInterface
         if (isset($userArray) && is_array($userArray)) {
             $userObject = new User($userArray);
         }
+        
+        //if we've got an inactive user, notify the user to look for a verification email
+        if ('authenticate' === $caller && !$userArray['isActive'] && !$userArray['emailVerified']) {
+            $this->getMailer()->onInactiveUser($userObject, $this);
+        }
+        
         //@todo trigger find event
         return $userObject;
     }
@@ -49,8 +54,10 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function findByUsername($username)
     {
+        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
         if ($this->logger) {
-            $this->logger->debug("JUser: Looking up user by username", ['username' => $username]);
+            $this->logger->debug("JUser: Looking up user by username", ['username' => $username, 'caller' => $caller]);
         }
         $results = $this->queryObjects('user', ['username' => $username]);
         if (!isset($results) || empty($results)) {
@@ -62,6 +69,12 @@ class UserTable extends SionTable implements UserMapperInterface
         if (isset($userArray) && is_array($userArray)) {
             $userObject = new User($userArray);
         }
+        
+        //notify the user to look for a verification email
+        if ('authenticate' === $caller && !$userArray['active'] && !$userArray['emailVerified']) {
+            $this->getMailer()->onInactiveUser($userObject, $this);
+        }
+        
         //@todo trigger find event
         return $userObject;
     }
@@ -91,10 +104,16 @@ class UserTable extends SionTable implements UserMapperInterface
     {
         //figure out what the calling function is. If a user is registering, trigger the email here
         $data = $user->getArrayCopy();
+        unset($data['userId']); //we don't have a userId yet
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
         if (isset($this->logger)) {
-            $this->logger->info("JUser: About to insert a new user.", ['caller' => $caller, 'user' => $user]);
+            $this->logger->info("JUser: About to insert a new user.", ['caller' => $caller, 'email' => $user->getEmail()]);
+        }
+        if ('register' === $caller && !isset($data['roles']) || empty($data['roles'])) {
+            $defaultRoles = $this->getDefaultRoles();
+            $data['roles'] = $defaultRoles;
+            $data['rolesList'] = array_keys($defaultRoles);
         }
         $result = $this->createEntity('user', $data);
         if (false === $result) {
@@ -109,6 +128,7 @@ class UserTable extends SionTable implements UserMapperInterface
             if ('register' === $caller) {
                 //we need to send the registration email
                 try {
+                    //@todo this could be better to schedule with cron, to avoid making the user wait for the send
                     $this->getMailer()->onRegister($user);
                 } catch (\Exception $e) {
                     if (isset($this->logger)) {
@@ -131,7 +151,7 @@ class UserTable extends SionTable implements UserMapperInterface
             $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
             $this->logger->info("About to update a user.", ['caller' => $caller, 'user' => $user]);
         }
-        $result = $this->updateEntity('user', $data);
+        $result = $this->updateEntity('user', $data['userId'], $data);
         if (false === $result) {
             if (isset($this->logger)) {
                 $this->logger->err("Failed updating a user.", ['result' => $result, 'user' => $user]);
@@ -176,7 +196,7 @@ class UserTable extends SionTable implements UserMapperInterface
     }
     
     /**
-     * Add role data to an array of user arrays
+     * Add role data to an array of user arrays (the array must be keyed on the userId)
      * @param array $users
      */
     public function linkUsers(array &$users)
@@ -184,18 +204,36 @@ class UserTable extends SionTable implements UserMapperInterface
         if (empty($users)) {
             return;
         }
-        //first compile list of user id to get just the rows we need
+        
         $userIds = array_keys($users);
-        $roleLinks = $this->queryObjects('user-role-link', ['userId' => $userIds]);
-        foreach ($roleLinks as $key => $link) {
+        if (count($users) < 20) {
+            //first compile list of user id to get just the rows we need
+            $query = ['userId' => $userIds];
+        } else {
+            //if we're looking at several users, just get all records, easier to cache
+            $query = [];
+        }
+        
+        $roleLinks = $this->queryObjects('user-role-link', $query);
+        foreach ($roleLinks as $link) {
             if (isset($users[$link['userId']])) {
-                $users[$link['userId']]['roles'][$key] = $roleLinks[$key];
+                $users[$link['userId']]['roles'][$link['roleId']] = $link;
             }
         }
         
         foreach ($userIds as $id) {
             $users[$id]['rolesList'] = array_keys($users[$id]['roles']);
         }
+    }
+    
+    public function linkUser(array &$user)
+    {
+        $roleLinks = $this->queryObjects('user-role-link', ['userId' => $user['userId']]);
+        foreach ($roleLinks as $link) {
+            $user['roles'][$link['roleId']] = $link;
+        }
+        
+        $user['rolesList'] = array_keys($user['roles']);
     }
     
     /**
@@ -246,7 +284,6 @@ class UserTable extends SionTable implements UserMapperInterface
             'verificationToken' => $row['verification_token'],
             'verificationExpiration' => $this->filterDbDate($row['verification_expiration']),
             'active'            => $this->filterDbBool($row['state']),
-//            'languages'         => $this->filterDbArray($row['lang'], ';'),
             'personId'          => $this->filterDbId($row['PersID']),
             'roles'             => [],
             'rolesList'         => [],
@@ -256,8 +293,15 @@ class UserTable extends SionTable implements UserMapperInterface
     
     protected function userPostprocessor($data, $newData, $entityAction)
     {
-        //@todo we need to do something else when creating??
-        $this->updateUserRoles($data, $newData);
+        if (isset($data['roles'])) { //if roles is null, we assume the user had no intention of updating roles
+            //$newData won't come linked from the caller so link it first
+            if (SionTable::ENTITY_ACTION_UPDATE === $entityAction) {
+                $this->linkUser($newData);
+            } elseif (SionTable::ENTITY_ACTION_CREATE === $entityAction) {
+                $data['userId'] = $newData['userId'];
+            }
+            $this->updateUserRoles($data, $newData);
+        }
     }
 
     /**
@@ -324,21 +368,6 @@ class UserTable extends SionTable implements UserMapperInterface
         if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
             return $cache;
         }
-//         $gateway = $this->getTableGateway(self::ROLE_TABLE_NAME);
-//         $select = $this->getSelectPrototype('user-role');
-//         $results = $gateway->selectWith($select);
-//         //manipulate column names
-//         $objects = [];
-//         foreach ($results as $row) {
-//             $processedRow = $this->processRoleRow($row);
-//             $id = $processedRow['roleId'];
-//             $objects[$id] = $processedRow;
-//         }
-//         foreach ($objects as $roleId => $object) {
-//             if (isset($object['parentId']) && isset($objects[$object['parentId']])) {
-//                 $objects[$roleId]['parentName'] = $objects[$object['parentId']]['name'];
-//             }
-//         }
         $objects = $this->getObjects('user-role');
         $this->linkRoles($objects);
 
@@ -357,17 +386,7 @@ class UserTable extends SionTable implements UserMapperInterface
 
     public function getDefaultRoles()
     {
-        $gateway = $this->getTableGateway(self::ROLE_TABLE_NAME);
-        $select = $this->getSelectPrototype('user-role');
-        $select->where(['is_default' => '1']);
-        $results = $gateway->selectWith($select);
-        //manipulate column names
-        $objects = [];
-        foreach ($results as $row) {
-            $processedRow = $this->processRoleRow($row);
-            $id = $processedRow['roleId'];
-            $objects[$id] = $processedRow;
-        }
+        $objects = $this->queryObjects('user-role', ['isDefault' => '1']);
         return $objects;
     }
 
@@ -588,418 +607,4 @@ class UserTable extends SionTable implements UserMapperInterface
         $this->mailer = $mailer;
         return $this;
     }
-    
-    //     public function createRole($data)
-    //     {
-    //         $tableName     = self::ROLE_TABLE_NAME;
-    //         $tableGateway  = $this->getTableGateway($tableName);
-    //         $requiredCols  = array(
-    //             'name'
-    //         );
-    //         $updateCols = [
-        //             'name'      => 'role_id',
-    //             'parentId'  => 'parent_id',
-    //             'isDefault' => 'is_default',
-    //             'createdOn' => 'create_datetime',
-    //             'createdBy' => 'create_by',
-    //         ];
-    //         $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway);
-    //         $this->removeDependentCacheItems('role');
-    //         return $return;
-    //     }
-    
-    /**
-     *
-     * @param string[][] $data
-     */
-    //     public function createUser($data)
-    //     {
-    //         $tableName     = self::USER_TABLE_NAME;
-    //         $tableGateway  = $this->getTableGateway($tableName);
-    //         $requiredCols  = [
-    //             'username', 'email', 'displayName', 'password'
-    //         ];
-    //         $updateCols = [
-        //             'userId'       => 'user_id',
-    //             'username'     => 'username',
-    //             'email'        => 'email',
-    //             'displayName'  => 'display_name',
-    //             'password'     => 'password',
-    //             'createdOn'    => 'create_datetime',
-    //             'createdBy'    => 'create_by',
-    //             'updatedOn'    => 'update_datetime',
-    //             'updatedBy'    => 'update_by',
-    //             'emailVerified'=> 'email_verified',
-    //             'mustChangePassword'=> 'must_change_password',
-    //             'isMultiPersonUser' => 'multi_person_user',
-    //             'verificationToken' => 'verification_token',
-    //             'verificationExpiration' => 'verification_expiration',
-    //             'active'       => 'state',
-    //             //'languages'    => 'lang',
-    //             'personId'     => 'PersID',
-    //         ];
-    //         $return = $this->createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway);
-    //         $data['userId'] = $return;
-    //         $this->updateUserRoles($data, null);
-    //         $this->removeDependentCacheItems('user');
-    //         return $return;
-    //     }
-    
-    /**
-     *
-     * @param int|string $id
-     * @param string[][] $data
-     */
-    //     public function updateUser($id, $data)
-    //     {
-    //         $tableName     = self::USER_TABLE_NAME;
-    //         $tableKey      = 'user_id';
-    //         $tableGateway  = $this->getTableGateway($tableName);
-    
-    //         if (!is_numeric($id)) {
-    //             throw new \InvalidArgumentException('Invalid user id provided.');
-    //         }
-    //         $user = $this->getUser($id);
-    //         if (!$user) {
-    //             throw new \InvalidArgumentException('No user provided.');
-    //         }
-    //         $updateCols = array(
-    //             'userId'       => 'user_id',
-    //             'username'     => 'username',
-    //             'email'        => 'email',
-    //             'displayName'  => 'display_name',
-    // //            'password'     => 'password', whenever we update the password we don't use this function
-    //             'createdOn'    => 'create_datetime',
-    //             'createdBy'    => 'create_by',
-    //             'updatedOn'    => 'update_datetime',
-    //             'updatedBy'    => 'update_by',
-    //             'emailVerified'=> 'email_verified',
-    //             'mustChangePassword'=> 'must_change_password',
-    //             'isMultiPersonUser' => 'multi_person_user',
-    //             'verificationToken' => 'verification_token',
-    //             'verificationExpiration' => 'verification_expiration',
-    //             'active'       => 'state',
-    //             //'languages'    => 'lang',
-    //             'personId'     => 'PersID',
-    //         );
-    //         $return = $this->updateHelper($id, $data, $tableName, $tableKey, $tableGateway, $updateCols, $user);
-    //         $this->updateUserRoles($data, $user);
-    //         $this->removeDependentCacheItems('user');
-    //         return $return;
-    //     }
-    
-    /**
-     * Get a standardized select object to retrieve records from the database
-     * @return \Zend\Db\Sql\Select
-     */
-//     protected function getUsersSelectPrototype()
-//     {
-//         static $select;
-//         if (!isset($select)) {
-//             $select = new Select(self::USER_TABLE_NAME);
-//             $select->columns(['user_id', 'username', 'email', 'display_name', 'password',
-//                 'create_datetime', 'update_datetime', 'state', 'lang', 'email_verified',
-//                 'must_change_password', 'multi_person_user', 'PersID', 'verification_token',
-//                 'verification_expiration', 'create_by', 'update_by']);
-//             $select->order(['username']);
-//         }
-
-//         return clone $select;
-//     }
-
-    /**
-     * Get a standardized select object to retrieve records from the database
-     * @return \Zend\Db\Sql\Select
-     */
-//     protected function getRolesSelectPrototype()
-//     {
-//         static $select;
-//         if (!isset($select)) {
-//             $select = new Select(self::ROLE_TABLE_NAME);
-//             $select->columns(['id', 'role_id', 'is_default', 'parent_id', 'create_by', 'create_datetime']);
-//             $select->order(['role_id']);
-//         }
-
-//         return clone $select;
-//     }
-
-    /**
-     * Get a standardized select object to retrieve records from the database
-     * @return \Zend\Db\Sql\Select
-     */
-//     protected function getUserRoleLinkerSelectPrototype()
-//     {
-//         static $select;
-//         if (!isset($select)) {
-//             $select = new Select(self::USER_ROLE_LINKER_TABLE_NAME);
-//             $select->columns(['user_id', 'role_id', 'create_by', 'create_datetime']);
-//             $select->order(['user_id', 'role_id']);
-//         }
-
-//         return clone $select;
-//     }
-
-//     protected function createHelper($data, $requiredCols, $updateCols, $tableName, $tableGateway)
-//     {
-//         //make sure required cols are being passed
-//         foreach ($requiredCols as $colName) {
-//             if (!isset($data[$colName])) {
-//                 return false;
-//             }
-//         }
-
-//         $now = (new \DateTime(null, new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-//         $updateVals = array();
-//         foreach ($data as $col => $value) {
-//             if (!key_exists($col, $updateCols)) {
-//                 continue;
-//             }
-//             if ($data[$col] instanceof \DateTime) {
-//                 $data[$col] = $data[$col]->format('Y-m-d H:i:s');
-//             }
-//             $updateVals[$updateCols[$col]] = $data[$col];
-//             //check if this column has updatedOn column
-//             if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
-//                 $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
-//             }
-//             if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
-//                 is_object($this->actingUser)) { //check if this column has updatedOn column
-//                     $updateVals[$updateCols[$col.'UpdatedBy']] = $this->actingUser->id;
-//             }
-//         }
-//         if (isset($updateCols['updatedOn']) && !isset($updateVals[$updateCols['updatedOn']])) {
-//             $updateVals[$updateCols['updatedOn']] = $now;
-//         }
-//         if (isset($updateCols['updatedBy']) && !isset($updateVals[$updateCols['updatedBy']]) &&
-//                 is_object($this->actingUser)) {
-//             $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
-//         }
-//         //check if this column has updatedOn column
-//         if (key_exists('createdOn', $updateCols) && !key_exists('createdOn', $data)) {
-//             $updateVals[$updateCols['createdOn']] = $now;
-//         }
-//         if (key_exists('createdBy', $updateCols) && !key_exists('createdBy', $data) &&
-//             is_object($this->actingUser)) { //check if this column has updatedOn column
-//                 $updateVals[$updateCols['createdBy']] = $this->actingUser->id;
-//         }
-//         if (count($updateVals) > 0) {
-//             $tableGateway->insert($updateVals);
-//             $newId = $tableGateway->getLastInsertValue();
-//             return $newId;
-//         }
-//         return false;
-//     }
-
-//     protected function updateHelper($id, $data, $tableName, $tableKey, $tableGateway, $updateCols, $referenceEntity)
-//     {
-//         if (is_null($tableName) || $tableName == '') {
-//             throw new \Exception('No table name provided.');
-//         }
-//         if (is_null($tableKey) || $tableKey == '') {
-//             throw new \Exception('No table key provided');
-//         }
-//         $now = (new \DateTime(null, new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-//         $updateVals = array();
-//         foreach ($referenceEntity as $col => $value) {
-//             if (!key_exists($col, $updateCols) || !key_exists($col, $data) || $value == $data[$col]) {
-//                 continue;
-//             }
-//             if ($data[$col] instanceof \DateTime) {
-//                 $data[$col] = $data[$col]->format('Y-m-d H:i:s');
-//             }
-//             $updateVals[$updateCols[$col]] = $data[$col];
-//             //check if this column has updatedOn column
-//             if (key_exists($col.'UpdatedOn', $updateCols) && !key_exists($col.'UpdatedOn', $data)) {
-//                 $updateVals[$updateCols[$col.'UpdatedOn']] = $now;
-//             }
-//             if (key_exists($col.'UpdatedBy', $updateCols) && !key_exists($col.'UpdatedBy', $data) &&
-//                 is_object($this->actingUser)) { //check if this column has updatedOn column
-//                     $updateVals[$updateCols[$col.'UpdatedBy']] = $this->actingUser->id;
-//             }
-//         }
-//         if (count($updateVals) > 0) {
-//             if (isset($updateCols['updatedOn']) && !isset($updateVals[$updateCols['updatedOn']])) {
-//                 $updateVals[$updateCols['updatedOn']] = $now;
-//             }
-//             if (isset($updateCols['updatedBy']) && !isset($updateVals[$updateCols['updatedBy']]) &&
-//                 is_object($this->actingUser)) {
-//                     $updateVals[$updateCols['updatedBy']] = $this->actingUser->id;
-//             }
-//             $result = $tableGateway->update($updateVals, array($tableKey => $id));
-//             return $result;
-//         }
-//         return true;
-//     }
-
-    /**
-     * @param Where|\Closure|string|array $where
-     * @param null|string
-     * @param null|array
-     * @return array
-     */
-//     public function fetchSome($where, $sql = null, $sqlArgs = null)
-//     {
-//         if (null === $where && null === $sql) {
-//             throw new \InvalidArgumentException('No query requested.');
-//         }
-//         if (null !== $sql) {
-//             if (null === $sqlArgs) {
-//                 $sqlArgs = Adapter::QUERY_MODE_EXECUTE; //make sure query executes
-//             }
-//             $result = $this->tableGateway->getAdapter()->query($sql, $sqlArgs);
-//         } else {
-//             $result = $this->tableGateway->select($where);
-//         }
-
-//         $return = [];
-//         foreach ($result as $row) {
-//             $return[] = $row;
-//         }
-//         return $return;
-//     }
-
-    /**
-     * Filter a database int
-     * @param string $str
-     * @return NULL|number
-     */
-//     protected function filterDbId($str)
-//     {
-//         if (null === $str || $str === '' || $str == '0') {
-//             return null;
-//         }
-//         return (int) $str;
-//     }
-
-    /**
-     * Filter a database int
-     * @param string $str
-     * @return NULL|number
-     */
-//     protected function filterDbInt($str)
-//     {
-//         if (null === $str || $str === '') {
-//             return null;
-//         }
-//         return (int) $str;
-//     }
-
-    /**
-     * Filter a database boolean
-     * @param string $str
-     * @return boolean
-     */
-//     protected function filterDbBool($str)
-//     {
-//         if (null === $str || $str === '' || $str == '0') {
-//             return false;
-//         }
-//         static $filter;
-//         if (!is_object($filter)) {
-//             $filter = new Boolean();
-//         }
-//         return $filter->filter($str);
-//     }
-
-    /**
-     *
-     * @param string $str
-     * @return \DateTime
-     */
-//     protected function filterDbDate($str)
-//     {
-//         static $tz;
-//         if (!isset($tz)) {
-//             $tz = new \DateTimeZone('UTC');
-//         }
-//         if (null === $str || $str === '' || $str == '0000-00-00' || $str == '0000-00-00 00:00:00') {
-//             return null;
-//         }
-//         try {
-//             $return = new \DateTime($str, $tz);
-//         } catch (\Exception $e) {
-//             $return = null;
-//         }
-//         return $return;
-//     }
-
-    /**
-     *
-     * @param string $str
-     * @return \DateTime
-     */
-//     protected function filterDbArray($str, $delimiter = '|', $trim = true)
-//     {
-//         if (!isset($str) || $str == '') {
-//             return [];
-//         }
-//         $return = explode($delimiter, $str);
-//         if ($trim) {
-//             foreach ($return as $value) {
-//                 $value = trim($value);
-//             }
-//         }
-//         return $return;
-//     }
-
-    /**
-     *
-     * @param \DateTime $object
-     * @return string
-     */
-//     protected function formatDbDate($object)
-//     {
-//         if (!$object instanceof \DateTime) {
-//             return $object;
-//         }
-//         return $object->format('Y-m-d H:i:s');
-//     }
-
-//     protected function formatDbArray($arr, $delimiter = '|', $trim = true)
-//     {
-//         if (!is_array($arr)) {
-//             return $arr;
-//         }
-//         if (empty($arr)) {
-//             return null;
-//         }
-//         if ($trim) {
-//             foreach ($arr as $value) {
-//                 $value = trim($value);
-//             }
-//         }
-//         $return = implode($delimiter, $arr);
-//         return $return;
-//     }
-
-//     protected function keyArray(array $a, $key, $unique = true)
-//     {
-//         $return = array();
-//         foreach ($a as $item) {
-//             if (!$unique) {
-//                 if (isset($return[$item[$key]])) {
-//                     $return[$item[$key]][] = $item;
-//                 } else {
-//                     $return[$item[$key]] = array($item);
-//                 }
-//             } else {
-//                 $return[$item[$key]] = $item;
-//             }
-//         }
-//         return $return;
-//     }
-
-    /**
-     * Get an instance of a TableGateway for a particular table name
-     * @param string $tableName
-     */
-//     protected function getTableGateway($tableName)
-//     {
-//         if (key_exists($tableName, $this->tableGatewaysCache)) {
-//             return $this->tableGatewaysCache[$tableName];
-//         }
-//         $gateway = new TableGateway($tableName, $this->adapter);
-//         //@todo is there a way to make sure the table exists?
-//         return $this->tableGatewaysCache[$tableName] = $gateway;
-//     }
 }

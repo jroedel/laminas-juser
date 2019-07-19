@@ -155,14 +155,6 @@ class UsersController extends AbstractActionController
                     ['email' => $user['email']]
                     );
             }
-            $defaultRoles = $table->getDefaultRoles();
-            //give them permissions upon verification, @todo move this code to the insertUser
-            $roleIds = array_keys($defaultRoles);
-            foreach ($roleIds as $roleId) {
-                if (!in_array($roleId, $user['rolesList'])) {
-                    $user['rolesList'][] = $roleId;
-                }
-            }
             $user['active'] = true;
             $user['emailVerified'] = true;
             //update status
@@ -304,6 +296,10 @@ class UsersController extends AbstractActionController
                 $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                     ->addMessage('Error in form submission, please review.');
             }
+        } else {
+            $rolesList = $form->get('rolesList');
+            $defaultRoles = $table->getDefaultRoles();
+            $rolesList->setValue(array_keys($defaultRoles));
         }
         return new ViewModel([
             'form' => $form,

@@ -62,6 +62,39 @@ class Mailer implements TranslatorAwareInterface
                 .'Make sure to check the spam folder if you don\'t see it.');
         }
     }
+    
+    /**
+     * Send a flash message to the user to look for a verification email
+     * @param User $user
+     * @param UserTable $callback A reference to the calling UserTable to be able to update User
+     */
+    public function onInactiveUser(User $user, UserTable $callback)
+    {
+        if (isset($this->logger)) {
+            $this->logger->notice(
+                "JUser: An inactive user is trying to logon, we'll ask them to check their email.",
+                ['email' => $user->getEmail()]
+                );
+        }
+        //if someone's trying to login to an account with expired token, give them a new one
+        if (!$user->isVerificationTokenValid()) {
+            $this->logger->info(
+                "JUser: An inactive user's token is expired, giving them a new one.",
+                ['email' => $user->getEmail()]
+                );
+            $user->setNewVerificationToken();
+            $callback->updateUser($user);
+            $this->sendVerificationEmail($user->getArrayCopy());
+        }
+        //Let the user know that they should look for an email
+        $flashMessenger = $this->getFlashMessenger();
+        if (isset($flashMessenger)) {
+            $flashMessenger->addInfoMessage(
+                'Please check your email for a verification link. '
+                .'Make sure to check the spam folder if you don\'t see it.'
+                );
+        }
+    }
 
     public function sendVerificationEmail($user)
     {
