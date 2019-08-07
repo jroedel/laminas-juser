@@ -20,18 +20,18 @@ composer require jroedel/zf3-juser
 4. Enable all the modules in your `application.config.php` file (order is important):
 
 ```
-	return [
-	    'modules' => [
-	        // ...
-	        'ZfcBase',
-	        'ZfcUser',
-			'BjyAuthorize',
-	        'SlmLocale',
-			'GoalioRememberMe',
-	        'JUser',
-	    ],
-	    // ...
-	];
+    return [
+        'modules' => [
+            // ...
+            'ZfcBase',
+            'ZfcUser',
+            'BjyAuthorize',
+            'SlmLocale',
+            'GoalioRememberMe',
+            'JUser',
+        ],
+        // ...
+    ];
 ```
 
 5. The GUI can be accessed from `/users`. Make sure to double-check that only administers have access to the `juser` routes. This can be configured in your `juser.global.php` file.
