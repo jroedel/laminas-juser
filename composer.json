@@ -1,13 +1,12 @@
 {
-    "name": "jroedel/zf2-juser",
+    "name": "jroedel/zf3-juser",
     "description": "A fork of manuakasam/SamUser. Glues together ZfcUser, BjyAuthorize, SlmLocale, and GoalioRememberMe",
     "license": "MIT",
     "keywords": [
         "framework",
-        "zf2",
         "zf3"
     ],
-    "homepage": "https://github.com/jroedel/zf2-juser",
+    "homepage": "https://github.com/jroedel/zf3-juser",
     "require": {
         "php": "^5.6 || ^7.0",
         "zendframework/zend-db": "^2.4.0",
@@ -39,7 +38,7 @@
 	   },
 	   {
 	     "type": "vcs",
-	     "url": "https://github.com/jroedel/zf2-sion-model"
+	     "url": "https://github.com/jroedel/zf3-sion-model"
 	   },
 	   {
 	     "type": "vcs",
