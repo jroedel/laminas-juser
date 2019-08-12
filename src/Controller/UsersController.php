@@ -239,7 +239,7 @@ class UsersController extends AbstractActionController
                 if ($table->updateEntity('user', $id, $data)) {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('User successfully updated.');
-//                     $this->redirect()->toUrl($this->url()->fromRoute('juser'));
+                    $this->redirect()->toUrl($this->url()->fromRoute('juser'));
                 } else {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                         ->addMessage('Error in form submission, please review.');
