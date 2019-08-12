@@ -37,6 +37,10 @@ class UsersControllerFactory implements FactoryInterface
         $services['zfcuser_module_options'] = $serviceLocator->get('zfcuser_module_options');
         $services[UserTable::class] = $userTable;
         $services[Mailer::class] = $serviceLocator->get(Mailer::class);
+        if ($serviceLocator->has('JUser\Logger')) {
+            $logger = $serviceLocator->get('JUser\Logger');
+            $controller->setLogger($logger);
+        }
 
         $controller->setServices($services);
 

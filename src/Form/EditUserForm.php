@@ -177,6 +177,17 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         $this->hasPersonData = true;
         return $this;
     }
+    
+    /**
+     * Don't update password while on edit form
+     */
+    public function prepareForEdit()
+    {
+        $fields = $this->getElements();
+        unset($fields['password']);
+        unset($fields['passwordVerify']);
+        $this->setValidationGroup(array_keys($fields));
+    }
 
     public function setInputFilterSpecification($spec)
     {

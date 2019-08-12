@@ -293,12 +293,20 @@ class UserTable extends SionTable implements UserMapperInterface
     
     protected function userPostprocessor($data, $newData, $entityAction)
     {
-        if (isset($data['roles'])) { //if roles is null, we assume the user had no intention of updating roles
+        if (isset($data['roles']) || isset($data['rolesList'])) { //if roles is null, we assume the user had no intention of updating roles
             //$newData won't come linked from the caller so link it first
             if (SionTable::ENTITY_ACTION_UPDATE === $entityAction) {
                 $this->linkUser($newData);
             } elseif (SionTable::ENTITY_ACTION_CREATE === $entityAction) {
                 $data['userId'] = $newData['userId'];
+            }
+            if (isset($this->logger)) {
+                $this->logger->info('Updating user roles', 
+                    [
+                        'userId'    => $data['userId'],
+                        'oldRoles' => isset($data['roleList']) ? $data['roleList'] : [],
+                        'newRoles' => isset($newData['roleList']) ? $newData['roleList'] : [],
+                    ]);
             }
             $this->updateUserRoles($data, $newData);
         }

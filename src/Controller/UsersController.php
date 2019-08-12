@@ -14,6 +14,7 @@ use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
 use JUser\Service\Mailer;
 use JUser\Model\User;
+use Zend\Log\LoggerInterface;
 
 /**
  *
@@ -29,6 +30,8 @@ class UsersController extends AbstractActionController
     protected $userTable;
 
     protected $services = [];
+    
+    protected $logger;
     
     /**
      *
@@ -213,11 +216,12 @@ class UsersController extends AbstractActionController
 
         /** @var EditUserForm $form */
         $form = $this->getService(EditUserForm::class);
+        $form->prepareForEdit();
         $form->setData($user);
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost()->toArray();
-            if ($data ['userId'] != $id) { // make sure the user is trying to update the right event
+            if ($data['userId'] != $id) { // make sure the user is trying to update the right user
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                     ->addMessage('Error in form submission, please try again later.');
                 return $this->redirect()->toRoute('juser');
@@ -229,10 +233,13 @@ class UsersController extends AbstractActionController
                 if (!$isPersonIdSet) {
                     unset($data['personId']);
                 }
+                if (isset($this->logger)) {
+                    $this->logger->info("Updating user", ['userId' => $id, 'data' => $data]);
+                }
                 if ($table->updateEntity('user', $id, $data)) {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('User successfully updated.');
-                    $this->redirect()->toUrl($this->url()->fromRoute('juser'));
+//                     $this->redirect()->toUrl($this->url()->fromRoute('juser'));
                 } else {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                         ->addMessage('Error in form submission, please review.');
@@ -399,5 +406,16 @@ class UsersController extends AbstractActionController
         $dt->add(new \DateInterval('P1D'));
         $user['verificationExpiration'] = $dt;
         return $user;
+    }
+    
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+        return $this;
+    }
+    
+    public function getLogger()
+    {
+        return $this->logger;
     }
 }

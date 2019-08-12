@@ -34,6 +34,11 @@ class UserTableFactory implements FactoryInterface
         $mailer = $container->get(Mailer::class);
         $table->setMailer($mailer);
         
+        if ($container->has('JUser\Logger')) {
+            $logger = $container->get('JUser\Logger');
+            $table->setLogger($logger);
+        }
+        
         return $table;
     }
 }
