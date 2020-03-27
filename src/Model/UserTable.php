@@ -190,7 +190,7 @@ class UserTable extends SionTable implements UserMapperInterface
         $this->linkUsers($objects);
         
         if (isset($cacheKey)) {
-            $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role']);
+            $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role', 'user-role-link']);
         }
         return $objects;
     }
@@ -210,7 +210,7 @@ class UserTable extends SionTable implements UserMapperInterface
             //first compile list of user id to get just the rows we need
             $query = ['userId' => $userIds];
         } else {
-            //if we're looking at several users, just get all records, easier to cache
+            //if we're looking at several users, just get all records, it's better for caching
             $query = [];
         }
         
@@ -301,14 +301,16 @@ class UserTable extends SionTable implements UserMapperInterface
                 $data['userId'] = $newData['userId'];
             }
             if (isset($this->logger)) {
-                $this->logger->info('Updating user roles', 
+                $this->logger->info(
+                    'Updating user roles',
                     [
                         'userId'    => $data['userId'],
-                        'oldRoles' => isset($data['roleList']) ? $data['roleList'] : [],
-                        'newRoles' => isset($newData['roleList']) ? $newData['roleList'] : [],
-                    ]);
+                        'oldRoles'  => isset($newData['rolesList']) ? $newData['rolesList'] : [],
+                        'newRoles'  => isset($data['rolesList']) ? $data['rolesList'] : [],
+                    ]
+                    );
             }
-            $this->updateUserRoles($data, $newData);
+            $this->updateUserRoles($data, $newData); //this function will clear cache
         }
     }
 
@@ -451,7 +453,7 @@ class UserTable extends SionTable implements UserMapperInterface
             $processedRow = $this->processUserRoleLinkerRow($row);
             $objects[] = $processedRow;
         }
-        $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role']);
+        $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role', 'user-role-link']);
         return $objects;
     }
 
@@ -499,7 +501,14 @@ class UserTable extends SionTable implements UserMapperInterface
         return false;
     }
 
-    protected function updateUserRoles($newUser, $oldUser)
+    /**
+     * Take two arrays referring to the same user--an old and updated copy--and update the linked roles
+     * associated.
+     * @param array $newUser
+     * @param array $oldUser
+     * @return number
+     */
+    protected function updateUserRoles(array $newUser, array $oldUser)
     {
         if (!$newUser || !is_array($newUser) ||
             !isset($newUser['userId']) ||
@@ -518,6 +527,7 @@ class UserTable extends SionTable implements UserMapperInterface
         $roles = [];
         foreach ($allRoleIds as $roleId) {
             $roles[$roleId] = [
+                //don't use strict checks because we can't be sure roleIds will always be the same type
                 'old' => in_array($roleId, $oldRoles),
                 'new' => in_array($roleId, $newRoles),
             ];
@@ -553,9 +563,14 @@ class UserTable extends SionTable implements UserMapperInterface
             }
         }
         if (isset($this->logger)) {
-            $this->logger->debug("JUser: Updated user roles.", ['result' => $return]);
+            $this->logger->info("JUser: Updated user roles.", ['result' => $return]);
         }
+        /*
+         * Even though SionTable::updateEntity should clear cache after an update, this function
+         * could be called from somewhere else. Clear the cache just in case
+         */
         $this->removeDependentCacheItems('user');
+        
         return count($return);
     }
 

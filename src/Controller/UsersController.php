@@ -239,7 +239,7 @@ class UsersController extends AbstractActionController
                 if ($table->updateEntity('user', $id, $data)) {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('User successfully updated.');
-                    $this->redirect()->toUrl($this->url()->fromRoute('juser'));
+                    return $this->redirect()->toUrl($this->url()->fromRoute('juser'));
                 } else {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                         ->addMessage('Error in form submission, please review.');
@@ -293,7 +293,7 @@ class UsersController extends AbstractActionController
                     } else {
                         $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                             ->addMessage('User successfully created.');
-                        $this->redirect()->toRoute('juser');
+                        return $this->redirect()->toRoute('juser');
                     }
                 } catch (\Exception $e) {
                     $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
@@ -343,7 +343,7 @@ class UsersController extends AbstractActionController
                     $table->createEntity('user-role', $data);
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('Role successfully created.');
-                    $this->redirect()->toRoute('juser');
+                    return $this->redirect()->toRoute('juser');
                 } catch (\Exception $e) {
                     $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                         ->addMessage('Error in form submission, please review.');
