@@ -256,6 +256,7 @@ return [
             \Swift_Mailer::class            => Service\SwiftMailerFactory::class,
             ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
             UserIdRoles::class              => UserIdRolesFactory::class,
+            Authentication\Adapter\JsonPost::class => Service\JsonPostFactory::class,
             //use this to override zfcuser's register form
 //             'zfcuser_register_form' => RegisterForm::class,
         ],
