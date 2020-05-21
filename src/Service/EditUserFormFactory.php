@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
@@ -10,7 +11,7 @@ use JUser\Model\PersonValueOptionsProviderInterface;
 /**
  * Factory responsible of priming the PatresTable service
  *
- * @author Jeff Ro <jeff.roedel.isp@gmail.com>
+ * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
 class EditUserFormFactory implements FactoryInterface
 {
@@ -29,10 +30,10 @@ class EditUserFormFactory implements FactoryInterface
         if ($container->has($personProvider)) {
             /** @var PersonValueOptionsProviderInterface $provider **/
             $provider = $container->get($personProvider);
-            if (!$provider instanceof PersonValueOptionsProviderInterface) {
+            if (! $provider instanceof PersonValueOptionsProviderInterface) {
                 throw new \InvalidArgumentException(
                     '`person_provider` specified in the JUser config does not implement'
-                    .' the PersonValueOptionsProviderInterface.'
+                    . ' the PersonValueOptionsProviderInterface.'
                 );
             }
             $persons = $provider->getPersonValueOptions();

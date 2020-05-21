@@ -38,7 +38,7 @@ class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggreg
     /**
      * @var ListenerAggregateInterface[]
      */
-    protected $listeners = array();
+    protected $listeners = [];
 
     public function __construct()
     {
@@ -50,7 +50,7 @@ class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggreg
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->listeners[] = $events->attach(MvcEvent::EVENT_DISPATCH_ERROR, array($this, 'onDispatchError'), -5000);
+        $this->listeners[] = $events->attach(MvcEvent::EVENT_DISPATCH_ERROR, [$this, 'onDispatchError'], -5000);
     }
 
     /**
@@ -82,7 +82,8 @@ class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggreg
         $identity   = $event->getApplication()->getServiceManager()->
             get('zfcuser_user_service')->getAuthService()->getIdentity();
 
-        if ($result instanceof Response
+        if (
+            $result instanceof Response
             || ! $routeMatch
             || ($response && ! $response instanceof Response)
             || ! (
@@ -102,7 +103,7 @@ class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggreg
         }
 
         if (null === $url) {
-            $url = $router->assemble(array(), array('name' => $this->redirectRoute));
+            $url = $router->assemble([], ['name' => $this->redirectRoute]);
         }
 
         // Work out where were we trying to get to

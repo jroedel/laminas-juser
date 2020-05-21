@@ -1,4 +1,5 @@
 <?php
+
 /**
  * BjyAuthorize Module (https://github.com/bjyoungblood/BjyAuthorize)
  *
@@ -21,12 +22,12 @@ class UserIdRolesFactory implements FactoryInterface
         /* @var $tableGateway \Zend\Db\TableGateway\TableGateway */
         $tableGateway = new TableGateway('users', $container->get('zfcuser_zend_db_adapter'));
         /* @var $userService \ZfcUser\Service\User */
-        
+
         $provider = new UserIdRoles($tableGateway);
-        
+
         return $provider;
     }
-    
+
     public function createService(ServiceLocatorInterface $serviceLocator)
     {
         return $this($serviceLocator, UserIdRoles::class);

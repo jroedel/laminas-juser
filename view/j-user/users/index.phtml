@@ -4,37 +4,39 @@ $this->headTitle($title);
 ?>
 <h1><?php echo $this->escapeHtml($this->translate($title)); ?></h1>
 <p><a href="<?php echo $this->url('juser/create');?>"><?php echo $this->translate("Add new user");
-    ?></a> | <a href="<?php echo $this->url('juser/create-role');?>"><?php
+?></a> | <a href="<?php echo $this->url('juser/create-role');?>"><?php
     echo $this->translate("Add new role");?></a></p>
 
 <table class="table">
 <tr>
-	<th><?php echo $this->translate("Username");?></th>
+    <th><?php echo $this->translate("Username");?></th>
     <th><?php echo $this->translate("Email");?></th>
     <th><?php echo $this->translate("Display Name");?></th>
     <th><?php echo $this->translate("Active");?></th>
     <th><?php echo $this->translate("Roles");?></th>
     <th><?php echo $this->translate("Person");?></th>
 </tr>
-<?php  foreach($users as $user) : ?>
+<?php  foreach ($users as $user) : ?>
 <tr>
-	<td><?php echo $this->escapeHtml($user['username']);
-	if ($this->isAllowed('route/juser/user/edit')):
-	   ?>&nbsp;<a href="<?php echo $this->url('juser/user/edit', [ 'user_id' => $user['userId']]);
-	   ?>"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></a><?php
+    <td><?php echo $this->escapeHtml($user['username']);
+    if ($this->isAllowed('route/juser/user/edit')) :
+        ?>&nbsp;<a href="<?php echo $this->url('juser/user/edit', [ 'user_id' => $user['userId']]);
+?>"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></a><?php
     endif;?></td>
-	<td><?php echo $this->escapeHtml($user['email']);?></td>
-	<td><?php echo $this->escapeHtml($user['displayName']);?></td>
-	<td><?php echo $user['active'] ? '✓' : '&times;';?></td>
-	<td><?php $rolesText = [];
-	foreach ($user['roles'] as $role) {
-	    $rolesText[] = $this->escapeHtml($role['name']);
-	}
-	echo implode(', ', $rolesText);?></td>
-	<td><?php if (isset($user['personId']) &&
-			isset($this->persons[$user['personId']])) {
-	    echo $this->formatPerson($this->persons[$user['personId']], ['editPencil' => true]);
-    }?></td>
+    <td><?php echo $this->escapeHtml($user['email']);?></td>
+    <td><?php echo $this->escapeHtml($user['displayName']);?></td>
+    <td><?php echo $user['active'] ? '✓' : '&times;';?></td>
+    <td><?php $rolesText = [];
+    foreach ($user['roles'] as $role) {
+        $rolesText[] = $this->escapeHtml($role['name']);
+    }
+    echo implode(', ', $rolesText);?></td>
+    <td><?php if (
+    isset($user['personId']) &&
+            isset($this->persons[$user['personId']])
+) {
+        echo $this->formatPerson($this->persons[$user['personId']], ['editPencil' => true]);
+        }?></td>
 </tr>
 <?php endforeach; ?>
 </table>

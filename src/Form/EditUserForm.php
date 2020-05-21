@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Form;
 
 use Zend\Form\Form;
@@ -177,7 +178,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         $this->hasPersonData = true;
         return $this;
     }
-    
+
     /**
      * Don't update password while on edit form
      */

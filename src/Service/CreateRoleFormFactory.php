@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
@@ -9,7 +10,7 @@ use JUser\Form\CreateRoleForm;
 /**
  * Factory responsible of priming the PatresTable service
  *
- * @author Jeff Ro <jeff.roedel.isp@gmail.com>
+ * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
 class CreateRoleFormFactory implements FactoryInterface
 {
@@ -25,7 +26,7 @@ class CreateRoleFormFactory implements FactoryInterface
         $form = new CreateRoleForm();
         $roles = $userTable->getRolesValueOptions();
         $form->get('parentId')->setValueOptions($roles);
-        
+
         return $form;
     }
 }

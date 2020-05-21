@@ -1,4 +1,5 @@
 <?php
+
 /**
  * BjyAuthorize Module (https://github.com/bjyoungblood/BjyAuthorize)
  *
@@ -28,14 +29,14 @@ class ZfcUserZendDbPlusSelfAsRoleFactory implements FactoryInterface
         /* @var $userService \ZfcUser\Service\User */
         $userService = $container->get('zfcuser_user_service');
         $config = $container->get('BjyAuthorize\Config');
-        
+
         $provider = new ZfcUserZendDbPlusSelfAsRole($tableGateway, $userService);
-        
+
         $provider->setDefaultRole($config['default_role']);
-        
+
         return $provider;
     }
-    
+
     /**
      * {@inheritDoc}
      *

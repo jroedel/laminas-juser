@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
@@ -7,7 +8,7 @@ use Interop\Container\ContainerInterface;
 /**
  * Factory responsible of priming the Swift Mailer service
  *
- * @author Jeff Ro <jeff.roedel.isp@gmail.com>
+ * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
 class SwiftMailerFactory implements FactoryInterface
 {

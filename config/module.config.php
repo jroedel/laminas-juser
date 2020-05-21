@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser;
 
 use Zend\Db\Adapter\Adapter;
@@ -108,7 +109,7 @@ return [
             //                'admin' => [],
             //        ]],
             //],
-            UserIdRoles::class => [], 
+            UserIdRoles::class => [],
             \BjyAuthorize\Provider\Role\ZendDb::class => [
                 'table'                 => 'user_role',
                 'identifier_field_name' => 'id',
@@ -292,9 +293,9 @@ return [
     ],
     'session_config' => [
         // Set the session and cookie expiries to 30 days
-        'cache_expire' => 30*24*60*60,
-        'cookie_lifetime' => 30*24*60*60,
-        'gc_maxlifetime'      => 30*24*60*60,
+        'cache_expire' => 30 * 24 * 60 * 60,
+        'cookie_lifetime' => 30 * 24 * 60 * 60,
+        'gc_maxlifetime'      => 30 * 24 * 60 * 60,
 //         'cookie_secure' => true,
     ],
     'sion_model' => [
@@ -338,7 +339,7 @@ return [
 //                 'create_action_valid_data_handler'      => 'createAssociation',
                 'create_action_redirect_route'          => 'association',
                 'create_action_redirect_route_key'      => 'user_id',
-                'create_action_redirect_route_key_field'=> 'userId',
+                'create_action_redirect_route_key_field' => 'userId',
 //                 'create_action_template'                   => 'project/events/create',
                 'enable_delete_action'                  => true,
 //                 'delete_action_acl_resource'             => 'event_:id',
@@ -366,7 +367,7 @@ return [
                     'updatedOn'         => 'update_datetime',
                     'updatedBy'         => 'update_by',
                     'emailVerified'     => 'email_verified',
-                    'mustChangePassword'=> 'must_change_password',
+                    'mustChangePassword' => 'must_change_password',
                     'isMultiPersonUser' => 'multi_person_user',
                     'verificationToken' => 'verification_token',
                     'verificationExpiration' => 'verification_expiration',

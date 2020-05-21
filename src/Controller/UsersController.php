@@ -18,21 +18,21 @@ use Zend\Log\LoggerInterface;
 
 /**
  *
- * @author Jeff Ro <jeff.roedel@gmail.com>
+ * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  * @todo   fix activation
  * @todo   email admins to alert new user request
  */
 class UsersController extends AbstractActionController
 {
-    const VERIFICATION_VERIFIED = 'verified';
-    const VERIFICATION_EXPIRED = 'expired';
+    public const VERIFICATION_VERIFIED = 'verified';
+    public const VERIFICATION_EXPIRED = 'expired';
 
     protected $userTable;
 
     protected $services = [];
-    
+
     protected $logger;
-    
+
     /**
      *
      * @return UserTable
@@ -54,7 +54,7 @@ class UsersController extends AbstractActionController
 
     public function getService($identifier)
     {
-        if (!array_key_exists($identifier, $this->services)) {
+        if (! array_key_exists($identifier, $this->services)) {
             throw new \Exception("No service `$identifier` found.");
         }
         return $this->services[$identifier];
@@ -67,7 +67,7 @@ class UsersController extends AbstractActionController
     public function changePasswordAction()
     {
         $id = (int)$this->params('user_id');
-        if (!$id) {
+        if (! $id) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
@@ -113,7 +113,7 @@ class UsersController extends AbstractActionController
     public function verifyEmailAction()
     {
         $token = $this->params()->fromQuery('token');
-        if (!isset($token)) {
+        if (! isset($token)) {
             $this->redirect()->toRoute('welcome');
         }
 
@@ -124,9 +124,12 @@ class UsersController extends AbstractActionController
             $logger->debug("JUser: receiving a request to verify user", ['verificationToken' => $token]);
         }
         $user = $table->getUserFromToken($token);
-        if (!isset($user)) {
+        if (! isset($user)) {
             if (isset($logger)) {
-                $logger->alert("JUser: we were unable to find the user based on their verification token.", ['verificationToken' => $token]);
+                $logger->alert(
+                    "JUser: we were unable to find the user based on their verification token.",
+                    ['verificationToken' => $token]
+                );
             }
             //@todo add a requestEmailVerificationAction(), redirect users to this
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
@@ -137,15 +140,15 @@ class UsersController extends AbstractActionController
         //expired or validated
         $status = null;
         $now = new \DateTime(null, new \DateTimeZone('UTC'));
-        if (!isset($user['verificationExpiration']) || $now > $user['verificationExpiration']) {
+        if (! isset($user['verificationExpiration']) || $now > $user['verificationExpiration']) {
             $status = self::VERIFICATION_EXPIRED;
             $user = self::setNewVerificationToken($user);
             $table->updateEntity('user', $user['userId'], $user);
             if (isset($logger)) {
                 $logger->alert(
-                    "JUser: The user's verification token was expired, we'll send them a new one.", 
+                    "JUser: The user's verification token was expired, we'll send them a new one.",
                     ['email' => $user['email']]
-                    );
+                );
             }
             /** @var Mailer $mailer */
             $mailer = $this->getService(Mailer::class);
@@ -156,7 +159,7 @@ class UsersController extends AbstractActionController
                 $logger->info(
                     "JUser: The user was successfully verified.",
                     ['email' => $user['email']]
-                    );
+                );
             }
             $user['active'] = true;
             $user['emailVerified'] = true;
@@ -181,10 +184,10 @@ class UsersController extends AbstractActionController
             if ($this->hasService($personProvider)) {
                 /** @var PersonValueOptionsProviderInterface $provider **/
                 $provider = $this->getService($personProvider);
-                if (!$provider instanceof PersonValueOptionsProviderInterface) {
+                if (! $provider instanceof PersonValueOptionsProviderInterface) {
                     throw new \InvalidArgumentException(
                         '`person_provider` specified in the JUser config does'
-                        .' not implement the PersonValueOptionsProviderInterface.'
+                        . ' not implement the PersonValueOptionsProviderInterface.'
                     );
                 }
                 $persons = $provider->getPersons();
@@ -202,13 +205,13 @@ class UsersController extends AbstractActionController
         /** @var UserTable $table **/
         $table = $this->userTable;
         $id = (int) $this->params()->fromRoute('user_id');
-        if (!$id) {
+        if (! $id) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
         $user = $table->getUser($id);
-        if (!$user) {
+        if (! $user) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
@@ -230,7 +233,7 @@ class UsersController extends AbstractActionController
             $form->setData($data);
             if ($form->isValid()) {
                 $data = $form->getData();
-                if (!$isPersonIdSet) {
+                if (! $isPersonIdSet) {
                     unset($data['personId']);
                 }
                 if (isset($this->logger)) {
@@ -271,7 +274,7 @@ class UsersController extends AbstractActionController
 
         /** @var EditUserForm $form */
         $form = $this->getService(EditUserForm::class);
-        
+
         //@todo find a way to get this out of here
         $form->setValidatorsForCreate();
         $form->setName('create_user');
@@ -287,7 +290,7 @@ class UsersController extends AbstractActionController
                     $data['password'] = $this->hashPassword($data['password']);
                 }
                 try {
-                    if (!($table->createEntity('user', $data))) {
+                    if (! ($table->createEntity('user', $data))) {
                         $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                             ->addMessage('Error in form submission, please review.');
                     } else {
@@ -361,7 +364,7 @@ class UsersController extends AbstractActionController
     public function deleteAction()
     {
         $id = (int)$this->params('user_id');
-        if (!$id) {
+        if (! $id) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
@@ -376,7 +379,7 @@ class UsersController extends AbstractActionController
             if ($form->isValid() && $form->getData()['userId'] == $id) {
                 if (1 != ($result = $table->deleteUser($id))) {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                        ->addMessage('Database error deleting user. '.$result);
+                        ->addMessage('Database error deleting user. ' . $result);
                 }
             } else {
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
@@ -407,13 +410,13 @@ class UsersController extends AbstractActionController
         $user['verificationExpiration'] = $dt;
         return $user;
     }
-    
+
     public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
         return $this;
     }
-    
+
     public function getLogger()
     {
         return $this->logger;

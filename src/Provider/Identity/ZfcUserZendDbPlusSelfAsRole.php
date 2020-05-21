@@ -6,7 +6,7 @@ use BjyAuthorize\Provider\Identity\ZfcUserZendDb;
 
 class ZfcUserZendDbPlusSelfAsRole extends ZfcUserZendDb
 {
-    
+
     /**
      *
      * {@inheritDoc}

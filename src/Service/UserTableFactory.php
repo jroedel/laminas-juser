@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
@@ -30,15 +31,15 @@ class UserTableFactory implements FactoryInterface
         $em = $container->get('Application')->getEventManager();
         $table->setPersistentCache($cache);
         $table->wireOnFinishTrigger($em);
-        
+
         $mailer = $container->get(Mailer::class);
         $table->setMailer($mailer);
-        
+
         if ($container->has('JUser\Logger')) {
             $logger = $container->get('JUser\Logger');
             $table->setLogger($logger);
         }
-        
+
         return $table;
     }
 }

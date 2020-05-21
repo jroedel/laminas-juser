@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Form;
 
 use Zend\Form\Form;

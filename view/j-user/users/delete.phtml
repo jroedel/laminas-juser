@@ -1,14 +1,21 @@
 <h1>Warning...</h1>
-<p><?php echo sprintf($this->translate("This change is permanent, are you sure you want to delete '%s'?"), $this->user->username); ?></p>
+<p><?php echo sprintf(
+    $this->translate("This change is permanent, are you sure you want to delete '%s'?"),
+    $this->user->username
+); ?></p>
 <?php
 $form = $this->form;
-$form->setAttribute('action', $this->url('juser/user/delete',
-		array('user_id' => $this->userId)));
+$form->setAttribute('action', $this->url(
+    'juser/user/delete',
+    ['user_id' => $this->userId]
+));
 $form->prepare();
 echo $this->form()->openTag($form);
 echo $this->formRow($form->get('userId'));
 echo $this->formRow($form->get('security'));
 echo $this->formSubmit($form->get('delete')); ?>
 &nbsp;
-<a class="btn btn-default" href="<?php echo $this->url('juser'); ?>"><?php echo $this->escapeHtml($this->translate("Cancel"));?></a>
+<a class="btn btn-default" href="<?php echo $this->url('juser'); ?>"><?php echo $this->escapeHtml(
+    $this->translate("Cancel")
+);?></a>
 <?php echo $this->form()->closeTag(); ?>

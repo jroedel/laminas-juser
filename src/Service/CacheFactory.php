@@ -21,7 +21,7 @@ class CacheFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         $config = $container->get('config');
-        if (!isset($config['juser']) || !isset($config['juser']['cache_options'])) {
+        if (! isset($config['juser']) || ! isset($config['juser']['cache_options'])) {
             throw new \Exception('Missing JUser cache configuration');
         }
 

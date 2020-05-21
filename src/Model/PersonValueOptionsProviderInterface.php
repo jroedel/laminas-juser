@@ -1,10 +1,11 @@
 <?php
+
 namespace JUser\Model;
 
 /**
  * Interface for person value options provider
  *
- * @author Jeff Ro <jeff.roedel.isp@gmail.com>
+ * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
 interface PersonValueOptionsProviderInterface
 {
@@ -14,6 +15,6 @@ interface PersonValueOptionsProviderInterface
      * @param bool $includeInactive
      */
     public function getPersonValueOptions($includeInactive = false);
-    
+
     public function getPersons();
 }

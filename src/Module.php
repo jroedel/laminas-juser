@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser;
 
 use Zend\Mvc\MvcEvent;
@@ -8,7 +9,7 @@ use Zend\Session\ManagerInterface;
 class Module
 {
     protected $isMailerWired = false;
-    
+
     public function getConfig()
     {
         return include __DIR__ . '/../config/module.config.php';
@@ -24,7 +25,8 @@ class Module
 
         //The static adapter is needed for the EditUserForm
         $config = $sm->get('Config');
-        if (isset($config['zfcuser']['zend_db_adapter']) &&
+        if (
+            isset($config['zfcuser']['zend_db_adapter']) &&
             $sm->has($config['zfcuser']['zend_db_adapter'])
         ) {
             $adapter = $sm->get($config['zfcuser']['zend_db_adapter']);

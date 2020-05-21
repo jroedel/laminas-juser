@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Service;
 
 use JUser\Controller\UsersController;

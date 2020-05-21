@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Service;
 
 use Zend\I18n\Translator\TranslatorInterface;
@@ -32,12 +33,12 @@ class Mailer implements TranslatorAwareInterface
      * @var RouteStackInterface $router
      */
     protected $router;
-    
+
     /**
      * @var \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
      */
     protected $flashMessenger;
-    
+
     /**
      * @var LoggerInterface $logger
      */
@@ -53,16 +54,16 @@ class Mailer implements TranslatorAwareInterface
         $userArray['displayName'] = $user->getDisplayName();
         $userArray['email'] = $user->getEmail();
         $this->sendVerificationEmail($userArray);
-        
+
         //Let the user know that they should look for an email
         $flashMessenger = $this->getFlashMessenger();
         if (isset($flashMessenger)) {
             $flashMessenger->addInfoMessage('Thanks so much for registering! '
-                .'Please check your email for a verification link. '
-                .'Make sure to check the spam folder if you don\'t see it.');
+                . 'Please check your email for a verification link. '
+                . 'Make sure to check the spam folder if you don\'t see it.');
         }
     }
-    
+
     /**
      * Send a flash message to the user to look for a verification email
      * @param User $user
@@ -74,14 +75,14 @@ class Mailer implements TranslatorAwareInterface
             $this->logger->notice(
                 "JUser: An inactive user is trying to logon, we'll ask them to check their email.",
                 ['email' => $user->getEmail()]
-                );
+            );
         }
         //if someone's trying to login to an account with expired token, give them a new one
-        if (!$user->isVerificationTokenValid()) {
+        if (! $user->isVerificationTokenValid()) {
             $this->logger->info(
                 "JUser: An inactive user's token is expired, giving them a new one.",
                 ['email' => $user->getEmail()]
-                );
+            );
             $user->setNewVerificationToken();
             $callback->updateUser($user);
             $this->sendVerificationEmail($user->getArrayCopy());
@@ -91,8 +92,8 @@ class Mailer implements TranslatorAwareInterface
         if (isset($flashMessenger)) {
             $flashMessenger->addInfoMessage(
                 'Please check your email for a verification link. '
-                .'Make sure to check the spam folder if you don\'t see it.'
-                );
+                . 'Make sure to check the spam folder if you don\'t see it.'
+            );
         }
     }
 
@@ -108,7 +109,7 @@ class Mailer implements TranslatorAwareInterface
             $this->logger->info("JUser: Sending a verification email.", ['email' => $user['email']]);
         }
         $start = microtime(true);
-        
+
         $link = $this->router->assemble([], [
             'name' => 'juser/verify-email',
             'force_canonical' => true,
@@ -157,13 +158,13 @@ EOT;
 
         // Optionally add any attachments
         //->attach(Swift_Attachment::fromPath('my-document.pdf'))
-        
+
         $result = $mailer->send($message);
         $timeElapsedSecs = microtime(true) - $start;
         if (isset($this->logger)) {
             $this->logger->debug("JUser: Finished sending verification email.", [
                 'email' => $user['email'],
-                'verificationToken' => substr($user['verificationToken'], 0, 4).'...',
+                'verificationToken' => substr($user['verificationToken'], 0, 4) . '...',
                 'result' => $result,
                 'elapsedSeconds' => $timeElapsedSecs,
             ]);
@@ -177,7 +178,7 @@ EOT;
      */
     public function getTranslator()
     {
-        if (!isset($this->translator)) {
+        if (! isset($this->translator)) {
             throw new \Exception('Something went wrong, no translator available');
         }
         return $this->translator;
@@ -255,7 +256,7 @@ EOT;
      */
     public function getMailer()
     {
-        if (!isset($this->mailer)) {
+        if (! isset($this->mailer)) {
             throw new \Exception('Something went wrong, no mailer available');
         }
         return $this->mailer;
@@ -278,7 +279,7 @@ EOT;
      */
     public function getUserTable()
     {
-        if (!isset($this->userTable)) {
+        if (! isset($this->userTable)) {
             throw new \Exception('Something went wrong, no userTable available');
         }
         return $this->userTable;
@@ -301,7 +302,7 @@ EOT;
      */
     public function getRouter()
     {
-        if (!isset($this->router)) {
+        if (! isset($this->router)) {
             throw new \Exception('Something went wrong, no router available');
         }
         return $this->router;
@@ -317,7 +318,7 @@ EOT;
         $this->router = $router;
         return $this;
     }
-    
+
     /**
      * Get the flashMessenger object
      * @return \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger
@@ -326,7 +327,7 @@ EOT;
     {
         return $this->flashMessenger;
     }
-    
+
     /**
      * Set the flashMessenger object
      * @param \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
@@ -337,7 +338,7 @@ EOT;
         $this->flashMessenger = $flashMessenger;
         return $this;
     }
-    
+
     /**
      * Get the logger object
      * @return LoggerInterface
@@ -346,7 +347,7 @@ EOT;
     {
         return $this->logger;
     }
-    
+
     /**
      * Set the logger object
      * @param LoggerInterface $flashMessenger

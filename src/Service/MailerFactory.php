@@ -1,4 +1,5 @@
 <?php
+
 namespace JUser\Service;
 
 use Zend\ServiceManager\Factory\FactoryInterface;
@@ -11,7 +12,7 @@ use Zend\Log\LoggerInterface;
 /**
  * Factory responsible of priming the Mailer service
  *
- * @author Jeff Ro <jeff.roedel.isp@gmail.com>
+ * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
 class MailerFactory implements FactoryInterface
 {
@@ -27,18 +28,19 @@ class MailerFactory implements FactoryInterface
         /** @var \Zend\Router\Http\TreeRouteStack $router */
         $router = $container->get(RouteStackInterface::class);
         $routerRequestUri = $router->getRequestUri();
-        if (!isset($routerRequestUri)) {
+        if (! isset($routerRequestUri)) {
             /** @var \Zend\Http\PhpEnvironment\Request $request */
             $request = $container->get('Request');
             $router->setRequestUri($request->getUri());
         }
-       
+
         $plugins = $container->get(PluginManager::class);
         /** @var \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger */
         $flashMessenger = $plugins->get('flashmessenger');
-        
+
         $config = $container->get('Config');
-        if (isset($config['juser']) 
+        if (
+            isset($config['juser'])
             && isset($config['juser']['logger_service'])
             && $container->has($config['juser']['logger_service'])
         ) {

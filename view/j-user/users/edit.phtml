@@ -13,7 +13,7 @@ echo $this->formRow($form->get('email'));
 echo $this->formRow($form->get('displayName'));
 $this->formSelect()->setTranslatorEnabled(false);
 echo $this->formRow($form->get('rolesList'));
-if (!empty($form->get('personId')->getValueOptions())) {
+if (! empty($form->get('personId')->getValueOptions())) {
     echo $this->formRow($form->get('personId'));
 }
 echo $this->formRow($form->get('isMultiPersonUser'));
@@ -23,62 +23,76 @@ echo $this->formRow($form->get('active'));
 echo $this->formRow($form->get('security'));
 echo $this->formSubmit($form->get('submit')); ?>
 &nbsp;
-<button type="button" class="btn btn-warning" data-toggle="modal" data-target="#changePasswordModal"><?php echo $this->escapeHtml($this->translate("Change Password"));?></button>
+<button type="button" class="btn btn-warning" data-toggle="modal" data-target="#changePasswordModal"><?php
+echo $this->escapeHtml($this->translate("Change Password"));
+?></button>
 &nbsp;
-<button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal"><?php echo $this->escapeHtml($this->translate("Delete"));?></button>
+<button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal"><?php
+echo $this->escapeHtml($this->translate("Delete"));
+?></button>
 
 <?php echo $this->form()->closeTag($form); ?>
 <!-- Modal -->
-<div class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" id="changePasswordModal" aria-labelledby="mySmallModalLabel">
+<div class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" id="changePasswordModal"
+aria-labelledby="mySmallModalLabel">
 <div class="modal-dialog modal-sm">
 <div class="modal-content">
 <div class="modal-header">
-<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;
+</span></button>
 <h4 class="modal-title"><?php echo $this->translate('Careful');?>...</h4>
       </div>
       <div class="modal-body">
-        <p><?php echo sprintf($this->translate("You are about to change %s 's password"), $this->user['username']);?></p>
+        <p><?php
+        echo sprintf($this->translate("You are about to change %s 's password"), $this->user['username']);
+        ?></p>
         <?php $form = $this->changePasswordForm;
-        	$form->setAttribute('action', $this->url('juser/user/change-password',
-        			array('user_id' => $this->userId)));
-        	$form->prepare();
- 			echo $this->form()->openTag($form);
-			echo $this->formRow($form->get('userId'));
-			echo $this->formRow($form->get('newCredential'));
-			echo $this->formRow($form->get('newCredentialVerify'));
-			echo $this->formRow($form->get('security'));
-			echo $this->formSubmit($form->get('submit'));
-			echo '&nbsp;';
-			echo $this->formButton($form->get('cancel'));
-			echo $this->form()->closeTag();
-        ?>
+            $form->setAttribute('action', $this->url(
+                'juser/user/change-password',
+                ['user_id' => $this->userId]
+            ));
+            $form->prepare();
+            echo $this->form()->openTag($form);
+            echo $this->formRow($form->get('userId'));
+            echo $this->formRow($form->get('newCredential'));
+            echo $this->formRow($form->get('newCredentialVerify'));
+            echo $this->formRow($form->get('security'));
+            echo $this->formSubmit($form->get('submit'));
+            echo '&nbsp;';
+            echo $this->formButton($form->get('cancel'));
+            echo $this->form()->closeTag();
+            ?>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Modal -->
-<div class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" id="deleteModal" aria-labelledby="mySmallModalLabel">
+<div class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" id="deleteModal"
+aria-labelledby="mySmallModalLabel">
 <div class="modal-dialog modal-sm">
 <div class="modal-content">
 <div class="modal-header">
-<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;
+</span></button>
 <h4 class="modal-title"><?php echo $this->translate('Careful');?>...</h4>
       </div>
       <div class="modal-body">
         <p><?php echo sprintf($this->translate("You are about to delete %s"), $this->user['username']); ?></p>
         <?php $form = $this->deleteUserForm;
-        	$form->setAttribute('action', $this->url('juser/user/delete',
-        			array('user_id' => $this->userId)));
-        	$form->prepare();
- 			echo $this->form()->openTag($form);
-			echo $this->formRow($form->get('userId'));
-			echo $this->formRow($form->get('security'));
-			echo $this->formSubmit($form->get('delete'));
-			echo '&nbsp;';
-			echo $this->formButton($form->get('cancel'));
-			echo $this->form()->closeTag();
-        ?>
+            $form->setAttribute('action', $this->url(
+                'juser/user/delete',
+                ['user_id' => $this->userId]
+            ));
+            $form->prepare();
+            echo $this->form()->openTag($form);
+            echo $this->formRow($form->get('userId'));
+            echo $this->formRow($form->get('security'));
+            echo $this->formSubmit($form->get('delete'));
+            echo '&nbsp;';
+            echo $this->formButton($form->get('cancel'));
+            echo $this->form()->closeTag();
+            ?>
       </div>
     </div>
   </div>

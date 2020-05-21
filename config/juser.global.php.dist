@@ -1,7 +1,7 @@
 <?php
 return [
     'juser' => [
-    	'person_provider' => MyModule\Model\PersonTable::class,
+        'person_provider' => MyModule\Model\PersonTable::class,
         'mail_transport' => [
             'class'   => Zend\Mail\Transport\Smtp::class,
             'options' => [
@@ -28,13 +28,13 @@ return [
     ],
     'zfcuser' => [
         'zend_db_adapter' => Zend\Db\Adapter\Adapter::class,
-        
+
         'enable_default_entities' => false,
 
         'enable_registration' => false,
-        
+
         'use_registration_form_captcha' => true,
-            
+
         'form_captcha_options' => [
                 'class'   => 'figlet',
                 'options' => [
@@ -44,52 +44,52 @@ return [
                 ],
         ],
         'enable_display_name' => true,
-            
+
         'enable_username' => true,
-            
+
         'auth_identity_fields' => [ 'username', 'email' ],
-            
+
         'login_redirect_route' => 'home',
-        
+
         'logout_redirect_route' => 'home',
-        
+
         'enable_user_state' => true,
         //the user state will stay at 0 until the user has been validated
         'default_user_state' => 0,
-        
+
         'allowed_login_states' => [1],
     ],
     'slm_locale' => [
-	    /**
-	     * Beginning of SlmLocale configuration
-	     * 
-	     * Default locale
-	     *
-	     */
-	    'default' => 'en-US',
-	
-	    /**
-	     * Supported locales
-	     *
-	     */
-	    'supported' => ['en_US', 'es_ES', 'de_DE', 'pt_BR'],
-	
-	    /**
-	     * Strategies
-	     *
-	     */
-	    'strategies' => ['query', 'cookie', 'acceptlanguage'],
-	    
-	    /**
-	     * End of SlmLocale configuration
-	     */
-	],
+        /**
+         * Beginning of SlmLocale configuration
+         *
+         * Default locale
+         *
+         */
+        'default' => 'en-US',
+
+        /**
+         * Supported locales
+         *
+         */
+        'supported' => ['en_US', 'es_ES', 'de_DE', 'pt_BR'],
+
+        /**
+         * Strategies
+         *
+         */
+        'strategies' => ['query', 'cookie', 'acceptlanguage'],
+
+        /**
+         * End of SlmLocale configuration
+         */
+    ],
 
     /**
      * GoalioRememberMe Configuration
      */
     'goaliorememberme' => [
-    
+
         /**
          * RememberMe Model Entity Class
     *
@@ -97,7 +97,7 @@ return [
     * instead of the default one provided. Default is ZfcUser\Entity\User.
     */
         //'remember_me_entity_class' => 'GoalioRememberMe\Entity\RememberMe',
-    
+
         /**
          * Remember me cookie expire time
     *
@@ -107,21 +107,22 @@ return [
     * Accepted values: the number of seconds the user should be remembered
     */
         'cookie_expire' => 2592000,
-    
+
         /**
          * Remember me cookie domain
     *
     * Default value: null (current domain]
-        * Accepted values: a string containing the domain (example.com], subdomains (sub.example.com] or the all subdomains qualifier (.example.com]
+        * Accepted values: a string containing the domain (example.com],
+            subdomains (sub.example.com] or the all subdomains qualifier (.example.com]
             */
         //'cookie_domain' => null,
-    
+
         /**
          * End of GoalioRememberMe configuration
         */
     ],
     'bjyauthorize' => [
-    
+
         'guards' => [
             /* If this guard is specified here (i.e. it is enabled], it will block
              * access to all routes unless they are specified here.
@@ -141,7 +142,7 @@ return [
                 ['route' => 'juser/create-role', 'roles' => ['administrator']],
             ],
         ],
-	],
+    ],
     'session_manager' => [
         'validators' => [
             HttpUserAgent::class,
@@ -149,7 +150,7 @@ return [
     ],
     'service_manager' => [
         'aliases' => [
-        	'JUser\Logger' => \Zend\Log\LoggerInterface::class
+            'JUser\Logger' => \Zend\Log\LoggerInterface::class
         ],
     ],
 ];
