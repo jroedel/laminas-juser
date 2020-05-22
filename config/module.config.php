@@ -237,6 +237,7 @@ return [
     'controllers' => [
         'factories' => [
             Controller\UsersController::class => Service\UsersControllerFactory::class,
+            Controller\LoginV1ApiController::class => Service\LoginV1ApiControllerFactory::class,
         ],
     ],
     'view_manager' => [

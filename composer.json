@@ -20,7 +20,8 @@
         "jroedel/locale": "dev-master@dev",
         "beaucal/beaucal-invalid-session": "^0.3.0",
         "swiftmailer/swiftmailer": "^6.0",
-        "jroedel/zf2-sion-model": "dev-master"
+        "jroedel/zf2-sion-model": "dev-master",
+        "multidots/zf3-rest-api": "dev-master"
     },
 	"autoload": {
     	"psr-4": {

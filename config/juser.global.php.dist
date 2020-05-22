@@ -128,6 +128,7 @@ return [
              * access to all routes unless they are specified here.
             */
             'BjyAuthorize\Guard\Route' => [
+                ['route' => 'api-v1-login', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/login', 'roles' => ['guest']],
                 ['route' => 'zfcuser/logout', 'roles' => ['user']],
                 ['route' => 'change-password', 'roles' => ['user']],
