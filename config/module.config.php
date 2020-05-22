@@ -120,6 +120,16 @@ return [
     ],
     'router' => [
         'routes' => [
+            'api-v1-login' => [
+                'type'    => Literal::class,
+                'options' => [
+                    'route'    => '/api/v1/users/login',
+                    'defaults' => [
+                        'action' => 'login',
+                        'controller' => Controller\LoginV1ApiController::class,
+                    ],
+                ],
+            ],
             'juser' => [
                 'type'    => Literal::class,
                 'options' => [
@@ -256,7 +266,8 @@ return [
             \Swift_Mailer::class            => Service\SwiftMailerFactory::class,
             ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
             UserIdRoles::class              => UserIdRolesFactory::class,
-            Authentication\Adapter\JsonPost::class => Service\JsonPostFactory::class,
+            Authentication\Adapter\CredentialOrTokenQueryParams::class =>
+                Service\CredentialOrTokenQueryParamsFactory::class,
             //use this to override zfcuser's register form
 //             'zfcuser_register_form' => RegisterForm::class,
         ],

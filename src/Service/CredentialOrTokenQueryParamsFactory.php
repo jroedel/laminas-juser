@@ -9,26 +9,15 @@
 namespace JUser\Service;
 
 use Interop\Container\ContainerInterface;
-use Zend\ServiceManager\FactoryInterface;
-use Zend\ServiceManager\ServiceLocatorInterface;
-use JUser\Authentication\Adapter\JsonPost;
+use Zend\ServiceManager\Factory\FactoryInterface;
+use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
 
-class JsonPostFactory implements FactoryInterface
+class CredentialOrTokenQueryParamsFactory implements FactoryInterface
 {
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        $adapter = new JsonPost();
+        $adapter = new CredentialOrTokenQueryParams();
         $adapter->setServiceManager($container);
         return $adapter;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @return \BjyAuthorize\View\UnauthorizedStrategy
-     */
-    public function createService(ServiceLocatorInterface $serviceLocator)
-    {
-        return $this($serviceLocator, JsonPost::class);
     }
 }
