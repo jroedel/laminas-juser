@@ -6,7 +6,7 @@ use JUser\Controller\LoginV1ApiController;
 use Zend\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
-use Zend\Authentication\Adapter\DbTable\CredentialTreatmentAdapter;
+use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
 
 class LoginV1ApiControllerFactory implements FactoryInterface
 {
@@ -18,7 +18,7 @@ class LoginV1ApiControllerFactory implements FactoryInterface
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
         $serviceLocator = $container->getServiceLocator();
-        $adapter        = $serviceLocator->get(CredentialTreatmentAdapter::class);
+        $adapter        = $serviceLocator->get(CredentialOrTokenQueryParams::class);
         $userTable      = $serviceLocator->get(UserTable::class);
 
         $controller = new LoginV1ApiController($adapter, $userTable);

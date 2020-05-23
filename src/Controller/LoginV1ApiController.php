@@ -82,8 +82,10 @@ class LoginV1ApiController extends ApiController
                 'jti' => $jwtId,
             ];
             $jwt = $this->generateJwtToken($payload);
+            //@todo log the creation of this JWT
+            //@todo we should register the JWT id in the database just for auditing.
             $this->httpStatusCode = 200;
-            $this->apiResponse = ['jwt' => $jwt, 'expiration' => $expiration->format('U')];
+            $this->apiResponse = ['jwt' => $jwt, 'expiration' => $expiration->format('Y-m-d\TH:i:s\Z')];
             return $this->createResponse();
         }
     }
