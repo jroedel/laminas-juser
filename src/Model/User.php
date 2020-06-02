@@ -332,13 +332,13 @@ class User implements UserInterface
      * Generate a verification token
      * @return void
      */
-    public static function generateVerificationToken()
+    public static function generateVerificationToken($tokenLength = self::VERIFICATION_TOKEN_LENGTH)
     {
         static $charList;
         if (! isset($charList)) {
             $charList = implode('', array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
         }
-        $verificationToken = Rand::getString(self::VERIFICATION_TOKEN_LENGTH, $charList);
+        $verificationToken = Rand::getString($tokenLength, $charList);
         return $verificationToken;
     }
 

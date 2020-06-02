@@ -26,6 +26,7 @@ class UsersController extends AbstractActionController
 {
     public const VERIFICATION_VERIFIED = 'verified';
     public const VERIFICATION_EXPIRED = 'expired';
+    public const VERIFICATION_TOKEN_EXPIRATION_INTERVAL = 'P1D';
 
     protected $userTable;
 
@@ -402,11 +403,13 @@ class UsersController extends AbstractActionController
         ]);
     }
 
-    protected static function setNewVerificationToken($user)
-    {
+    protected static function setNewVerificationToken(
+        $user,
+        $expirationInterval = self::VERIFICATION_TOKEN_EXPIRATION_INTERVAL
+    ) {
         $user['verificationToken'] = User::generateVerificationToken();
         $dt = new \DateTime(null, new \DateTimeZone('UTC'));
-        $dt->add(new \DateInterval('P1D'));
+        $dt->add(new \DateInterval($expirationInterval));
         $user['verificationExpiration'] = $dt;
         return $user;
     }

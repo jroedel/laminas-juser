@@ -32,8 +32,9 @@ class CredentialOrTokenQueryParams extends Db
         //we're only interested in json requests, otherwise
         $contentType = $request->getHeader('Content-Type');
         $isGet = 'GET' === $request->getMethod();
-        if (!$isGet
-            || !$contentType instanceof HeaderInterface
+        if (
+            ! $isGet
+            || ! $contentType instanceof HeaderInterface
             || 'application/json' !== $contentType->getFieldValue()
         ) {
             $result = new AuthenticationResult(
@@ -44,7 +45,7 @@ class CredentialOrTokenQueryParams extends Db
             return $result;
         }
         $data = $request->getQuery();
-        if (!isset($data['identity']) || !isset($data['credential'])) {
+        if (! isset($data['identity']) || ! isset($data['credential'])) {
             $message = 'Please provide query parameters: identity and credential.'; //@todo update later
             $result = new AuthenticationResult(
                 AuthenticationResult::FAILURE,
@@ -61,7 +62,7 @@ class CredentialOrTokenQueryParams extends Db
 
         // Cycle through the configured identity sources and test each
         $fields = $this->getOptions()->getAuthIdentityFields();
-        while (!is_object($userObject) && count($fields) > 0) {
+        while (! is_object($userObject) && count($fields) > 0) {
             $mode = array_shift($fields);
             switch ($mode) {
                 case 'username':
@@ -73,7 +74,7 @@ class CredentialOrTokenQueryParams extends Db
             }
         }
 
-        if (!$userObject) {
+        if (! $userObject) {
             $result = new AuthenticationResult(
                 AuthenticationResult::FAILURE_IDENTITY_NOT_FOUND,
                 null,
@@ -85,7 +86,7 @@ class CredentialOrTokenQueryParams extends Db
 
         if ($this->getOptions()->getEnableUserState()) {
             // Don't allow user to login if state is not in allowed list
-            if (!in_array($userObject->getState(), $this->getOptions()->getAllowedLoginStates())) {
+            if (! in_array($userObject->getState(), $this->getOptions()->getAllowedLoginStates())) {
                 $result = new AuthenticationResult(
                     AuthenticationResult::FAILURE,
                     null,
@@ -98,7 +99,7 @@ class CredentialOrTokenQueryParams extends Db
 
         $bcrypt = new Bcrypt();
         $bcrypt->setCost($this->getOptions()->getPasswordCost());
-        if (!$bcrypt->verify($credential, $userObject->getPassword())) {
+        if (! $bcrypt->verify($credential, $userObject->getPassword())) {
             // Password does not match
             $result = new AuthenticationResult(
                 AuthenticationResult::FAILURE_CREDENTIAL_INVALID,
@@ -124,7 +125,7 @@ class CredentialOrTokenQueryParams extends Db
 
     public function getRequest()
     {
-        if (!isset($this->request)) {
+        if (! isset($this->request)) {
             $sm = $this->getServiceManager();
             $this->request = $sm->get('Request');
         }

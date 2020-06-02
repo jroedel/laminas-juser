@@ -20,8 +20,10 @@ class LoginV1ApiControllerFactory implements FactoryInterface
         $serviceLocator = $container->getServiceLocator();
         $adapter        = $serviceLocator->get(CredentialOrTokenQueryParams::class);
         $userTable      = $serviceLocator->get(UserTable::class);
+        $mailTransport  = $serviceLocator->get(\Zend\Mail\Transport\TransportInterface::class);
+        $config         = $serviceLocator->get('Config');
 
-        $controller = new LoginV1ApiController($adapter, $userTable);
+        $controller = new LoginV1ApiController($adapter, $userTable, $mailTransport, $config);
         return $controller;
     }
 }
