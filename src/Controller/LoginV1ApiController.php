@@ -94,7 +94,7 @@ class LoginV1ApiController extends ApiController
                 $this->apiResponse['message'] = $authResult->getMessages()[0];
                 return $this->createResponse();
             }
-            $jwtResponse = $this->getNewJwtToken($authResult->getIdentity()['id']);
+            $jwtResponse = $this->getNewJwtTokenResponse($authResult->getIdentity()['id']);
             //@todo log the creation of this JWT
             //@todo we should register the JWT id in the database just for auditing.
             $this->httpStatusCode = 200;
