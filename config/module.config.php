@@ -299,6 +299,7 @@ return [
             UserIdRoles::class              => UserIdRolesFactory::class,
             Authentication\Adapter\CredentialOrTokenQueryParams::class =>
                 Service\CredentialOrTokenQueryParamsFactory::class,
+            Authentication\Adapter\Jwt::class => Service\JwtFactory::class,
             //use this to override zfcuser's register form
 //             'zfcuser_register_form' => RegisterForm::class,
         ],
