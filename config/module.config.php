@@ -64,7 +64,7 @@ return [
             'sender' => 'juser@example.com',
             'subject' => 'Sign in verification',
             'body' => 'Thanks for signing up!, Please enter the following code into the app where you are '
-            .'signing in:%s'.PHP_EOL.'If you did not request a login, please ignore this message. Thanks!',
+            .'signing in:'.PHP_EOL.'%s'.PHP_EOL.'If you did not request a login, please ignore this message. Thanks!',
         ],
         'api_verification_token_length' => 6,
         'api_verification_token_expiration_interval' => 'P1D',
