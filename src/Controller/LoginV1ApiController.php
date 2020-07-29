@@ -5,14 +5,17 @@ namespace JUser\Controller;
 use RestApi\Controller\ApiController;
 use Zend\Validator\EmailAddress;
 use Zend\Math\Rand;
-use Carbon\Carbon;
 use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
 use JUser\Model\UserTable;
 use Zend\Mail\Transport\TransportInterface;
 use JUser\Model\User;
+use Zend\Log\LoggerAwareTrait;
+use Zend\Validator\StringLength;
 
 class LoginV1ApiController extends ApiController
 {
+    use LoggerAwareTrait;
+    
     protected const LOGIN_ACTION_VERIFICATION_TOKEN_REQUEST = 'verification-token-request';
     protected const LOGIN_ACTION_AUTHENTICATE_BY_CREDENTIAL = 'authenticate';
 
@@ -36,6 +39,12 @@ class LoginV1ApiController extends ApiController
      * @var array $config
      */
     protected $config;
+    
+    /**
+     * Set by the api_verification_request_non_registered_user_email_handler
+     * @var callable $apiVerificationRequestNonRegisteredUserEmailHandler
+     */
+    protected $apiVerificationRequestNonRegisteredUserEmailHandler;
 
     public function __construct(
         CredentialOrTokenQueryParams $adapter,
@@ -48,23 +57,7 @@ class LoginV1ApiController extends ApiController
         $this->mailTransport = $mailTransport;
         $this->config = $config;
     }
-
-    /**
-     * Should always be GET
-     * There are 3 query parameters we look at:
-     * 1. identity (required)
-     * 2. credential - the user password. Not every user will have a password
-     * 3. token - a verification token sent to email. There's only one valid user token at a time
-     *
-     * There are 3 main cases handled here:
-     * A. They just give just us an identity param - we check if the account exists
-     *      If not, AND the email is in the person table, a new account will be created.
-     *      If everything checks out, we send an email (out-of-band verification) with a token.
-     *      We return a 202 code if the email was sent. Otherwise, we'll send a ...@todo finish
-     * B. They give us an 'identity' and 'token' query param. We check the user table to see if
-     *      it matches AND is still valid. If so, we return a JSON response with a JWT
-     * C. They send us an 'identity' and 'credential'. We check if they match, and return a JWT.
-     */
+    
     public function loginAction()
     {
         //make sure verb is GET
@@ -73,57 +66,68 @@ class LoginV1ApiController extends ApiController
             $this->apiResponse['message'] = 'This method only accepts GET requests.';
             return $this->createResponse();
         }
+        
+        //@todo should we do some validation first?
 
-        $queryParams = $this->params()->fromQuery();
-        if (count($queryParams) === 1 && isset($queryParams['identity'])) { //we handle this
-            //@todo
-            $this->httpStatusCode = 503;
-            $this->apiResponse['message'] = 'We haven\'t yet finished developing emailed verification tokens.';
-            return $this->createResponse();
-        } else { //we pass it on to the authenticator
-            /**
-             * @var \Zend\Authentication\Result $auth
-             */
-            $authResult = $this->adapter->authenticate();
-            if (! $authResult->isValid()) {
-                if (\Zend\Authentication\Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
-                    $this->httpStatusCode = 400;
-                } else {
-                    $this->httpStatusCode = 401;
-                }
-                $this->apiResponse['message'] = $authResult->getMessages()[0];
-                return $this->createResponse();
+        /**
+         * @var \Zend\Authentication\Result $auth
+         */
+        $authResult = $this->adapter->authenticate();
+        if (! $authResult->isValid()) {
+            if (\Zend\Authentication\Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
+                $this->httpStatusCode = 400;
+            } else {
+                $this->httpStatusCode = 401;
             }
-            $jwtResponse = $this->getNewJwtTokenResponse($authResult->getIdentity()['id']);
-            //@todo log the creation of this JWT
-            //@todo we should register the JWT id in the database just for auditing.
-            $this->httpStatusCode = 200;
-            $this->apiResponse = $jwtResponse;
+            $this->apiResponse['message'] = $authResult->getMessages()[0];
             return $this->createResponse();
         }
+        $userId = $authResult->getIdentity()['id'];
+        $jwtResponse = $this->getNewJwtTokenResponse($userId);
+        
+        $this->httpStatusCode = 200;
+        $this->apiResponse = $jwtResponse;
+        return $this->createResponse();
     }
     
     public function requestVerificationTokenAction()
     {
         $identityParam = $this->params()->fromQuery('identity');
+        //validate identity: either an email address or a valid username
+        $identityValidator = self::getIdentityValidator();
+        if (! $identityValidator->isValid($identityParam)) {
+            $this->httpStatusCode = 400;
+            $this->apiResponse['message'] = $identityValidator->getMessages();
+            return $this->createResponse();
+        }
+        
         $userObject = $this->lookupUserObject($identityParam);
         //just check the identity parameter, look them up and send an email
         if ($userObject) {
-            $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail());
+            if (! $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail())) {
+                $this->httpStatusCode = 500;
+                $this->apiResponse['message'] = 'Error sending verification email';
+                return $this->createResponse();
+            }
         } elseif ($this->isEmailAddress($identityParam)) {
-            //here we should allow the package user to send us a function to see if we allow a new account to create
-            /*
-             * @todo Allow for consuming package to decide if an email address should be allowed to make an account
-             * How do we do this? a Validator to which we pass an email address and they just respond TRUE or FALSE
-             * * The user sets a config with a service.
-             * Should new users be created automatically when api/v1/users/request-verification-token
-             * allow_auto_account_creation_through_api=bool
-             * Allows the user to allow or deny the creation of an account according to email address:
-             * auto_account_creation_through_api_email_validator
-             */
-            
+            if (isset($this->apiVerificationRequestNonRegisteredUserEmailHandler)) {
+                $userObject = call_user_func(
+                    $this->apiVerificationRequestNonRegisteredUserEmailHandler, 
+                    $identityParam
+                    );
+                if ($userObject instanceof \ZfcUser\Entity\UserInterface) {
+                    if (! $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail())) {
+                        $this->httpStatusCode = 500;
+                        $this->apiResponse['message'] = 'Error sending verification email';
+                        return $this->createResponse();
+                    }
+                }
+            }
         } else {
             //there's nothing we can do here. Just error out
+            $this->httpStatusCode = 403;
+            $this->apiResponse['message'] = 'Provided identity was not found';
+            return $this->createResponse();
         }
         $this->httpStatusCode = 200;
         $this->apiResponse['message'] = 'Hang in there champ, you\'ll be getttin that email.';
@@ -191,15 +195,57 @@ class LoginV1ApiController extends ApiController
         return $userObject;
     }
     
-    protected function createAndSendVerificationEmail($userId, $userEmail)
+    public static function getIdentityValidator()
     {
-        $verificationToken = $this->createUserVerificationToken($userId);
-        $message = $this->createVerificationEmail($verificationToken, $userEmail);
-//         var_dump('were sending email to '.$userEmail);
-        $this->mailTransport->send($message);
-//         var_dump('weve presumably sent the message');
+        static $validator;
+        if (! isset($validator)) {
+            $validator = new StringLength([
+                'min' => 3,
+                'max' => 255,
+                'encoding' => 'UTF-8',
+            ]);
+            //@todo make this more restrictive
+        }
+        return $validator;
     }
     
+    /**
+     * Create a verification token and send it to the user
+     * @param int $userId
+     * @param string $userEmail
+     * @return boolean
+     */
+    protected function createAndSendVerificationEmail($userId, $userEmail)
+    {
+        try { //there could be db errors here
+            $verificationToken = $this->createUserVerificationToken($userId);
+        } catch (\Exception $e) {
+            $this->getLogger()->crit(
+                'JUser: Error recording new verification token in db',
+                ['userId' => $userId, 'message' => $e->getMessage()]
+                );
+            return false;
+        }
+        $message = $this->createVerificationEmail($verificationToken, $userEmail);
+        $this->getLogger()->debug('JUser: About to attempt sending verification email to user', ['userId' => $userId]);
+        try {
+        $this->mailTransport->send($message);
+        } catch (\Exception $e) {
+            $this->getLogger()->crit(
+                'JUser: Error sending verification email to user', 
+                ['userId' => $userId, 'message' => $e->getMessage()]
+                );
+            return false;
+        }
+        $this->getLogger()->info('JUser: Sent verification email to user', ['userId' => $userId]);
+        return true;
+    }
+    
+    /**
+     * Generate a new verification token and save it to the user table in the database
+     * @param int $userId
+     * @return string
+     */
     protected function createUserVerificationToken($userId)
     {
         $token = User::generateVerificationToken($this->config['juser']['api_verification_token_length']);
@@ -211,30 +257,57 @@ class LoginV1ApiController extends ApiController
             $userId,
             ['verificationToken' => $token, 'verificationExpiration' => $expiration]
         );
-        //@todo log this
+        $this->getLogger()->debug('JUser: A new API verification token was recorded in the db', ['userId' => $userId]);
         return $token;
     }
     
+    /**
+     * Generate an email for the user
+     * @param string $token
+     * @param string $to
+     * @param array $bcc
+     * @return \Zend\Mail\Message
+     */
     protected function createVerificationEmail($token, $to, $bcc = [])
     {
         $messageConfig = $this->config['juser']['verification_email_message'];
         $messageConfig['body'] = sprintf($messageConfig['body'], $token);
         $message = \Zend\Mail\MessageFactory::getInstance($messageConfig);
-        $message->addTo($to)->addBcc($bcc);
+        $message->addTo($to);
+        if (! empty($bcc)) {
+            $message->addBcc($bcc);
+        }
         return $message;
     }
     
+    /**
+     * Creates a new JWT token from the juser config options and returns it in an
+     * array format that may be returned as a response
+     * @param int $userId
+     * @return string[]
+     */
     protected function getNewJwtTokenResponse($userId)
     {
-        $jwtId = Rand::getString(10);
-        $expiration = Carbon::now()
-        ->addMonths(6); //@todo make configurable
+        static $options;
+        if (! is_array($options)) {
+            $config = $this->config['juser'];
+            $options = [
+                'jwt_id_length' => $config['jwt_id_length'],
+                'jwt_id_charlist' => $config['jwt_id_charlist'],
+                'jwt_expiration_interval' => $config['jwt_expiration_interval'],
+            ];
+        }
+        $jwtId = Rand::getString($options['jwt_id_length'], $options['jwt_id_charlist']);
+        $expiration = new \DateTime(null, new \DateTimeZone('UTC'));
+        $expiration->add(new \DateInterval($config['jwt_expiration_interval']));
         $payload = [
             'sub' => $userId,
-            'exp' => $expiration->format('U'), //'Y-m-d\TH:i:s\Z'),
+            'exp' => $expiration->format('U'),
             'jti' => $jwtId,
         ];
         $jwt = $this->generateJwtToken($payload);
+        //@todo record the creation in the table
+        $this->getLogger()->info('JUser: JWT created', ['userId' => $userId, 'jwtId' => $jwtId]);
         return ['jwt' => $jwt, 'expiration' => $expiration->format('Y-m-d\TH:i:s\Z')];
     }
 
@@ -250,5 +323,17 @@ class LoginV1ApiController extends ApiController
             $validator = new EmailAddress();
         }
         return $validator->isValid($text);
+    }
+    
+    public function setApiVerificationRequestNonRegisteredUserEmailHandler(
+        $apiVerificationRequestNonRegisteredUserEmailHandler
+    ) {
+        if (!is_callable($apiVerificationRequestNonRegisteredUserEmailHandler)) {
+            throw new \Exception('Value must be callable');
+        }
+        $this->apiVerificationRequestNonRegisteredUserEmailHandler = 
+            $apiVerificationRequestNonRegisteredUserEmailHandler;
+        
+        return $this;
     }
 }

@@ -64,10 +64,15 @@ return [
             'sender' => 'juser@example.com',
             'subject' => 'Sign in verification',
             'body' => 'Thanks for signing up!, Please enter the following code into the app where you are '
-            .'signing in:'.PHP_EOL.'%s'.PHP_EOL.'If you did not request a login, please ignore this message. Thanks!',
+            . 'signing in:'.PHP_EOL.PHP_EOL.'%s'.PHP_EOL.PHP_EOL
+            . 'If you did not request a login, please ignore this message. '
+            . 'You will never be contacted directly for this code. Thanks!',
         ],
         'api_verification_token_length' => 6,
         'api_verification_token_expiration_interval' => 'P1D',
+        'jwt_id_length' => 10,
+        'jwt_id_charlist' => null, //null means base64 charset
+        'jwt_expiration_interval' => 'P6M', //6 months
     ],
     'bjyauthorize' => [
         'unauthorized_strategy' => View\RedirectionStrategy::class,
@@ -329,6 +334,13 @@ return [
         'aliases' => [
             \Zend\Session\SessionManager::class => Session\ManagerInterface::class,
             'zfcuser_user_mapper'           => Model\UserTable::class,
+            /*
+             * Since we require SionModel, and they provide us a Logger, 
+             * we just latch on to theirs. This way consumers of this module
+             * can always change this alias to their own instance of 
+             * Zend\Log\LoggerInterface if they want a different one.
+             */
+            'JUser\Logger'                  => 'SionModel\Logger'
         ],
 
     ],

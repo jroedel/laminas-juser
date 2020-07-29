@@ -24,6 +24,39 @@ class LoginV1ApiControllerFactory implements FactoryInterface
         $config         = $serviceLocator->get('Config');
 
         $controller = new LoginV1ApiController($adapter, $userTable, $mailTransport, $config);
+        
+        $logger = $container->get('JUser\Logger');
+        $controller->setLogger($logger);
+        
+        if (isset($config['juser']['api_verification_request_non_registered_user_email_handler'])) {
+            if (is_callable($config['juser']['api_verification_request_non_registered_user_email_handler'])) {
+                $controller->setApiVerificationRequestNonRegisteredUserEmailHandler(
+                    $config['juser']['api_verification_request_non_registered_user_email_handler']
+                    );
+            } elseif ($container->has(
+                $config['juser']['api_verification_request_non_registered_user_email_handler']
+                )
+            ) {
+                $apiVerificationRequestNonRegisteredUserEmailHandler = 
+                    $container->get($config['juser']['api_verification_request_non_registered_user_email_handler']);
+                if (is_callable($apiVerificationRequestNonRegisteredUserEmailHandler)) {
+                    $controller->setApiVerificationRequestNonRegisteredUserEmailHandler(
+                        $apiVerificationRequestNonRegisteredUserEmailHandler
+                        );
+                }
+            } else {
+                try {
+                    $apiVerificationRequestNonRegisteredUserEmailHandler 
+                        = new $config['juser']['api_verification_request_non_registered_user_email_handler']();
+                    if (is_callable($apiVerificationRequestNonRegisteredUserEmailHandler)) {
+                        $controller->setApiVerificationRequestNonRegisteredUserEmailHandler(
+                            $apiVerificationRequestNonRegisteredUserEmailHandler
+                            );
+                    }
+                } catch (\Exception $e) {}
+            }
+        }
+        
         return $controller;
     }
 }

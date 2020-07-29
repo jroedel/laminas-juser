@@ -25,6 +25,7 @@ return [
                 'address' => 'abc@gmail.com'
             ],
         ],
+        //'api_verification_request_non_registered_user_email_handler' => MyProject\NewEmailApiHandler::class,
     ],
     'zfcuser' => [
         'zend_db_adapter' => Zend\Db\Adapter\Adapter::class,
@@ -149,9 +150,10 @@ return [
             HttpUserAgent::class,
         ]
     ],
-    'service_manager' => [
-        'aliases' => [
-            'JUser\Logger' => \Zend\Log\LoggerInterface::class
-        ],
-    ],
+//    'service_manager' => [
+//      'aliases' => [
+			//use a different logger for JUser's messages
+//    	    'JUser\Logger' => 'MyProject\MyOwnLogger'
+//    	],
+//    ],
 ];

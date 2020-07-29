@@ -14,7 +14,7 @@ use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
 use JUser\Service\Mailer;
 use JUser\Model\User;
-use Zend\Log\LoggerInterface;
+use Zend\Log\LoggerAwareTrait;
 
 /**
  *
@@ -24,6 +24,8 @@ use Zend\Log\LoggerInterface;
  */
 class UsersController extends AbstractActionController
 {
+    use LoggerAwareTrait;
+    
     public const VERIFICATION_VERIFIED = 'verified';
     public const VERIFICATION_EXPIRED = 'expired';
     public const VERIFICATION_TOKEN_EXPIRATION_INTERVAL = 'P1D';
@@ -31,8 +33,6 @@ class UsersController extends AbstractActionController
     protected $userTable;
 
     protected $services = [];
-
-    protected $logger;
 
     /**
      *
@@ -120,18 +120,16 @@ class UsersController extends AbstractActionController
 
         /** @var UserTable $table */
         $table = $this->getService(UserTable::class);
-        $logger = $table->getLogger();
-        if (isset($logger)) {
-            $logger->debug("JUser: receiving a request to verify user", ['verificationToken' => $token]);
-        }
+        $logger = $this->getLogger();
+        $logger->debug("JUser: receiving a request to verify user", ['verificationToken' => $token]);
+        
         $user = $table->getUserFromToken($token);
         if (! isset($user)) {
-            if (isset($logger)) {
-                $logger->alert(
-                    "JUser: we were unable to find the user based on their verification token.",
-                    ['verificationToken' => $token]
-                );
-            }
+            $logger->alert(
+                "JUser: we were unable to find the user based on their verification token.",
+                ['verificationToken' => $token]
+            );
+            
             //@todo add a requestEmailVerificationAction(), redirect users to this
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
             ->addMessage('Unable to verify email address.');
@@ -145,23 +143,23 @@ class UsersController extends AbstractActionController
             $status = self::VERIFICATION_EXPIRED;
             $user = self::setNewVerificationToken($user);
             $table->updateEntity('user', $user['userId'], $user);
-            if (isset($logger)) {
-                $logger->alert(
-                    "JUser: The user's verification token was expired, we'll send them a new one.",
-                    ['email' => $user['email']]
-                );
-            }
+            
+            $logger->alert(
+                "JUser: The user's verification token was expired, we'll send them a new one.",
+                ['email' => $user['email']]
+            );
+            
             /** @var Mailer $mailer */
             $mailer = $this->getService(Mailer::class);
             $mailer->sendVerificationEmail($user);
         } else {
             $status = self::VERIFICATION_VERIFIED;
-            if (isset($logger)) {
-                $logger->info(
-                    "JUser: The user was successfully verified.",
-                    ['email' => $user['email']]
-                );
-            }
+            
+            $logger->info(
+                "JUser: The user was successfully verified.",
+                ['email' => $user['email']]
+            );
+                
             $user['active'] = true;
             $user['emailVerified'] = true;
             //update status
@@ -237,9 +235,9 @@ class UsersController extends AbstractActionController
                 if (! $isPersonIdSet) {
                     unset($data['personId']);
                 }
-                if (isset($this->logger)) {
-                    $this->logger->info("Updating user", ['userId' => $id, 'data' => $data]);
-                }
+                
+                $this->getLogger()->info("Updating user", ['userId' => $id, 'data' => $data]);
+                    
                 if ($table->updateEntity('user', $id, $data)) {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('User successfully updated.');
@@ -412,16 +410,5 @@ class UsersController extends AbstractActionController
         $dt->add(new \DateInterval($expirationInterval));
         $user['verificationExpiration'] = $dt;
         return $user;
-    }
-
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
-        return $this;
-    }
-
-    public function getLogger()
-    {
-        return $this->logger;
     }
 }

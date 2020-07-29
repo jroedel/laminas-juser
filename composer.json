@@ -14,7 +14,7 @@
         "zendframework/zend-form": "^2.4.0",
         "zendframework/zend-crypt": "^2.4.0 || ^3.1.0",
         "zendframework/zend-math": "^2.7 || ^3.0",
-        "kokspflanze/bjy-authorize": "dev-master",
+        "kokspflanze/bjy-authorize": "^1.7",
         "jroedel/zf-snap-geoip": "^3.0",
         "zf-commons/zfc-user": "3.x@dev",
         "jroedel/locale": "dev-master@dev",
