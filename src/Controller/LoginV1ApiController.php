@@ -10,7 +10,7 @@ use JUser\Model\UserTable;
 use Zend\Mail\Transport\TransportInterface;
 use JUser\Model\User;
 use Zend\Log\LoggerAwareTrait;
-use Zend\Validator\StringLength;
+use Zend\InputFilter\InputFilterInterface;
 
 class LoginV1ApiController extends ApiController
 {
@@ -46,6 +46,11 @@ class LoginV1ApiController extends ApiController
      */
     protected $apiVerificationRequestNonRegisteredUserEmailHandler;
 
+    /**
+     * @var InputFilterInterface $loginFilter
+     */
+    protected ?InputFilterInterface $loginFilter = null;
+    
     public function __construct(
         CredentialOrTokenQueryParams $adapter,
         UserTable $table, 
@@ -90,25 +95,45 @@ class LoginV1ApiController extends ApiController
         return $this->createResponse();
     }
     
+    /**
+     * Email the user a verification token iff:
+     * 1. They have a user or the consuming package finds/creates one for us
+     * 2. The user isActive
+     * 3. The user is not a multi-person user
+     * @return \Zend\View\Model\JsonModel
+     */
     public function requestVerificationTokenAction()
     {
+        //@todo add translation into this
         $identityParam = $this->params()->fromQuery('identity');
-        //validate identity: either an email address or a valid username
-        $identityValidator = self::getIdentityValidator();
-        if (! $identityValidator->isValid($identityParam)) {
+        if (! $this->isIdentityValueValid($identityParam)) {
+            $this->apiResponse['message'] = "Invalid identity parameter.";
             $this->httpStatusCode = 400;
-            $this->apiResponse['message'] = $identityValidator->getMessages();
             return $this->createResponse();
         }
         
         $userObject = $this->lookupUserObject($identityParam);
         //just check the identity parameter, look them up and send an email
         if ($userObject) {
+            $acceptedStates = $this->config['zfcuser']['allowed_login_states'];
+            if (! in_array($userObject->getState(), $acceptedStates)) {
+                $this->httpStatusCode = 401;
+                $this->apiResponse['message'] = 'Inactive users may not use this API endpoint';
+                return $this->createResponse();
+            }
+            if (method_exists($userObject, 'getMultiPersonUser') && $userObject->getMultiPersonUser()) {
+                $this->httpStatusCode = 401;
+                $this->apiResponse['message'] = 'Multi-person users may not use this API endpoint';
+                return $this->createResponse();
+            }
             if (! $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail())) {
                 $this->httpStatusCode = 500;
                 $this->apiResponse['message'] = 'Error sending verification email';
                 return $this->createResponse();
             }
+            $this->httpStatusCode = 200;
+            $this->apiResponse['message'] = 'Hang in there champ, you\'ll be getttin that email.';
+            return $this->createResponse();
         } elseif ($this->isEmailAddress($identityParam)) {
             if (isset($this->apiVerificationRequestNonRegisteredUserEmailHandler)) {
                 $userObject = call_user_func(
@@ -121,27 +146,33 @@ class LoginV1ApiController extends ApiController
                         $this->apiResponse['message'] = 'Error sending verification email';
                         return $this->createResponse();
                     }
+                    $this->httpStatusCode = 200;
+                    $this->apiResponse['message'] = 'Hang in there champ, you\'ll be getttin that email.';
+                    return $this->createResponse();
                 }
             }
-        } else {
-            //there's nothing we can do here. Just error out
-            $this->httpStatusCode = 403;
-            $this->apiResponse['message'] = 'Provided identity was not found';
-            return $this->createResponse();
         }
-        $this->httpStatusCode = 200;
-        $this->apiResponse['message'] = 'Hang in there champ, you\'ll be getttin that email.';
+        //there's nothing we can do here. We didn't find the user
+        $this->httpStatusCode = 403;
+        $this->apiResponse['message'] = 'Provided identity was not found';
         return $this->createResponse();
     }
     
+    /**
+     * give the user a JWT iff:
+     * 1. they have an account
+     * 2. they gave a valid (non-expired) token corresponding to their account
+     * 
+     * @return \Zend\View\Model\JsonModel
+     */
     public function loginWithVerificationTokenAction()
     {
-        /*
-         * give the user a JWT iff:
-         * 1. they have an account
-         * 2. they gave a valid (non-expired) token corresponding to their account
-         */
         $identityParam = $this->params()->fromQuery('identity');
+        if (! $this->isIdentityValueValid($identityParam)) {
+            $this->apiResponse['message'] = "Invalid identity parameter.";
+            $this->httpStatusCode = 400;
+            return $this->createResponse();
+        }
         $userObject = $this->lookupUserObject($identityParam);
         //just check the identity parameter, look them up and send an email
         if (! is_object($userObject) || !is_numeric($userObject->getId())) {
@@ -193,20 +224,6 @@ class LoginV1ApiController extends ApiController
             }
         }
         return $userObject;
-    }
-    
-    public static function getIdentityValidator()
-    {
-        static $validator;
-        if (! isset($validator)) {
-            $validator = new StringLength([
-                'min' => 3,
-                'max' => 255,
-                'encoding' => 'UTF-8',
-            ]);
-            //@todo make this more restrictive
-        }
-        return $validator;
     }
     
     /**
@@ -310,6 +327,18 @@ class LoginV1ApiController extends ApiController
         $this->getLogger()->info('JUser: JWT created', ['userId' => $userId, 'jwtId' => $jwtId]);
         return ['jwt' => $jwt, 'expiration' => $expiration->format('Y-m-d\TH:i:s\Z')];
     }
+    
+    /**
+     * Doesn't look up the user, just checks that it's a possible value
+     * @param string $value
+     */
+    protected function isIdentityValueValid($value)
+    {
+        /** @var \Zend\InputFilter\InputInterface|InputFilterInterface $indentityInput */
+        $identityInput = $this->loginFilter->get('identity');
+        $identityInput->setValue($value);
+        return $identityInput->isValid();
+    }
 
     /**
      * Check if a string is an email address
@@ -333,6 +362,13 @@ class LoginV1ApiController extends ApiController
         }
         $this->apiVerificationRequestNonRegisteredUserEmailHandler = 
             $apiVerificationRequestNonRegisteredUserEmailHandler;
+        
+        return $this;
+    }
+    
+    public function setLoginFilter(InputFilterInterface $loginFilter)
+    {
+        $this->loginFilter = $loginFilter;
         
         return $this;
     }

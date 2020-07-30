@@ -28,6 +28,9 @@ class LoginV1ApiControllerFactory implements FactoryInterface
         $logger = $container->get('JUser\Logger');
         $controller->setLogger($logger);
         
+        $loginFilter = $container->get(\ZfcUser\Form\LoginFilter::class);
+        $controller->setLoginFilter($loginFilter);
+        
         if (isset($config['juser']['api_verification_request_non_registered_user_email_handler'])) {
             if (is_callable($config['juser']['api_verification_request_non_registered_user_email_handler'])) {
                 $controller->setApiVerificationRequestNonRegisteredUserEmailHandler(

@@ -305,8 +305,7 @@ return [
             Authentication\Adapter\CredentialOrTokenQueryParams::class =>
                 Service\CredentialOrTokenQueryParamsFactory::class,
             Authentication\Adapter\Jwt::class => Service\JwtFactory::class,
-            //use this to override zfcuser's register form
-//             'zfcuser_register_form' => RegisterForm::class,
+            \ZfcUser\Form\LoginFilter::class => Service\LoginFilterFactory::class,
         ],
         'invokables'  => [
             View\RedirectionStrategy::class => View\RedirectionStrategy::class,
@@ -329,6 +328,9 @@ return [
             ],
             Service\Mailer::class => [
                 LazyServiceFactory::class,
+            ],
+            'zfcuser_register_form' => [
+                Service\RegisterFormDelegateFactory::class
             ],
         ],
         'aliases' => [
