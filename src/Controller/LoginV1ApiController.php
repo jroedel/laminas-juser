@@ -200,6 +200,20 @@ class LoginV1ApiController extends ApiController
             $this->httpStatusCode = 401;
             return $this->createResponse();
         }
+        
+        //delete the token to prevent replay attacks
+        try {
+            $this->table->updateEntity(
+                'user', 
+                $id, 
+                ['verificationToken' => null,'verificationExpiration' => null]
+                );
+        } catch (\Exception $e) {
+            $this->getLogger()->err(
+                'There was a db failure wiping the verification token', 
+                ['message' => $e->getMessage()]
+                );
+        }
         $this->apiResponse = $this->getNewJwtTokenResponse($userObject->getId());
         $this->httpStatusCode = 200;
         return $this->createResponse();
@@ -334,7 +348,7 @@ class LoginV1ApiController extends ApiController
      */
     protected function isIdentityValueValid($value)
     {
-        /** @var \Zend\InputFilter\InputInterface|InputFilterInterface $indentityInput */
+        /** @var \Zend\InputFilter\Input $identityInput */
         $identityInput = $this->loginFilter->get('identity');
         $identityInput->setValue($value);
         return $identityInput->isValid();
