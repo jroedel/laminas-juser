@@ -11,10 +11,12 @@ use Zend\Mail\Transport\TransportInterface;
 use JUser\Model\User;
 use Zend\Log\LoggerAwareTrait;
 use Zend\InputFilter\InputFilterInterface;
+use Zend\I18n\Translator\TranslatorAwareTrait;
 
 class LoginV1ApiController extends ApiController
 {
     use LoggerAwareTrait;
+    use TranslatorAwareTrait;
     
     protected const LOGIN_ACTION_VERIFICATION_TOKEN_REQUEST = 'verification-token-request';
     protected const LOGIN_ACTION_AUTHENTICATE_BY_CREDENTIAL = 'authenticate';
@@ -65,6 +67,8 @@ class LoginV1ApiController extends ApiController
     
     public function loginAction()
     {
+        //@TODO it's imperative that this function gets a speed limit to prevent brute forcing
+        
         //make sure verb is GET
         if ('GET' !== $this->getRequest()->getMethod()) {
             $this->httpStatusCode = 400;
@@ -132,7 +136,7 @@ class LoginV1ApiController extends ApiController
                 return $this->createResponse();
             }
             $this->httpStatusCode = 200;
-            $this->apiResponse['message'] = 'Hang in there champ, you\'ll be getttin that email.';
+            $this->apiResponse['message'] = 'You\'ll be getting an email with your verification token.';
             return $this->createResponse();
         } elseif ($this->isEmailAddress($identityParam)) {
             if (isset($this->apiVerificationRequestNonRegisteredUserEmailHandler)) {
@@ -257,7 +261,10 @@ class LoginV1ApiController extends ApiController
                 );
             return false;
         }
-        $message = $this->createVerificationEmail($verificationToken, $userEmail);
+        $bcc = $this->config['juser']['api_verification_bcc']
+            ? $this->config['juser']['api_verification_bcc']
+            : [];
+        $message = $this->createVerificationEmail($verificationToken, $userEmail, $bcc);
         $this->getLogger()->debug('JUser: About to attempt sending verification email to user', ['userId' => $userId]);
         try {
         $this->mailTransport->send($message);
@@ -302,7 +309,15 @@ class LoginV1ApiController extends ApiController
     protected function createVerificationEmail($token, $to, $bcc = [])
     {
         $messageConfig = $this->config['juser']['verification_email_message'];
-        $messageConfig['body'] = sprintf($messageConfig['body'], $token);
+        $body = $messageConfig['body'];
+        if ($this->getTranslator()) {
+            $body = $this->getTranslator()->translate(
+                $body, 
+                $this->getTranslatorTextDomain(),
+                \Locale::getDefault()
+                );
+        }
+        $messageConfig['body'] = sprintf($body, $token);
         $message = \Zend\Mail\MessageFactory::getInstance($messageConfig);
         $message->addTo($to);
         if (! empty($bcc)) {
@@ -351,6 +366,7 @@ class LoginV1ApiController extends ApiController
         /** @var \Zend\InputFilter\Input $identityInput */
         $identityInput = $this->loginFilter->get('identity');
         $identityInput->setValue($value);
+        //@todo this shouldn't accept 'je', but it does
         return $identityInput->isValid();
     }
 

@@ -31,6 +31,9 @@ class LoginV1ApiControllerFactory implements FactoryInterface
         $loginFilter = $container->get(\ZfcUser\Form\LoginFilter::class);
         $controller->setLoginFilter($loginFilter);
         
+        $translator = $container->get('jtranslate_translator');
+        $controller->setTranslator($translator, 'JUser');
+        
         if (isset($config['juser']['api_verification_request_non_registered_user_email_handler'])) {
             if (is_callable($config['juser']['api_verification_request_non_registered_user_email_handler'])) {
                 $controller->setApiVerificationRequestNonRegisteredUserEmailHandler(
