@@ -261,10 +261,7 @@ class LoginV1ApiController extends ApiController
                 );
             return false;
         }
-        $bcc = $this->config['juser']['api_verification_bcc']
-            ? $this->config['juser']['api_verification_bcc']
-            : [];
-        $message = $this->createVerificationEmail($verificationToken, $userEmail, $bcc);
+        $message = $this->createVerificationEmail($verificationToken, $userEmail);
         $this->getLogger()->debug('JUser: About to attempt sending verification email to user', ['userId' => $userId]);
         try {
         $this->mailTransport->send($message);
@@ -306,7 +303,7 @@ class LoginV1ApiController extends ApiController
      * @param array $bcc
      * @return \Zend\Mail\Message
      */
-    protected function createVerificationEmail($token, $to, $bcc = [])
+    protected function createVerificationEmail($token, $to)
     {
         $messageConfig = $this->config['juser']['verification_email_message'];
         $body = $messageConfig['body'];
@@ -320,9 +317,6 @@ class LoginV1ApiController extends ApiController
         $messageConfig['body'] = sprintf($body, $token);
         $message = \Zend\Mail\MessageFactory::getInstance($messageConfig);
         $message->addTo($to);
-        if (! empty($bcc)) {
-            $message->addBcc($bcc);
-        }
         return $message;
     }
     
