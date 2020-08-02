@@ -300,7 +300,6 @@ class LoginV1ApiController extends ApiController
      * Generate an email for the user
      * @param string $token
      * @param string $to
-     * @param array $bcc
      * @return \Zend\Mail\Message
      */
     protected function createVerificationEmail($token, $to)
