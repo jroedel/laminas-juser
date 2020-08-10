@@ -68,6 +68,7 @@ return [
             . 'If you did not request a login, please ignore this message. '
             . 'You will never be contacted directly for this code. Thanks!',
         ],
+        'api_verification_token_sent_response_text' => 'Hang in there champ, you\'ll be getttin that email.',
         'api_verification_token_length' => 6,
         'api_verification_token_expiration_interval' => 'P1D',
         'jwt_id_length' => 10,

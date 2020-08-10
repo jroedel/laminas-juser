@@ -72,7 +72,7 @@ class LoginV1ApiController extends ApiController
         //make sure verb is GET
         if ('GET' !== $this->getRequest()->getMethod()) {
             $this->httpStatusCode = 400;
-            $this->apiResponse['message'] = 'This method only accepts GET requests.';
+            $this->apiResponse['message'] = $this->translate('This method only accepts GET requests.');
             return $this->createResponse();
         }
         
@@ -88,7 +88,7 @@ class LoginV1ApiController extends ApiController
             } else {
                 $this->httpStatusCode = 401;
             }
-            $this->apiResponse['message'] = $authResult->getMessages()[0];
+            $this->apiResponse['message'] = $this->translate($authResult->getMessages()[0]);
             return $this->createResponse();
         }
         $userId = $authResult->getIdentity()['id'];
@@ -108,10 +108,13 @@ class LoginV1ApiController extends ApiController
      */
     public function requestVerificationTokenAction()
     {
-        //@todo add translation into this
         $identityParam = $this->params()->fromQuery('identity');
         if (! $this->isIdentityValueValid($identityParam)) {
-            $this->apiResponse['message'] = "Invalid identity parameter.";
+            $this->getLogger()->info(
+                'JUser: A verification token was requested for an invalid identity',
+                ['identity' => $identityParam]
+                );
+            $this->apiResponse['message'] = $this->translate("Invalid identity parameter.");
             $this->httpStatusCode = 400;
             return $this->createResponse();
         }
@@ -121,44 +124,85 @@ class LoginV1ApiController extends ApiController
         if ($userObject) {
             $acceptedStates = $this->config['zfcuser']['allowed_login_states'];
             if (! in_array($userObject->getState(), $acceptedStates)) {
+                $this->getLogger()->info(
+                    'JUser: A verification token was requested for an identity with an invalid state',
+                    ['identity' => $identityParam, 'state' => $userObject->getState()]
+                    );
                 $this->httpStatusCode = 401;
-                $this->apiResponse['message'] = 'Inactive users may not use this API endpoint';
+                $this->apiResponse['message'] = $this->translate('Inactive users may not use this API endpoint');
                 return $this->createResponse();
             }
             if (method_exists($userObject, 'getMultiPersonUser') && $userObject->getMultiPersonUser()) {
+                $this->getLogger()->debug(
+                    'JUser: A verification token was requested (and denied) for a multi-person user',
+                    ['identity' => $identityParam]
+                    );
                 $this->httpStatusCode = 401;
-                $this->apiResponse['message'] = 'Multi-person users may not use this API endpoint';
+                $this->apiResponse['message'] = $this->translate('Multi-person users may not use this API endpoint');
                 return $this->createResponse();
             }
             if (! $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail())) {
+                //problem logging is handled by createAndSendVerificationEmail
                 $this->httpStatusCode = 500;
-                $this->apiResponse['message'] = 'Error sending verification email';
+                $this->apiResponse['message'] = $this->translate('Error sending verification email');
                 return $this->createResponse();
             }
+            $message = $this->config['juser']['api_verification_token_sent_response_text'];
+            $this->apiResponse['message'] = $this->translate($message);
             $this->httpStatusCode = 200;
-            $this->apiResponse['message'] = 'You\'ll be getting an email with your verification token.';
             return $this->createResponse();
         } elseif ($this->isEmailAddress($identityParam)) {
             if (isset($this->apiVerificationRequestNonRegisteredUserEmailHandler)) {
+                $this->getLogger()->debug(
+                    'JUser: A verification token was requested, but no user exists. '
+                    . 'Calling apiVerificationRequestNonRegisteredUserEmailHandler to see if they give us a user.',
+                    [
+                        'identity' => $identityParam,
+                        'apiVerificationRequestNonRegisteredUserEmailHandler' 
+                            => $this->apiVerificationRequestNonRegisteredUserEmailHandler
+                    ]
+                    );
                 $userObject = call_user_func(
                     $this->apiVerificationRequestNonRegisteredUserEmailHandler, 
                     $identityParam
                     );
                 if ($userObject instanceof \ZfcUser\Entity\UserInterface) {
+                    $this->getLogger()->debug(
+                        'JUser: Calling apiVerificationRequestNonRegisteredUserEmailHandler gave us a User!',
+                        [
+                            'identity' => $identityParam,
+                            'userId' => $userObject->getId(),
+                            'username' => $userObject->getUsername(),
+                        ]
+                        );
                     if (! $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail())) {
+                        //logging is handled by createAndSendVerificationEmail
                         $this->httpStatusCode = 500;
-                        $this->apiResponse['message'] = 'Error sending verification email';
+                        $this->apiResponse['message'] = $this->translate('Error sending verification email');
                         return $this->createResponse();
                     }
                     $this->httpStatusCode = 200;
-                    $this->apiResponse['message'] = 'Hang in there champ, you\'ll be getttin that email.';
+                    $message = $this->config['juser']['api_verification_token_sent_response_text'];
+                    $this->apiResponse['message'] = $this->translate($message);
                     return $this->createResponse();
+                } else {
+                    $returnType = gettype($userObject);
+                    if ('object' === $returnType) {
+                        $returnType = get_class($userObject);
+                    }
+                    $this->getLogger()->debug(
+                        'JUser: Calling apiVerificationRequestNonRegisteredUserEmailHandler didn\'t give us a User',
+                        [
+                            'identity' => $identityParam,
+                            'returnType' => $returnType,
+                        ]
+                        );
                 }
             }
         }
         //there's nothing we can do here. We didn't find the user
         $this->httpStatusCode = 403;
-        $this->apiResponse['message'] = 'Provided identity was not found';
+        $this->apiResponse['message'] = $this->translate('Provided identity was not found');
         return $this->createResponse();
     }
     
@@ -171,16 +215,17 @@ class LoginV1ApiController extends ApiController
      */
     public function loginWithVerificationTokenAction()
     {
+        //@todo do more logging here
         $identityParam = $this->params()->fromQuery('identity');
         if (! $this->isIdentityValueValid($identityParam)) {
-            $this->apiResponse['message'] = "Invalid identity parameter.";
+            $this->apiResponse['message'] = $this->translate("Invalid identity parameter.");
             $this->httpStatusCode = 400;
             return $this->createResponse();
         }
         $userObject = $this->lookupUserObject($identityParam);
         //just check the identity parameter, look them up and send an email
         if (! is_object($userObject) || !is_numeric($userObject->getId())) {
-            $this->apiResponse['message'] = "User identity not found.";
+            $this->apiResponse['message'] = $this->translate("User identity not found.");
             $this->httpStatusCode = 401;
             return $this->createResponse();
         }
@@ -195,12 +240,14 @@ class LoginV1ApiController extends ApiController
             || $userRecord['verificationExpiration'] < $now 
         ) {
             $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail());
-            $this->apiResponse['message'] = "We could not verify the identity, an email has been resent to the user.";
+            $this->apiResponse['message'] = $this->translate(
+                "We could not verify the identity, an email has been resent to the user."
+                );
             $this->httpStatusCode = 401;
             return $this->createResponse();
         }
         if ($userRecord['verificationToken'] !== $token) {
-            $this->apiResponse['message'] = "Invalid token.";
+            $this->apiResponse['message'] = $this->translate("Invalid token.");
             $this->httpStatusCode = 401;
             return $this->createResponse();
         }
@@ -225,6 +272,23 @@ class LoginV1ApiController extends ApiController
         $this->apiResponse = $this->getNewJwtTokenResponse($userObject->getId());
         $this->httpStatusCode = 200;
         return $this->createResponse();
+    }
+    
+    /**
+     * Simplify the process of checking if we have a translator and using the correct domain/locale
+     * @param string $message
+     * @return string
+     */
+    protected function translate(string $message)
+    {
+        if ($this->getTranslator()) {
+            $message = $this->getTranslator()->translate(
+                $message,
+                $this->getTranslatorTextDomain(),
+                \Locale::getDefault()
+                );
+        }
+        return $message;
     }
     
     protected function lookupUserObject($identityParam)
@@ -311,6 +375,11 @@ class LoginV1ApiController extends ApiController
         $messageConfig = $this->config['juser']['verification_email_message'];
         $body = $messageConfig['body'];
         if ($this->getTranslator()) {
+            $messageConfig['subject'] = $this->getTranslator()->translate(
+                $messageConfig['subject'],
+                $this->getTranslatorTextDomain(),
+                \Locale::getDefault()
+                );
             $body = $this->getTranslator()->translate(
                 $body, 
                 $this->getTranslatorTextDomain(),
