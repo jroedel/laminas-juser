@@ -205,12 +205,16 @@ class LoginV1ApiController extends ApiController
             return $this->createResponse();
         }
         
-        //delete the token to prevent replay attacks
+        //delete the token to prevent replay attacks; mark the email verified
         try {
             $this->table->updateEntity(
                 'user', 
                 $id, 
-                ['verificationToken' => null,'verificationExpiration' => null]
+                [
+                    'verificationToken' => null,
+                    'verificationExpiration' => null,
+                    'emailVerified' => 1,
+                ]
                 );
         } catch (\Exception $e) {
             $this->getLogger()->err(
