@@ -14,14 +14,17 @@ return [
     'Edit User' => 'Edit User',
     'Email' => 'Email',
     'Email verified' => 'Email verified',
+    'Hang in there champ, you\'ll be getttin that email.' => 'Hang in there champ, you\'ll be getttin that email.',
     'Id' => 'Id',
     'Parent' => 'Parent',
     'Password' => 'Password',
     'Patres Sion' => 'Patres Sion',
     'Person' => 'Person',
     'Person reference' => 'Person reference',
+    'Provided identity was not found' => 'Provided identity was not found',
     'Role name' => 'Role name',
     'Roles' => 'Roles',
+    'Sign in verification' => 'Sign in verification',
     'Thanks for signing up!, Please enter the following code into the app where you are signing in:
 
 %s
