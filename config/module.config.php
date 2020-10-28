@@ -2,7 +2,10 @@
 
 namespace JUser;
 
+use BjyAuthorize\Provider\Role\ZendDb;
+use Swift_Mailer;
 use Zend\Db\Adapter\Adapter;
+use Zend\Session\SessionManager;
 use ZfcUser\Authentication\Adapter\Db;
 use Zend\Router\Http\Literal;
 use Zend\Router\Http\Segment;
@@ -13,6 +16,7 @@ use JUser\Provider\Identity\ZfcUserZendDbPlusSelfAsRole;
 use JUser\Service\ZfcUserZendDbPlusSelfAsRoleFactory;
 use JUser\Provider\Role\UserIdRoles;
 use JUser\Service\UserIdRolesFactory;
+use ZfcUser\Form\LoginFilter;
 
 return [
     'zfcuser' => [
@@ -126,7 +130,7 @@ return [
             //        ]],
             //],
             UserIdRoles::class => [],
-            \BjyAuthorize\Provider\Role\ZendDb::class => [
+            ZendDb::class => [
                 'table'                 => 'user_role',
                 'identifier_field_name' => 'id',
                 'role_id_field'         => 'role_id',
@@ -300,13 +304,13 @@ return [
             // Provides session configuration to SessionManagerFactory
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
             Service\Mailer::class           => Service\MailerFactory::class,
-            \Swift_Mailer::class            => Service\SwiftMailerFactory::class,
+            Swift_Mailer::class            => Service\SwiftMailerFactory::class,
             ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
             UserIdRoles::class              => UserIdRolesFactory::class,
             Authentication\Adapter\CredentialOrTokenQueryParams::class =>
                 Service\CredentialOrTokenQueryParamsFactory::class,
             Authentication\Adapter\Jwt::class => Service\JwtFactory::class,
-            \ZfcUser\Form\LoginFilter::class => Service\LoginFilterFactory::class,
+            LoginFilter::class => Service\LoginFilterFactory::class,
         ],
         'invokables'  => [
             View\RedirectionStrategy::class => View\RedirectionStrategy::class,
@@ -335,7 +339,7 @@ return [
             ],
         ],
         'aliases' => [
-            \Zend\Session\SessionManager::class => Session\ManagerInterface::class,
+            SessionManager::class => Session\ManagerInterface::class,
             'zfcuser_user_mapper'           => Model\UserTable::class,
             /*
              * Since we require SionModel, and they provide us a Logger, 
@@ -373,7 +377,7 @@ return [
 //                 'get_object_function'                   => 'getSimpleAssociationBySwId',
 //                 'get_objects_function'                  => 'getAssociations',
                 'name_field'                            => 'username',
-                'name_field_is_translateable'           => false,
+                'name_field_is_translatable'           => false,
 //                 'format_view_helper'                    => 'formatEntity',
 //                 'country_field'                         => 'country',
 //                 'report_changes'                        => true,
@@ -448,7 +452,7 @@ return [
 //                 'get_object_function'                   => 'getSimpleAssociationBySwId',
 //                 'get_objects_function'                  => 'getAssociations',
                 'name_field'                            => 'name',
-                'name_field_is_translateable'           => false,
+                'name_field_is_translatable'           => false,
 //                 'format_view_helper'                    => 'formatEntity',
 //                 'country_field'                         => 'country',
 //                 'report_changes'                        => true,
@@ -513,7 +517,7 @@ return [
 //                 'get_object_function'                   => 'getSimpleAssociationBySwId',
 //                 'get_objects_function'                  => 'getAssociations',
                 'name_field'                            => 'roleName',
-                'name_field_is_translateable'           => false,
+                'name_field_is_translatable'           => false,
 //                 'format_view_helper'                    => 'formatEntity',
 //                 'country_field'                         => 'country',
 //                 'report_changes'                        => true,
