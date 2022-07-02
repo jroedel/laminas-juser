@@ -10,12 +10,12 @@
 namespace JUser\Service;
 
 use Interop\Container\ContainerInterface;
-use Zend\ServiceManager\Factory\FactoryInterface;
+use Laminas\ServiceManager\Factory\FactoryInterface;
 use JUser\Authentication\Adapter\Jwt;
 
 class JwtFactory implements FactoryInterface
 {
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         $adapter = new Jwt();
         $adapter->setServiceManager($container);

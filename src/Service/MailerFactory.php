@@ -2,12 +2,12 @@
 
 namespace JUser\Service;
 
-use Zend\ServiceManager\Factory\FactoryInterface;
+use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
-use Zend\I18n\Translator\TranslatorInterface;
-use Zend\Router\RouteStackInterface;
-use Zend\Mvc\Controller\PluginManager;
-use Zend\Log\LoggerInterface;
+use Laminas\I18n\Translator\TranslatorInterface;
+use Laminas\Router\RouteStackInterface;
+use Laminas\Mvc\Controller\PluginManager;
+use Laminas\Log\LoggerInterface;
 
 /**
  * Factory responsible of priming the Mailer service
@@ -21,21 +21,21 @@ class MailerFactory implements FactoryInterface
      *
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         $swift = $container->get(\Swift_Mailer::class);
         $translator = $container->get(TranslatorInterface::class);
-        /** @var \Zend\Router\Http\TreeRouteStack $router */
+        /** @var \Laminas\Router\Http\TreeRouteStack $router */
         $router = $container->get(RouteStackInterface::class);
         $routerRequestUri = $router->getRequestUri();
         if (! isset($routerRequestUri)) {
-            /** @var \Zend\Http\PhpEnvironment\Request $request */
+            /** @var \Laminas\Http\PhpEnvironment\Request $request */
             $request = $container->get('Request');
             $router->setRequestUri($request->getUri());
         }
 
         $plugins = $container->get(PluginManager::class);
-        /** @var \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger */
+        /** @var \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger */
         $flashMessenger = $plugins->get('flashmessenger');
 
         $config = $container->get('Config');

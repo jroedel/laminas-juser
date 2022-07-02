@@ -3,15 +3,15 @@
 namespace JUser\Controller;
 
 use RestApi\Controller\ApiController;
-use Zend\Validator\EmailAddress;
-use Zend\Math\Rand;
+use Laminas\Validator\EmailAddress;
+use Laminas\Math\Rand;
 use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
 use JUser\Model\UserTable;
-use Zend\Mail\Transport\TransportInterface;
+use Laminas\Mail\Transport\TransportInterface;
 use JUser\Model\User;
-use Zend\Log\LoggerAwareTrait;
-use Zend\InputFilter\InputFilterInterface;
-use Zend\I18n\Translator\TranslatorAwareTrait;
+use Laminas\Log\LoggerAwareTrait;
+use Laminas\InputFilter\InputFilterInterface;
+use Laminas\I18n\Translator\TranslatorAwareTrait;
 
 class LoginV1ApiController extends ApiController
 {
@@ -65,7 +65,7 @@ class LoginV1ApiController extends ApiController
         $this->config = $config;
     }
     
-    public function loginAction()
+    public function loginAction(): \Laminas\View\Model\JsonModel
     {
         //@TODO it's imperative that this function gets a speed limit to prevent brute forcing
         
@@ -79,11 +79,11 @@ class LoginV1ApiController extends ApiController
         //@todo should we do some validation first?
 
         /**
-         * @var \Zend\Authentication\Result $auth
+         * @var \Laminas\Authentication\Result $auth
          */
         $authResult = $this->adapter->authenticate();
         if (! $authResult->isValid()) {
-            if (\Zend\Authentication\Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
+            if (\Laminas\Authentication\Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
                 $this->httpStatusCode = 400;
             } else {
                 $this->httpStatusCode = 401;
@@ -104,7 +104,7 @@ class LoginV1ApiController extends ApiController
      * 1. They have a user or the consuming package finds/creates one for us
      * 2. The user isActive
      * 3. The user is not a multi-person user
-     * @return \Zend\View\Model\JsonModel
+     * @return \Laminas\View\Model\JsonModel
      */
     public function requestVerificationTokenAction()
     {
@@ -122,7 +122,7 @@ class LoginV1ApiController extends ApiController
         $userObject = $this->lookupUserObject($identityParam);
         //just check the identity parameter, look them up and send an email
         if ($userObject) {
-            $acceptedStates = $this->config['zfcuser']['allowed_login_states'];
+            $acceptedStates = $this->config['lmcuser']['allowed_login_states'];
             if (! in_array($userObject->getState(), $acceptedStates)) {
                 $this->getLogger()->info(
                     'JUser: A verification token was requested for an identity with an invalid state',
@@ -166,7 +166,7 @@ class LoginV1ApiController extends ApiController
                     $this->apiVerificationRequestNonRegisteredUserEmailHandler, 
                     $identityParam
                     );
-                if ($userObject instanceof \ZfcUser\Entity\UserInterface) {
+                if ($userObject instanceof \LmcUser\Entity\UserInterface) {
                     $this->getLogger()->debug(
                         'JUser: Calling apiVerificationRequestNonRegisteredUserEmailHandler gave us a User!',
                         [
@@ -211,7 +211,7 @@ class LoginV1ApiController extends ApiController
      * 1. they have an account
      * 2. they gave a valid (non-expired) token corresponding to their account
      * 
-     * @return \Zend\View\Model\JsonModel
+     * @return \Laminas\View\Model\JsonModel
      */
     public function loginWithVerificationTokenAction()
     {
@@ -291,7 +291,7 @@ class LoginV1ApiController extends ApiController
         return $message;
     }
     
-    protected function lookupUserObject($identityParam)
+    protected function lookupUserObject($identityParam): \LmcUser\Entity\UserInterface|null
     {
         static $fields;
         if (!isset($fields)) {
@@ -368,7 +368,7 @@ class LoginV1ApiController extends ApiController
      * Generate an email for the user
      * @param string $token
      * @param string $to
-     * @return \Zend\Mail\Message
+     * @return \Laminas\Mail\Message
      */
     protected function createVerificationEmail($token, $to)
     {
@@ -381,13 +381,13 @@ class LoginV1ApiController extends ApiController
                 \Locale::getDefault()
                 );
             $body = $this->getTranslator()->translate(
-                $body, 
+                $body,
                 $this->getTranslatorTextDomain(),
                 \Locale::getDefault()
                 );
         }
         $messageConfig['body'] = sprintf($body, $token);
-        $message = \Zend\Mail\MessageFactory::getInstance($messageConfig);
+        $message = \Laminas\Mail\MessageFactory::getInstance($messageConfig);
         $message->addTo($to);
         return $message;
     }
@@ -425,11 +425,12 @@ class LoginV1ApiController extends ApiController
     
     /**
      * Doesn't look up the user, just checks that it's a possible value
+     *
      * @param string $value
      */
-    protected function isIdentityValueValid($value)
+    protected function isIdentityValueValid($value): bool
     {
-        /** @var \Zend\InputFilter\Input $identityInput */
+        /** @var \Laminas\InputFilter\Input $identityInput */
         $identityInput = $this->loginFilter->get('identity');
         $identityInput->setValue($value);
         //@todo this shouldn't accept 'je', but it does
@@ -451,8 +452,8 @@ class LoginV1ApiController extends ApiController
     }
     
     public function setApiVerificationRequestNonRegisteredUserEmailHandler(
-        $apiVerificationRequestNonRegisteredUserEmailHandler
-    ) {
+        callable $apiVerificationRequestNonRegisteredUserEmailHandler
+    ): static {
         if (!is_callable($apiVerificationRequestNonRegisteredUserEmailHandler)) {
             throw new \Exception('Value must be callable');
         }
@@ -462,7 +463,7 @@ class LoginV1ApiController extends ApiController
         return $this;
     }
     
-    public function setLoginFilter(InputFilterInterface $loginFilter)
+    public function setLoginFilter(InputFilterInterface $loginFilter): static
     {
         $this->loginFilter = $loginFilter;
         

@@ -2,10 +2,10 @@
 
 namespace JUser\Service;
 
-use Zend\ServiceManager\Factory\FactoryInterface;
+use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
-use Zend\Db\Adapter\Adapter;
+use Laminas\Db\Adapter\Adapter;
 
 class UserTableFactory implements FactoryInterface
 {
@@ -14,10 +14,10 @@ class UserTableFactory implements FactoryInterface
      *
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         //@todo how can we get an identity if the process requires this very UserTable?
-//         $authService = $container->get('zfcuser_auth_service');
+//         $authService = $container->get('lmcuser_auth_service');
 //         if ($user = $authService->getIdentity()) {
 //             $userId = $user->getId();
 //         } else {

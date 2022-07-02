@@ -2,7 +2,7 @@
 
 namespace JUser\Service;
 
-use Zend\ServiceManager\Factory\FactoryInterface;
+use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Form\EditUserForm;
 use JUser\Model\UserTable;
@@ -20,7 +20,7 @@ class EditUserFormFactory implements FactoryInterface
      *
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         /** @var UserTable $userTable **/
         $userTable = $container->get(UserTable::class);

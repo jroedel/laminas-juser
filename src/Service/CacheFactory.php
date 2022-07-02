@@ -2,8 +2,8 @@
 
 namespace JUser\Service;
 
-use Zend\Cache\StorageFactory;
-use Zend\ServiceManager\Factory\FactoryInterface;
+use Laminas\Cache\StorageFactory;
+use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 
 /**
@@ -18,7 +18,7 @@ class CacheFactory implements FactoryInterface
      *
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         $config = $container->get('config');
         if (! isset($config['juser']) || ! isset($config['juser']['cache_options'])) {

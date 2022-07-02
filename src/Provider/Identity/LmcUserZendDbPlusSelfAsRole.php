@@ -2,15 +2,15 @@
 
 namespace JUser\Provider\Identity;
 
-use BjyAuthorize\Provider\Identity\ZfcUserZendDb;
+use BjyAuthorize\Provider\Identity\LmcUserLaminasDb;
 
-class ZfcUserZendDbPlusSelfAsRole extends ZfcUserZendDb
+class LmcUserZendDbPlusSelfAsRole extends LmcUserLaminasDb
 {
 
     /**
      *
      * {@inheritDoc}
-     * @see \BjyAuthorize\Provider\Identity\ZfcUserZendDb::getIdentityRoles()
+     * @see \BjyAuthorize\Provider\Identity\LmcUserZendDb::getIdentityRoles()
      */
     public function getIdentityRoles()
     {

@@ -1,6 +1,6 @@
 {
     "name": "jroedel/zf3-juser",
-    "description": "A fork of manuakasam/SamUser. Glues together ZfcUser, BjyAuthorize, SlmLocale, and GoalioRememberMe",
+    "description": "A fork of manuakasam/SamUser. Glues together LmcUser, BjyAuthorize, SlmLocale, and GoalioRememberMe",
     "license": "MIT",
     "keywords": [
         "framework",
@@ -9,11 +9,11 @@
     "homepage": "https://github.com/jroedel/zf3-juser",
     "require": {
         "php": "^5.6 || ^7.0",
-        "zendframework/zend-db": "^2.4.0",
-        "zendframework/zend-mvc-form": "^1.0",
-        "zendframework/zend-form": "^2.4.0",
-        "zendframework/zend-crypt": "^2.4.0 || ^3.1.0",
-        "zendframework/zend-math": "^2.7 || ^3.0",
+        "laminas/laminas-db": "^2.4.0",
+        "laminas/laminas-mvc-form": "^1.0",
+        "laminas/laminas-form": "^2.4.0",
+        "laminas/laminas-crypt": "^2.4.0 || ^3.1.0",
+        "laminas/laminas-math": "^2.7 || ^3.0",
         "kokspflanze/bjy-authorize": "^1.7",
         "jroedel/zf-snap-geoip": "^3.0",
         "zf-commons/zfc-user": "3.x@dev",

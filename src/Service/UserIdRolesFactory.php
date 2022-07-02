@@ -10,18 +10,18 @@
 namespace JUser\Service;
 
 use Interop\Container\ContainerInterface;
-use Zend\Db\TableGateway\TableGateway;
-use Zend\ServiceManager\FactoryInterface;
-use Zend\ServiceManager\ServiceLocatorInterface;
+use Laminas\Db\TableGateway\TableGateway;
+use Laminas\ServiceManager\FactoryInterface;
+use Laminas\ServiceManager\ServiceLocatorInterface;
 use JUser\Provider\Role\UserIdRoles;
 
 class UserIdRolesFactory implements FactoryInterface
 {
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
-        /* @var $tableGateway \Zend\Db\TableGateway\TableGateway */
-        $tableGateway = new TableGateway('users', $container->get('zfcuser_zend_db_adapter'));
-        /* @var $userService \ZfcUser\Service\User */
+        /* @var $tableGateway \Laminas\Db\TableGateway\TableGateway */
+        $tableGateway = new TableGateway('users', $container->get('lmcuser_laminas_db_adapter'));
+        /* @var $userService \LmcUser\Service\User */
 
         $provider = new UserIdRoles($tableGateway);
 

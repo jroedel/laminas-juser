@@ -2,9 +2,9 @@
 
 namespace JUser;
 
-use Zend\Mvc\MvcEvent;
-use Zend\Db\TableGateway\Feature\GlobalAdapterFeature;
-use Zend\Session\ManagerInterface;
+use Laminas\Mvc\MvcEvent;
+use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
+use Laminas\Session\ManagerInterface;
 
 class Module
 {
@@ -15,7 +15,7 @@ class Module
         return include __DIR__ . '/../config/module.config.php';
     }
 
-    public function onBootstrap(MvcEvent $e)
+    public function onBootstrap(MvcEvent $e): void
     {
         $app = $e->getApplication();
         $sm = $app->getServiceManager();
@@ -26,14 +26,14 @@ class Module
         //The static adapter is needed for the EditUserForm
         $config = $sm->get('Config');
         if (
-            isset($config['zfcuser']['zend_db_adapter']) &&
-            $sm->has($config['zfcuser']['zend_db_adapter'])
+            isset($config['lmcuser']['lmcuser_laminas_db_adapter']) &&
+            $sm->has($config['lmcuser']['lmcuser_laminas_db_adapter'])
         ) {
-            $adapter = $sm->get($config['zfcuser']['zend_db_adapter']);
+            $adapter = $sm->get($config['lmcuser']['lmcuser_laminas_db_adapter']);
             GlobalAdapterFeature::setStaticAdapter($adapter);
         } else {
             throw new \Exception(
-                'Please set the [\'zfcuser\'][\'zend_db_adapter\'] config key for use with the JUser module.'
+                'Please set the [\'lmcuser\'][\'lmcuser_laminas_db_adapter\'] config key for use with the JUser module.'
             );
         }
     }

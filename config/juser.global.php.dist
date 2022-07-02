@@ -3,7 +3,7 @@ return [
     'juser' => [
         'person_provider' => MyModule\Model\PersonTable::class,
         'mail_transport' => [
-            'class'   => Zend\Mail\Transport\Smtp::class,
+            'class'   => Laminas\Mail\Transport\Smtp::class,
             'options' => [
                 'host'             => 'smtp.gmail.com',
                 'port'             => 587,
@@ -27,8 +27,8 @@ return [
         ],
         //'api_verification_request_non_registered_user_email_handler' => MyProject\NewEmailApiHandler::class,
     ],
-    'zfcuser' => [
-        'zend_db_adapter' => Zend\Db\Adapter\Adapter::class,
+    'lmcuser' => [
+        'lmcuser_laminas_db_adapter' => \Laminas\Db\Adapter\Adapter::class,
 
         'enable_default_entities' => false,
 
@@ -95,7 +95,7 @@ return [
          * RememberMe Model Entity Class
     *
     * Name of Entity class to use. Useful for using your own entity class
-    * instead of the default one provided. Default is ZfcUser\Entity\User.
+    * instead of the default one provided. Default is LmcUser\Entity\User.
     */
         //'remember_me_entity_class' => 'GoalioRememberMe\Entity\RememberMe',
 
@@ -130,11 +130,11 @@ return [
             */
             'BjyAuthorize\Guard\Route' => [
                 ['route' => 'api-v1-login', 'roles' => ['guest', 'user']],
-                ['route' => 'zfcuser/login', 'roles' => ['guest']],
-                ['route' => 'zfcuser/logout', 'roles' => ['user']],
+                ['route' => 'lmcuser/login', 'roles' => ['guest']],
+                ['route' => 'lmcuser/logout', 'roles' => ['user']],
                 ['route' => 'change-password', 'roles' => ['user']],
 //                 ['route' => 'change-email', 'roles' => ['user']],
-//                 ['route' => 'zfcuser/register', 'roles' => ['guest']],
+//                 ['route' => 'lmcuser/register', 'roles' => ['guest']],
                 ['route' => 'juser', 'roles' => ['administrator']],
                 ['route' => 'juser/user/edit', 'roles' => ['administrator']],
                 ['route' => 'juser/user/delete', 'roles' => ['administrator']],

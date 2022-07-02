@@ -3,14 +3,14 @@
 namespace JUser\Authentication\Adapter;
 
 use Interop\Container\ContainerInterface;
-use Zend\Authentication\Result as AuthenticationResult;
-use Zend\EventManager\EventInterface;
-use Zend\ServiceManager\ServiceManager;
-// use Zend\Session\Container as SessionContainer;
-use ZfcUser\Mapper\UserInterface as UserMapperInterface;
-use ZfcUser\Options\ModuleOptions;
-use Zend\Authentication\Adapter\AdapterInterface;
-use Zend\Authentication\Result;
+use Laminas\Authentication\Result as AuthenticationResult;
+use Laminas\EventManager\EventInterface;
+use Laminas\ServiceManager\ServiceManager;
+// use Laminas\Session\Container as SessionContainer;
+use LmcUser\Mapper\UserInterface as UserMapperInterface;
+use LmcUser\Options\ModuleOptions;
+use Laminas\Authentication\Adapter\AdapterInterface;
+use Laminas\Authentication\Result;
 
 /**
  * The plan here is to copy over code from ApiController to check the validity of the JWT. 
@@ -55,9 +55,8 @@ class Jwt implements AdapterInterface
 
     /**
      * @param EventInterface $e
-     * @return bool
      */
-    public function authenticate()
+    public function authenticate(): Result
     {
         //check if we've already authenticated the user
 //         $e = $e->getTarget();
@@ -147,7 +146,7 @@ class Jwt implements AdapterInterface
             }
         } else {
             //failure, the application isn't configured to receive JWT's. We should throw an exception
-            throw \Zend\Authentication\Adapter\Exception\ExceptionInterface(
+            throw \Laminas\Authentication\Adapter\Exception\ExceptionInterface(
                     "Please disable JWT auth or configure ['ApiRequest']['jwtAuth']"
                 );
         }
@@ -155,7 +154,7 @@ class Jwt implements AdapterInterface
     
     /**
      * Check Request object have Authorization token or not
-     * @param \Zend\Stdlib\RequestInterface $request
+     * @param \Laminas\Stdlib\RequestInterface $request
      * @return string
      */
     public function findJwtToken($request)
@@ -176,8 +175,10 @@ class Jwt implements AdapterInterface
     
     /**
      * contain encoded token for user.
+     *
+     * @return null|object
      */
-    protected function decodeJwtToken($token, $cypherKey, $tokenAlgorithm)
+    protected function decodeJwtToken(string $token, $cypherKey, $tokenAlgorithm): object|null
     {
         try {
             $decodeToken = \Firebase\JWT\JWT::decode($token, $cypherKey, [$tokenAlgorithm]);
@@ -196,7 +197,7 @@ class Jwt implements AdapterInterface
     public function getMapper()
     {
         if (null === $this->mapper) {
-            $this->mapper = $this->getServiceManager()->get('zfcuser_user_mapper');
+            $this->mapper = $this->getServiceManager()->get('lmcuser_user_mapper');
         }
 
         return $this->mapper;
@@ -230,7 +231,7 @@ class Jwt implements AdapterInterface
      *
      * @param ContainerInterface $serviceManager
      */
-    public function setServiceManager(ContainerInterface $serviceManager)
+    public function setServiceManager(ContainerInterface $serviceManager): void
     {
         $this->serviceManager = $serviceManager;
     }
@@ -238,7 +239,7 @@ class Jwt implements AdapterInterface
     /**
      * @param ModuleOptions $options
      */
-    public function setOptions(ModuleOptions $options)
+    public function setOptions(ModuleOptions $options): void
     {
         $this->options = $options;
     }
@@ -249,7 +250,7 @@ class Jwt implements AdapterInterface
     public function getOptions()
     {
         if ($this->options === null) {
-            $this->setOptions($this->getServiceManager()->get('zfcuser_module_options'));
+            $this->setOptions($this->getServiceManager()->get('lmcuser_module_options'));
         }
 
         return $this->options;

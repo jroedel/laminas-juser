@@ -2,23 +2,23 @@
 
 namespace JUser\Form;
 
-use Zend\Form\Form;
-use Zend\InputFilter\InputFilterProviderInterface;
-use ZfcUser\Options\ModuleOptions;
+use Laminas\Form\Form;
+use Laminas\InputFilter\InputFilterProviderInterface;
+use LmcUser\Options\ModuleOptions;
 
 class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterface
 {
     /**
      *
-     * @var ModuleOptions $zfcOptions
+     * @var ModuleOptions $lmcOptions
      */
-    protected $zfcOptions;
+    protected $lmcOptions;
 
-    public function __construct(ModuleOptions $zfcOptions)
+    public function __construct(ModuleOptions $lmcOptions)
     {
         // we want to ignore the name passed
         parent::__construct('change_other_password');
-        $this->zfcOptions = $zfcOptions;
+        $this->lmcOptions = $lmcOptions;
 
         $this->add([
             'name' => 'userId',
@@ -75,13 +75,13 @@ class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterfa
                 'required' => true,
                 'validators' => [
                     [
-                        'name'    => 'Zend\Validator\Db\RecordExists',
+                        'name'    => 'Laminas\Validator\Db\RecordExists',
                         'options' => [
-                            'table' => $this->zfcOptions->getTableName(),
+                            'table' => $this->lmcOptions->getTableName(),
                             'field' => 'user_id',
-                            'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
                             'messages' => [
-                                \Zend\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND => 'User not found in database'
+                                \Laminas\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND => 'User not found in database'
                             ],
                         ],
                     ],

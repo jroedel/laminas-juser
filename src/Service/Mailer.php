@@ -2,11 +2,11 @@
 
 namespace JUser\Service;
 
-use Zend\I18n\Translator\TranslatorInterface;
-use Zend\I18n\Translator\TranslatorAwareInterface;
+use Laminas\I18n\Translator\TranslatorInterface;
+use Laminas\I18n\Translator\TranslatorAwareInterface;
 use JUser\Model\UserTable;
-use Zend\Router\RouteStackInterface;
-use Zend\Log\LoggerInterface;
+use Laminas\Router\RouteStackInterface;
+use Laminas\Log\LoggerInterface;
 use JUser\Model\User;
 
 class Mailer implements TranslatorAwareInterface
@@ -35,7 +35,7 @@ class Mailer implements TranslatorAwareInterface
     protected $router;
 
     /**
-     * @var \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
+     * @var \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
      */
     protected $flashMessenger;
 
@@ -44,7 +44,7 @@ class Mailer implements TranslatorAwareInterface
      */
     protected $logger;
 
-    public function onRegister(User $user)
+    public function onRegister(User $user): void
     {
         if ($this->logger) {
             $this->logger->debug("JUser: Recieved a trigger for register.post");
@@ -66,10 +66,13 @@ class Mailer implements TranslatorAwareInterface
 
     /**
      * Send a flash message to the user to look for a verification email
+     *
      * @param User $user
      * @param UserTable $callback A reference to the calling UserTable to be able to update User
+     *
+     * @throws \Exception
      */
-    public function onInactiveUser(User $user, UserTable $callback)
+    public function onInactiveUser(User $user, UserTable $callback): void
     {
         if (isset($this->logger)) {
             $this->logger->notice(
@@ -99,11 +102,12 @@ class Mailer implements TranslatorAwareInterface
 
     /**
      * Send an email to the user to verify their account
+     *
      * @todo add a beautified HTML version of the email. Add mailing address as required
+     *
      * @param mixed $user
-     * @return number
      */
-    public function sendVerificationEmail($user)
+    public function sendVerificationEmail($user): int
     {
         if (isset($this->logger)) {
             $this->logger->info("JUser: Sending a verification email.", ['email' => $user['email']]);
@@ -321,7 +325,7 @@ EOT;
 
     /**
      * Get the flashMessenger object
-     * @return \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger
+     * @return \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger
      */
     public function getFlashMessenger()
     {
@@ -330,10 +334,10 @@ EOT;
 
     /**
      * Set the flashMessenger object
-     * @param \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
+     * @param \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
      * @return self
      */
-    public function setFlashMessenger(\Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger)
+    public function setFlashMessenger(\Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger)
     {
         $this->flashMessenger = $flashMessenger;
         return $this;

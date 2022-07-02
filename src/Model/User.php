@@ -2,8 +2,8 @@
 
 namespace JUser\Model;
 
-use ZfcUser\Entity\UserInterface;
-use Zend\Math\Rand;
+use LmcUser\Entity\UserInterface;
+use Laminas\Math\Rand;
 
 class User implements UserInterface
 {
@@ -86,7 +86,7 @@ class User implements UserInterface
         }
     }
 
-    public function exchangeArray($data)
+    public function exchangeArray(array $data): void
     {
         $this->id = isset($data['userId']) ? $data['userId'] : null;
         $this->username = isset($data['username']) ? $data['username'] : null;
@@ -113,7 +113,12 @@ class User implements UserInterface
 //         'rolesList'         => [],
     }
 
-    public function getArrayCopy()
+    /**
+     * @return (\DateTime|array|bool|int|mixed|string)[]
+     *
+     * @psalm-return array{userId: int, username: string, email: string, displayName: string, password: string, createdOn: string, updatedOn: string, mustChangePassword: bool, isMultiPersonUser: bool, verificationToken: string, verificationExpiration: \DateTime, active: int, roles: array<empty, empty>|mixed, rolesList: array<empty, empty>|mixed}
+     */
+    public function getArrayCopy(): array
     {
         $data = [
             'userId'            => $this->id,
@@ -330,7 +335,7 @@ class User implements UserInterface
 
     /**
      * Generate a verification token
-     * @return void
+     * @return string
      */
     public static function generateVerificationToken($tokenLength = self::VERIFICATION_TOKEN_LENGTH)
     {
@@ -367,7 +372,7 @@ class User implements UserInterface
         return $this->verificationExpiration;
     }
 
-    public function isVerificationTokenValid()
+    public function isVerificationTokenValid(): bool
     {
         if (! isset($this->verificationExpiration) || ! $this->verificationExpiration instanceof \DateTime) {
             return false;

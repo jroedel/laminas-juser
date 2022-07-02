@@ -1,7 +1,7 @@
 JUser
 =======
 
-A simple Module that glues together ZfcUser, BjyAuthorize, SlmLocale, GoalioRememberMe and Zend\Db. A fork of `manuakasam/SamUser`.
+A simple Module that glues together LmcUser, BjyAuthorize, SlmLocale, GoalioRememberMe and Laminas\Db. A fork of `manuakasam/SamUser`.
 
 
 Installation
@@ -24,7 +24,7 @@ composer require jroedel/zf3-juser
         'modules' => [
             // ...
             'ZfcBase',
-            'ZfcUser',
+            'LmcUser',
             'BjyAuthorize',
             'SlmLocale',
             'GoalioRememberMe',

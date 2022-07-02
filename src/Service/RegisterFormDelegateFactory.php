@@ -2,7 +2,7 @@
 namespace JUser\Service;
 
 use Interop\Container\ContainerInterface;
-use Zend\ServiceManager\Factory\DelegatorFactoryInterface;
+use Laminas\ServiceManager\Factory\DelegatorFactoryInterface;
 use SionModel\Validator\Instagram;
 
 class RegisterFormDelegateFactory implements DelegatorFactoryInterface
@@ -10,12 +10,12 @@ class RegisterFormDelegateFactory implements DelegatorFactoryInterface
     /**
      * This delegate adds more elements to the form
      * @inheritDoc
-     * @see \Zend\ServiceManager\Factory\DelegatorFactoryInterface::__invoke()
+     * @see \Laminas\ServiceManager\Factory\DelegatorFactoryInterface::__invoke()
      *
      */
-    public function __invoke(ContainerInterface $container, $name, callable $callback, array $options = null)
+    public function __invoke(ContainerInterface $container, $name, callable $callback, ?array $options = null)
     {
-        /** @var \ZfcUser\Form\Register $form */
+        /** @var \LmcUser\Form\Register $form */
         $form = call_user_func($callback);
         
         // Set filters and validators
@@ -25,7 +25,7 @@ class RegisterFormDelegateFactory implements DelegatorFactoryInterface
             'name' => 'username',
             'required' => true,
             'filters' => [
-                new \Zend\Filter\StringTrim(),
+                new \Laminas\Filter\StringTrim(),
             ],
             'validators' => [
                 new Instagram(),

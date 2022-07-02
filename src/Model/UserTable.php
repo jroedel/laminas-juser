@@ -2,8 +2,8 @@
 
 namespace JUser\Model;
 
-use Zend\Db\Sql\Select;
-use ZfcUser\Mapper\UserInterface as UserMapperInterface;
+use Laminas\Db\Sql\Select;
+use LmcUser\Mapper\UserInterface as UserMapperInterface;
 use SionModel\Db\Model\SionTable;
 use JUser\Service\Mailer;
 
@@ -20,9 +20,8 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * @param $email
-     * @return \ZfcUser\Entity\UserInterface
      */
-    public function findByEmail($email)
+    public function findByEmail($email): User|null
     {
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
@@ -51,9 +50,8 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * @param string $username
-     * @return \ZfcUser\Entity\UserInterface
      */
-    public function findByUsername($username)
+    public function findByUsername($username): User|null
     {
         $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
@@ -82,9 +80,8 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * @param string|int $id
-     * @return \ZfcUser\Entity\UserInterface
      */
-    public function findById($id)
+    public function findById($id): User|null
     {
         if ($this->logger) {
             $this->logger->debug("JUser: Looking up user by id", ['id' => $id]);
@@ -99,9 +96,9 @@ class UserTable extends SionTable implements UserMapperInterface
     }
 
     /**
-     * @param \ZfcUser\Entity\UserInterface $user
+     * @param \LmcUser\Entity\UserInterface $user
      */
-    public function insertUser(\ZfcUser\Entity\UserInterface $user)
+    public function insertUser(\LmcUser\Entity\UserInterface $user)
     {
         //figure out what the calling function is. If a user is registering, trigger the email here
         $data = $user->getArrayCopy();
@@ -148,9 +145,9 @@ class UserTable extends SionTable implements UserMapperInterface
     }
 
     /**
-     * @param \ZfcUser\Entity\UserInterface $user
+     * @param \LmcUser\Entity\UserInterface $user
      */
-    public function updateUser(\ZfcUser\Entity\UserInterface $user)
+    public function updateUser(\LmcUser\Entity\UserInterface $user)
     {
         $data = $user->getArrayCopy();
         if (isset($this->logger)) {
@@ -170,6 +167,22 @@ class UserTable extends SionTable implements UserMapperInterface
             }
         }
         return $result;
+    }
+
+    /**
+     * @param \LmcUser\Entity\UserInterface $user
+     */
+    public function insert(\LmcUser\Entity\UserInterface $user)
+    {
+        return $this->insertUser($user);
+    }
+
+    /**
+     * @param \LmcUser\Entity\UserInterface $user
+     */
+    public function update(\LmcUser\Entity\UserInterface $user)
+    {
+        return $this->updateUser($user);
     }
 
     /**
@@ -204,7 +217,10 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * Add role data to an array of user arrays (the array must be keyed on the userId)
+     *
      * @param array $users
+     *
+     * @return void
      */
     public function linkUsers(array &$users)
     {
@@ -233,7 +249,7 @@ class UserTable extends SionTable implements UserMapperInterface
         }
     }
 
-    public function linkUser(array &$user)
+    public function linkUser(array &$user): void
     {
         $roleLinks = $this->queryObjects('user-role-link', ['userId' => $user['userId']]);
         foreach ($roleLinks as $link) {
@@ -273,7 +289,12 @@ class UserTable extends SionTable implements UserMapperInterface
         return $usernames;
     }
 
-    protected function processUserRow($row)
+    /**
+     * @return (\DateTime|int|array|bool|int|mixed|null)[]
+     *
+     * @psalm-return array{userId: mixed, username: mixed, email: mixed, displayName: mixed, password: mixed, createdOn: \DateTime, createdBy: int|null, updatedOn: \DateTime, updatedBy: int|null, emailVerified: bool, mustChangePassword: bool, isMultiPersonUser: bool, verificationToken: mixed, verificationExpiration: \DateTime, active: bool, personId: int|null, roles: array<empty, empty>, rolesList: array<empty, empty>}
+     */
+    protected function processUserRow($row): array
     {
         $processedRow = [
             'userId'            => $row['user_id'],
@@ -298,7 +319,7 @@ class UserTable extends SionTable implements UserMapperInterface
         return $processedRow;
     }
 
-    protected function userPostprocessor($data, $newData, $entityAction)
+    protected function userPostprocessor($data, $newData, $entityAction): void
     {
         //if roles is null, we assume the user had no intention of updating roles
         if (isset($data['roles']) || isset($data['rolesList'])) {
@@ -363,10 +384,12 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * no validation of id
+     *
      * @todo report errors
+     *
      * @param int|string $id
      */
-    public function deleteUser($id)
+    public function deleteUser($id): int
     {
         $result = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME)
         ->delete(['user_id' => $id]);
@@ -393,7 +416,7 @@ class UserTable extends SionTable implements UserMapperInterface
         return $objects;
     }
 
-    public function linkRoles(&$objects)
+    public function linkRoles(array &$objects): void
     {
         foreach ($objects as $roleId => $object) {
             if (isset($object['parentId']) && isset($objects[$object['parentId']])) {
@@ -402,13 +425,23 @@ class UserTable extends SionTable implements UserMapperInterface
         }
     }
 
-    public function getDefaultRoles()
+    /**
+     * @return array[]
+     *
+     * @psalm-return array<array>
+     */
+    public function getDefaultRoles(): array
     {
         $objects = $this->queryObjects('user-role', ['isDefault' => '1']);
         return $objects;
     }
 
-    protected function processRoleRow($row)
+    /**
+     * @return (\DateTime|int|bool|int|mixed|null)[]
+     *
+     * @psalm-return array{roleId: int|null, name: mixed, isDefault: bool, parentId: int|null, createdOn: \DateTime, createdBy: int|null, parentName: null}
+     */
+    protected function processRoleRow($row): array
     {
         $processedRow = [
             'roleId'            => $this->filterDbId($row['id']),
@@ -465,7 +498,12 @@ class UserTable extends SionTable implements UserMapperInterface
         return $objects;
     }
 
-    protected function processUserRoleLinkerRow($row)
+    /**
+     * @return (\DateTime|int|bool|int|mixed|null)[]
+     *
+     * @psalm-return array{linkId: int|null, userId: int|null, roleId: int|null, createdOn: \DateTime, createdBy: int|null, name: mixed, isDefault: bool, parentId: int|null}
+     */
+    protected function processUserRoleLinkerRow($row): array
     {
         $processedRow = [
             'linkId'            => $this->filterDbId($row['id']),
@@ -512,11 +550,13 @@ class UserTable extends SionTable implements UserMapperInterface
     /**
      * Take two arrays referring to the same user--an old and updated copy--and update the linked roles
      * associated.
+     *
      * @param array $newUser
      * @param array $oldUser
-     * @return number
+     *
+     * @psalm-return 0|positive-int
      */
-    protected function updateUserRoles(array $newUser, array $oldUser)
+    protected function updateUserRoles(array $newUser, array $oldUser): int
     {
         if (
             ! $newUser || ! is_array($newUser) ||
@@ -586,11 +626,13 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * no validation of id
+     *
      * @todo report errors
+     *
      * @param int|string $id
      * @param string $newPass
      */
-    public function updateUserPassword($id, $newPass)
+    public function updateUserPassword($id, $newPass): int
     {
         $result = $this->getTableGateway(self::USER_TABLE_NAME)
             ->update(['password' => $newPass], ['user_id' => $id]);
@@ -598,7 +640,7 @@ class UserTable extends SionTable implements UserMapperInterface
         return $result;
     }
 
-    protected function getSelectPrototype($entity)
+    protected function getSelectPrototype(string $entity): Select
     {
         $select = parent::getSelectPrototype($entity);
         if ('user' === $entity) {

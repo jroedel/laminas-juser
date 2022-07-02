@@ -3,18 +3,18 @@
 namespace JUser\Controller;
 
 use JUser\Form\EditUserForm;
-use Zend\Mvc\Controller\AbstractActionController;
-use Zend\View\Model\ViewModel;
+use Laminas\Mvc\Controller\AbstractActionController;
+use Laminas\View\Model\ViewModel;
 use JUser\Model\UserTable;
 use JUser\Form\ChangeOtherPasswordForm;
 use JUser\Form\DeleteUserForm;
-use Zend\Mvc\Plugin\FlashMessenger\FlashMessenger;
-use Zend\Crypt\Password\Bcrypt;
+use Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger;
+use Laminas\Crypt\Password\Bcrypt;
 use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
 use JUser\Service\Mailer;
 use JUser\Model\User;
-use Zend\Log\LoggerAwareTrait;
+use Laminas\Log\LoggerAwareTrait;
 
 /**
  *
@@ -34,26 +34,22 @@ class UsersController extends AbstractActionController
 
     protected $services = [];
 
-    /**
-     *
-     * @return UserTable
-     */
-    public function setUserTable(UserTable $userTable)
+    public function setUserTable(UserTable $userTable): void
     {
         $this->userTable = $userTable;
     }
 
-    public function setServices($services)
+    public function setServices(array $services): void
     {
         $this->services = $services;
     }
 
-    public function hasService($identifier)
+    public function hasService($identifier): bool
     {
         return array_key_exists($identifier, $this->services);
     }
 
-    public function getService($identifier)
+    public function getService(string $identifier)
     {
         if (! array_key_exists($identifier, $this->services)) {
             throw new \Exception("No service `$identifier` found.");
@@ -61,11 +57,16 @@ class UsersController extends AbstractActionController
         return $this->services[$identifier];
     }
 
-    public function thanksAction()
+    public function thanksAction(): void
     {
     }
 
-    public function changePasswordAction()
+    /**
+     * @return (ChangeOtherPasswordForm|array|int)[]|\Laminas\Http\Response
+     *
+     * @psalm-return \Laminas\Http\Response|array{userId: int, user: array, form: ChangeOtherPasswordForm}
+     */
+    public function changePasswordAction(): array|\Laminas\Http\Response
     {
         $id = (int)$this->params('user_id');
         if (! $id) {
@@ -74,8 +75,8 @@ class UsersController extends AbstractActionController
         }
         /** @var UserTable $table */
         $table = $this->getService(UserTable::class);
-        $zfcOptions = $this->getService('zfcuser_module_options');
-        $form = new ChangeOtherPasswordForm($zfcOptions);
+        $lmcOptions = $this->getService('lmcuser_module_options');
+        $form = new ChangeOtherPasswordForm($lmcOptions);
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost();
@@ -88,7 +89,7 @@ class UsersController extends AbstractActionController
             if ($form->isValid()) {
                 $data = $form->getData();
                 $bcrypt = new Bcrypt();
-                $bcrypt->setCost($zfcOptions->getPasswordCost());
+                $bcrypt->setCost($lmcOptions->getPasswordCost());
                 $pass = $bcrypt->create($data['newCredential']);
                 $table->updateUserPassword($id, $pass);
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
@@ -111,7 +112,7 @@ class UsersController extends AbstractActionController
         ];
     }
 
-    public function verifyEmailAction()
+    public function verifyEmailAction(): ViewModel|\Laminas\Http\Response
     {
         $token = $this->params()->fromQuery('token');
         if (! isset($token)) {
@@ -178,7 +179,7 @@ class UsersController extends AbstractActionController
         $persons = null;
 
         $config = $this->getService('JUser\Config');
-        if (key_exists('person_provider', $config)) {
+        if (array_key_exists('person_provider', $config)) {
             $personProvider = $config['person_provider'];
             if ($this->hasService($personProvider)) {
                 /** @var PersonValueOptionsProviderInterface $provider **/
@@ -199,7 +200,7 @@ class UsersController extends AbstractActionController
         ]);
     }
 
-    public function editAction()
+    public function editAction(): ViewModel|\Laminas\Http\Response
     {
         /** @var UserTable $table **/
         $table = $this->userTable;
@@ -252,7 +253,7 @@ class UsersController extends AbstractActionController
             }
         }
         $userIdData = ['userId' => $id];
-        $changePasswordForm = new ChangeOtherPasswordForm($this->getService('zfcuser_module_options'));
+        $changePasswordForm = new ChangeOtherPasswordForm($this->getService('lmcuser_module_options'));
         $changePasswordForm->setData($userIdData);
         $deleteUserForm = new DeleteUserForm();
         $deleteUserForm->setData($userIdData);
@@ -266,7 +267,7 @@ class UsersController extends AbstractActionController
         ]);
     }
 
-    public function createAction()
+    public function createAction(): ViewModel|\Laminas\Http\Response
     {
         /** @var UserTable $table **/
         $table = $this->userTable;
@@ -315,20 +316,20 @@ class UsersController extends AbstractActionController
         ]);
     }
 
-    protected function hashPassword($password)
+    protected function hashPassword($password): string
     {
-        $zfcOptions = $this->getService('zfcuser_module_options');
+        $lmcOptions = $this->getService('lmcuser_module_options');
         $bcrypt = new Bcrypt();
-        $bcrypt->setCost($zfcOptions->getPasswordCost());
+        $bcrypt->setCost($lmcOptions->getPasswordCost());
         $pass = $bcrypt->create($password);
         return $pass;
     }
 
-    protected function generatePassword()
+    protected function generatePassword(): void
     {
     }
 
-    public function createRoleAction()
+    public function createRoleAction(): ViewModel|\Laminas\Http\Response
     {
         /** @var UserTable $table **/
         $table = $this->userTable;
@@ -360,7 +361,7 @@ class UsersController extends AbstractActionController
         ]);
     }
 
-    public function deleteAction()
+    public function deleteAction(): ViewModel|\Laminas\Http\Response
     {
         $id = (int)$this->params('user_id');
         if (! $id) {

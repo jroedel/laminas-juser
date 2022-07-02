@@ -2,9 +2,9 @@
 
 namespace JUser\Form;
 
-use Zend\Form\Form;
-use Zend\InputFilter\InputFilterProviderInterface;
-use Zend\Validator\Regex;
+use Laminas\Form\Form;
+use Laminas\InputFilter\InputFilterProviderInterface;
+use Laminas\Validator\Regex;
 
 class EditUserForm extends Form implements InputFilterProviderInterface
 {
@@ -79,8 +79,8 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             'type' => 'Checkbox',
             'options' => [
                 'label' => 'Email verified',
-                'checked_value' => 1,
-                'unchecked_value' => 0,
+                'checked_value' => '1',
+                'unchecked_value' => '0',
                 'use_hidden_element' => false,
             ],
             'attributes' => [
@@ -118,8 +118,8 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             'type' => 'Checkbox',
             'options' => [
                 'label' => 'Active',
-                'checked_value' => 1,
-                'unchecked_value' => 0,
+                'checked_value' => '1',
+                'unchecked_value' => '0',
                 'use_hidden_element' => false,
             ],
             'attributes' => [
@@ -182,7 +182,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
     /**
      * Don't update password while on edit form
      */
-    public function prepareForEdit()
+    public function prepareForEdit(): void
     {
         $fields = $this->getElements();
         unset($fields['password']);
@@ -190,7 +190,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         $this->setValidationGroup(array_keys($fields));
     }
 
-    public function setInputFilterSpecification($spec)
+    public function setInputFilterSpecification(array $spec): void
     {
         $this->filterSpec = $spec;
     }
@@ -315,7 +315,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         return $this->filterSpec;
     }
 
-    public function setValidatorsForCreate()
+    public function setValidatorsForCreate(): void
     {
         $spec = $this->getInputFilterSpecification();
         if ($spec && isset($spec['userId']) && $spec['userId']) {
@@ -324,13 +324,13 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         try { //use try block in case there is no StaticAdapter
             if ($spec && isset($spec['displayName']) && $spec['displayName']) {
                 $spec['displayName']['validators'][] = [
-                    'name'    => 'Zend\Validator\Db\NoRecordExists',
+                    'name'    => 'Laminas\Validator\Db\NoRecordExists',
                     'options' => [
                         'table' => 'user',
                         'field' => 'display_name',
-                        'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                        'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
                         'messages' => [
-                            \Zend\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
+                            \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
                                 => 'Display name already exists in database'
                         ],
                     ],
@@ -338,13 +338,13 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             }
             if ($spec && isset($spec['username']) && $spec['username']) {
                 $spec['username']['validators'][] = [
-                    'name'    => 'Zend\Validator\Db\NoRecordExists',
+                    'name'    => 'Laminas\Validator\Db\NoRecordExists',
                     'options' => [
                         'table' => 'user',
                         'field' => 'username',
-                        'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                        'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
                         'messages' => [
-                            \Zend\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
+                            \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
                                 => 'Username already exists in database'
                         ],
                     ],

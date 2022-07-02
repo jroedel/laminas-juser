@@ -3,7 +3,7 @@
 namespace JUser\Service;
 
 use JUser\Controller\LoginV1ApiController;
-use Zend\ServiceManager\Factory\FactoryInterface;
+use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
@@ -15,12 +15,12 @@ class LoginV1ApiControllerFactory implements FactoryInterface
      *
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         $serviceLocator = $container->getServiceLocator();
         $adapter        = $serviceLocator->get(CredentialOrTokenQueryParams::class);
         $userTable      = $serviceLocator->get(UserTable::class);
-        $mailTransport  = $serviceLocator->get(\Zend\Mail\Transport\TransportInterface::class);
+        $mailTransport  = $serviceLocator->get(\Laminas\Mail\Transport\TransportInterface::class);
         $config         = $serviceLocator->get('Config');
 
         $controller = new LoginV1ApiController($adapter, $userTable, $mailTransport, $config);
@@ -28,7 +28,7 @@ class LoginV1ApiControllerFactory implements FactoryInterface
         $logger = $container->get('JUser\Logger');
         $controller->setLogger($logger);
         
-        $loginFilter = $container->get(\ZfcUser\Form\LoginFilter::class);
+        $loginFilter = $container->get(\LmcUser\Form\LoginFilter::class);
         $controller->setLoginFilter($loginFilter);
         
         $translator = $container->get('jtranslate_translator');

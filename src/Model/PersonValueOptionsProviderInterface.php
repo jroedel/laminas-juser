@@ -14,7 +14,7 @@ interface PersonValueOptionsProviderInterface
      * Gets a simple key => value array of personId => name
      * @param bool $includeInactive
      */
-    public function getPersonValueOptions($includeInactive = false);
+    public function getPersonValueOptions(bool $includeInactive = false);
 
     public function getPersons();
 }
