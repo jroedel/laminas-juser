@@ -503,9 +503,9 @@ class UserTable extends SionTable implements UserMapperInterface
      *
      * @psalm-return array{linkId: int|null, userId: int|null, roleId: int|null, createdOn: \DateTime, createdBy: int|null, name: mixed, isDefault: bool, parentId: int|null}
      */
-    protected function processUserRoleLinkerRow($row): array
+    protected function processUserRoleLinkerRow(array $row): array
     {
-        $processedRow = [
+        return [
             'linkId'            => $this->filterDbId($row['id']),
             'userId'            => $this->filterDbId($row['user_id']),
             'roleId'            => $this->filterDbId($row['role_id']),
@@ -517,7 +517,6 @@ class UserTable extends SionTable implements UserMapperInterface
             'isDefault'         => $this->filterDbBool($row['is_default']),
             'parentId'          => $this->filterDbId($row['parent_id']),
         ];
-        return $processedRow;
     }
 
     /**
