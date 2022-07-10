@@ -10,40 +10,31 @@ use JUser\Form\EditUserForm;
 use JUser\Model\UserTable;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Psr\Container\ContainerInterface;
-
-use function array_key_exists;
+use Webmozart\Assert\Assert;
 
 class UsersControllerFactory implements FactoryInterface
 {
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
-        $userTable = $container->get(UserTable::class);
-
-        //@todo make a new constructor
-        $controller = new UsersController();
-        $controller->setUserTable($userTable);
-
         $config = $container->get('JUser\Config');
+        Assert::keyExists($config, 'person_provider');
+        Assert::true($container->has($config['person_provider']));
+        $personProvider   = $container->get($config['person_provider']);
+        $userTable        = $container->get(UserTable::class);
+        $editUserForm     = $container->get(EditUserForm::class);
+        $createRoleForm   = $container->get(CreateRoleForm::class);
+        $lmcModuleOptions = $container->get('lmcuser_module_options');
+        $mailer           = $container->get(Mailer::class);
+        $logger           = $container->get('JUser\Logger');
 
-        $services                 = [];
-        $services['JUser\Config'] = $config;
-        if (array_key_exists('person_provider', $config)) {
-            $personProvider = $config['person_provider'];
-            if ($container->has($personProvider)) {
-                $services[$personProvider] = $container->get($personProvider);
-            }
-        }
-
-        $services[EditUserForm::class]      = $container->get(EditUserForm::class);
-        $services[CreateRoleForm::class]    = $container->get(CreateRoleForm::class);
-        $services['lmcuser_module_options'] = $container->get('lmcuser_module_options');
-        $services[UserTable::class]         = $userTable;
-        $services[Mailer::class]            = $container->get(Mailer::class);
-        $logger = $container->get('JUser\Logger');
-        $controller->setLogger($logger);
-
-        $controller->setServices($services);
-
-        return $controller;
+        return new UsersController(
+            userTable: $userTable,
+            logger: $logger,
+            lmcModuleOptions: $lmcModuleOptions,
+            mailer: $mailer,
+            personProvider: $personProvider,
+            editUserForm: $editUserForm,
+            createRoleForm: $createRoleForm
+        );
     }
 }

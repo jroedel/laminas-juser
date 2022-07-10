@@ -1,39 +1,75 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Model;
 
+use DateTime;
+use DateTimeZone;
+use Exception;
+use JUser\Service\Mailer;
+use Laminas\Db\Adapter\AdapterInterface;
 use Laminas\Db\Sql\Select;
+use Laminas\Log\LoggerInterface;
+use LmcUser\Entity\UserInterface;
 use LmcUser\Mapper\UserInterface as UserMapperInterface;
 use SionModel\Db\Model\SionTable;
-use JUser\Service\Mailer;
+use SionModel\I18n\LanguageSupport;
+use SionModel\Problem\EntityProblem;
+use SionModel\Service\SionCacheService;
+use Webmozart\Assert\Assert;
+
+use function array_keys;
+use function count;
+use function current;
+use function debug_backtrace;
+use function in_array;
+use function is_array;
+
+use const DEBUG_BACKTRACE_IGNORE_ARGS;
 
 class UserTable extends SionTable implements UserMapperInterface
 {
-    public const USER_TABLE_NAME = 'user';
-    public const ROLE_TABLE_NAME = 'user_role';
+    public const USER_TABLE_NAME             = 'user';
+    public const ROLE_TABLE_NAME             = 'user_role';
     public const USER_ROLE_LINKER_TABLE_NAME = 'user_role_linker';
 
-    /** @var Mailer $mailer */
-    protected $mailer;
+    public function __construct(
+        AdapterInterface $adapter,
+        array $entitySpecifications,
+        SionCacheService $sionCacheService,
+        EntityProblem $entityProblemPrototype,
+        ?UserTable $userTable,
+        LanguageSupport $languageSupport,
+        LoggerInterface $logger,
+        ?int $actingUserId,
+        array $config,
+        private Mailer $mailer
+    ) {
+        parent::__construct(
+            adapter: $adapter,
+            entitySpecifications: $entitySpecifications,
+            sionCacheService: $sionCacheService,
+            entityProblemPrototype: $entityProblemPrototype,
+            userTable: $userTable,
+            languageSupport: $languageSupport,
+            logger: $logger,
+            actingUserId: $actingUserId,
+            config: $config
+        );
+    }
 
-    protected $flashMessenger;
-
-    /**
-     * @param $email
-     */
     public function findByEmail($email): User|null
     {
-        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
-        if ($this->logger) {
-            $this->logger->debug("JUser: Looking up user by email", ['email' => $email, 'caller' => $caller]);
-        }
+        $dbt    = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = $dbt[1]['function'] ?? null;
+        $this->logger->debug("JUser: Looking up user by email", ['email' => $email, 'caller' => $caller]);
         $results = $this->queryObjects('user', ['email' => $email]);
         if (! isset($results) || empty($results)) {
             return null;
         }
         $this->linkUsers($results);
-        $userArray = current($results);
+        $userArray  = current($results);
         $userObject = null;
         if (isset($userArray) && is_array($userArray)) {
             $userObject = new User($userArray);
@@ -53,17 +89,15 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function findByUsername($username): User|null
     {
-        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
-        if ($this->logger) {
-            $this->logger->debug("JUser: Looking up user by username", ['username' => $username, 'caller' => $caller]);
-        }
+        $dbt    = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = $dbt[1]['function'] ?? null;
+        $this->logger->debug("JUser: Looking up user by username", ['username' => $username, 'caller' => $caller]);
         $results = $this->queryObjects('user', ['username' => $username]);
         if (! isset($results) || empty($results)) {
             return null;
         }
         $this->linkUsers($results);
-        $userArray = current($results);
+        $userArray  = current($results);
         $userObject = null;
         if (isset($userArray) && is_array($userArray)) {
             $userObject = new User($userArray);
@@ -83,10 +117,8 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function findById($id): User|null
     {
-        if ($this->logger) {
-            $this->logger->debug("JUser: Looking up user by id", ['id' => $id]);
-        }
-        $userArray = $this->getUser($id);
+        $this->logger->debug("JUser: Looking up user by id", ['id' => $id]);
+        $userArray  = $this->getUser($id);
         $userObject = null;
         if (isset($userArray) && is_array($userArray)) {
             $userObject = new User($userArray);
@@ -95,64 +127,47 @@ class UserTable extends SionTable implements UserMapperInterface
         return $userObject;
     }
 
-    /**
-     * @param \LmcUser\Entity\UserInterface $user
-     */
-    public function insertUser(\LmcUser\Entity\UserInterface $user)
+    public function insertUser(User $user)
     {
         //figure out what the calling function is. If a user is registering, trigger the email here
         $data = $user->getArrayCopy();
         unset($data['userId']); //we don't have a userId yet
-        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
+        $dbt    = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = $dbt[1]['function'] ?? null;
         if (isset($this->logger)) {
             $this->logger->info(
                 "JUser: About to insert a new user.",
                 ['caller' => $caller, 'email' => $user->getEmail()]
             );
         }
-        if ('register' === $caller && ! isset($data['roles']) || empty($data['roles'])) {
-            $defaultRoles = $this->getDefaultRoles();
-            $data['roles'] = $defaultRoles;
+        if (empty($data['roles'])) {
+            $defaultRoles      = $this->getDefaultRoles();
+            $data['roles']     = $defaultRoles;
             $data['rolesList'] = array_keys($defaultRoles);
         }
         $result = $this->createEntity('user', $data);
-        if (false === $result) {
-            if (isset($this->logger)) {
-                $this->logger->err("JUser: Failed inserting a new user.", ['result' => $result, 'user' => $user]);
-            }
-            throw new \Exception('Error inserting a new user.');
-        } else {
-            if (isset($this->logger)) {
-                $this->logger->info("JUser: Finished inserting a new user.", ['result' => $result]);
-            }
-            if ('register' === $caller) {
-                //we need to send the registration email
-                try {
-                    //@todo this could be better to schedule with cron, to avoid making the user wait for the send
-                    $this->getMailer()->onRegister($user);
-                } catch (\Exception $e) {
-                    if (isset($this->logger)) {
-                        $this->logger->err(
-                            "JUser: Exception thrown while triggering verification email.",
-                            ['exception' => $e]
-                        );
-                    }
-                }
+        $this->logger->info("JUser: Finished inserting a new user.", ['result' => $result]);
+        if ('register' === $caller) {
+            //we need to send the registration email
+            try {
+                //@todo this could be better to schedule with cron, to avoid making the user wait for the send
+                $this->getMailer()->onRegister($user);
+            } catch (Exception $e) {
+                $this->logger->err(
+                    "JUser: Exception thrown while triggering verification email.",
+                    ['exception' => $e]
+                );
             }
         }
         return $result;
     }
 
-    /**
-     * @param \LmcUser\Entity\UserInterface $user
-     */
-    public function updateUser(\LmcUser\Entity\UserInterface $user)
+    public function updateUser(UserInterface $user)
     {
         $data = $user->getArrayCopy();
         if (isset($this->logger)) {
-            $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-            $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
+            $dbt    = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+            $caller = $dbt[1]['function'] ?? null;
             $this->logger->info("About to update a user.", ['caller' => $caller, 'user' => $user]);
         }
         $result = $this->updateEntity('user', $data['userId'], $data);
@@ -160,7 +175,7 @@ class UserTable extends SionTable implements UserMapperInterface
             if (isset($this->logger)) {
                 $this->logger->err("Failed updating a user.", ['result' => $result, 'user' => $user]);
             }
-            throw new \Exception('Error inserting a new user.');
+            throw new Exception('Error inserting a new user.');
         } else {
             if (isset($this->logger)) {
                 $this->logger->info("Finished updating a user.", ['result' => $result]);
@@ -169,18 +184,12 @@ class UserTable extends SionTable implements UserMapperInterface
         return $result;
     }
 
-    /**
-     * @param \LmcUser\Entity\UserInterface $user
-     */
-    public function insert(\LmcUser\Entity\UserInterface $user)
+    public function insert(UserInterface $user)
     {
         return $this->insertUser($user);
     }
 
-    /**
-     * @param \LmcUser\Entity\UserInterface $user
-     */
-    public function update(\LmcUser\Entity\UserInterface $user)
+    public function update(UserInterface $user)
     {
         return $this->updateUser($user);
     }
@@ -194,7 +203,7 @@ class UserTable extends SionTable implements UserMapperInterface
     {
         if (empty($ids)) {
             $cacheKey = 'all-linked-users';
-            if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+            if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
                 return $cache;
             }
         }
@@ -210,7 +219,7 @@ class UserTable extends SionTable implements UserMapperInterface
         $this->linkUsers($objects);
 
         if (isset($cacheKey)) {
-            $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role', 'user-role-link']);
+            $this->sionCacheService->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role', 'user-role-link']);
         }
         return $objects;
     }
@@ -219,7 +228,6 @@ class UserTable extends SionTable implements UserMapperInterface
      * Add role data to an array of user arrays (the array must be keyed on the userId)
      *
      * @param array $users
-     *
      * @return void
      */
     public function linkUsers(array &$users)
@@ -261,6 +269,7 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * Get an associative array of giving the username of each userId in the user table
+     *
      * @param array $ids
      * @return string[]
      */
@@ -268,7 +277,7 @@ class UserTable extends SionTable implements UserMapperInterface
     {
         if (empty($ids)) {
             $cacheKey = 'usernames';
-            if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+            if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
                 return $cache;
             }
         }
@@ -284,39 +293,42 @@ class UserTable extends SionTable implements UserMapperInterface
         }
 
         if (empty($ids)) {
-            $this->cacheEntityObjects($cacheKey, $usernames, ['user']);
+            $this->sionCacheService->cacheEntityObjects($cacheKey, $usernames, ['user']);
         }
         return $usernames;
     }
 
     /**
-     * @return (\DateTime|int|array|bool|int|mixed|null)[]
-     *
-     * @psalm-return array{userId: mixed, username: mixed, email: mixed, displayName: mixed, password: mixed, createdOn: \DateTime, createdBy: int|null, updatedOn: \DateTime, updatedBy: int|null, emailVerified: bool, mustChangePassword: bool, isMultiPersonUser: bool, verificationToken: mixed, verificationExpiration: \DateTime, active: bool, personId: int|null, roles: array<empty, empty>, rolesList: array<empty, empty>}
+     * @return (DateTime|int|array|bool|int|mixed|null)[]
+     * @psalm-return array{userId: mixed, username: mixed, email: mixed,
+     *     displayName: mixed, password: mixed, createdOn: DateTime,
+     *     createdBy: (int|null), updatedOn: DateTime, updatedBy: (int|null),
+     * emailVerified: bool, mustChangePassword: bool, isMultiPersonUser: bool,
+     * verificationToken: mixed, verificationExpiration: DateTime, active: bool,
+     * personId: (int|null), roles: array<empty, empty>, rolesList: array<empty, empty>}
      */
     protected function processUserRow($row): array
     {
-        $processedRow = [
-            'userId'            => $row['user_id'],
-            'username'          => $row['username'],
-            'email'             => $row['email'],
-            'displayName'       => $row['display_name'],
-            'password'          => $row['password'],
-            'createdOn'         => $this->filterDbDate($row['create_datetime']),
-            'createdBy'         => $this->filterDbInt($row['create_by']),
-            'updatedOn'         => $this->filterDbDate($row['update_datetime']),
-            'updatedBy'         => $this->filterDbInt($row['update_by']),
-            'emailVerified'     => $this->filterDbBool($row['email_verified']),
-            'mustChangePassword' => $this->filterDbBool($row['must_change_password']),
-            'isMultiPersonUser' => $this->filterDbBool($row['multi_person_user']),
-            'verificationToken' => $row['verification_token'],
+        return [
+            'userId'                 => $row['user_id'],
+            'username'               => $row['username'],
+            'email'                  => $row['email'],
+            'displayName'            => $row['display_name'],
+            'password'               => $row['password'],
+            'createdOn'              => $this->filterDbDate($row['create_datetime']),
+            'createdBy'              => $this->filterDbInt($row['create_by']),
+            'updatedOn'              => $this->filterDbDate($row['update_datetime']),
+            'updatedBy'              => $this->filterDbInt($row['update_by']),
+            'emailVerified'          => $this->filterDbBool($row['email_verified']),
+            'mustChangePassword'     => $this->filterDbBool($row['must_change_password']),
+            'isMultiPersonUser'      => $this->filterDbBool($row['multi_person_user']),
+            'verificationToken'      => $row['verification_token'],
             'verificationExpiration' => $this->filterDbDate($row['verification_expiration']),
-            'active'            => $this->filterDbBool($row['state']),
-            'personId'          => $this->filterDbId($row['PersID']),
-            'roles'             => [],
-            'rolesList'         => [],
+            'active'                 => $this->filterDbBool($row['state']),
+            'personId'               => $this->filterDbId($row['PersID']),
+            'roles'                  => [],
+            'rolesList'              => [],
         ];
-        return $processedRow;
     }
 
     protected function userPostprocessor($data, $newData, $entityAction): void
@@ -333,9 +345,9 @@ class UserTable extends SionTable implements UserMapperInterface
                 $this->logger->info(
                     'Updating user roles',
                     [
-                        'userId'    => $data['userId'],
-                        'oldRoles'  => isset($newData['rolesList']) ? $newData['rolesList'] : [],
-                        'newRoles'  => isset($data['rolesList']) ? $data['rolesList'] : [],
+                        'userId'   => $data['userId'],
+                        'oldRoles' => $newData['rolesList'] ?? [],
+                        'newRoles' => $data['rolesList'] ?? [],
                     ]
                 );
             }
@@ -345,6 +357,7 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * Get user properties
+     *
      * @param int|string $id
      * @return mixed[]
      */
@@ -352,7 +365,7 @@ class UserTable extends SionTable implements UserMapperInterface
     {
         //see if we can grab the user out of the cache
         $cacheKey = 'all-linked-users';
-        if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+        if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
             if (isset($cache[$id])) {
                 return $cache[$id];
             }
@@ -368,6 +381,7 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * Get user from token, including roles
+     *
      * @param int|string $id
      */
     public function getUserFromToken($token)
@@ -376,8 +390,7 @@ class UserTable extends SionTable implements UserMapperInterface
         //it should be exactly 1. If there are duplicate tokens floating, we err on the safe side
         if (1 === count($results)) {
             $this->linkUsers($results);
-            $user = current($results);
-            return $user;
+            return current($results);
         }
         return null;
     }
@@ -386,7 +399,6 @@ class UserTable extends SionTable implements UserMapperInterface
      * no validation of id
      *
      * @todo report errors
-     *
      * @param int|string $id
      */
     public function deleteUser($id): int
@@ -395,24 +407,25 @@ class UserTable extends SionTable implements UserMapperInterface
         ->delete(['user_id' => $id]);
         $result = $this->getTableGateway(self::USER_TABLE_NAME)
         ->delete(['user_id' => $id]);
-        $this->removeDependentCacheItems('user');
+        $this->sionCacheService->removeDependentCacheItems(['user']);
         return $result;
     }
 
     /**
      * Gets list of roles
+     *
      * @return mixed[]
      */
     public function getRoles()
     {
         $cacheKey = 'role';
-        if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+        if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
             return $cache;
         }
         $objects = $this->getObjects('user-role');
         $this->linkRoles($objects);
 
-        $this->cacheEntityObjects($cacheKey, $objects, ['user-role']);
+        $this->sionCacheService->cacheEntityObjects($cacheKey, $objects, ['user-role']);
         return $objects;
     }
 
@@ -427,63 +440,60 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * @return array[]
-     *
      * @psalm-return array<array>
      */
     public function getDefaultRoles(): array
     {
-        $objects = $this->queryObjects('user-role', ['isDefault' => '1']);
-        return $objects;
+        return $this->queryObjects('user-role', ['isDefault' => '1']);
     }
 
     /**
-     * @return (\DateTime|int|bool|int|mixed|null)[]
-     *
-     * @psalm-return array{roleId: int|null, name: mixed, isDefault: bool, parentId: int|null, createdOn: \DateTime, createdBy: int|null, parentName: null}
+     * @return (DateTime|int|bool|int|mixed|null)[]
+     * @psalm-return array{roleId: (int|null), name: mixed, isDefault: bool,
+     * parentId: (int|null), createdOn: DateTime, createdBy: (int|null), parentName: null}
      */
     protected function processRoleRow($row): array
     {
-        $processedRow = [
-            'roleId'            => $this->filterDbId($row['id']),
-            'name'              => $row['role_id'],
-            'isDefault'         => $this->filterDbBool($row['is_default']),
-            'parentId'          => $this->filterDbId($row['parent_id']),
-            'createdOn'         => $this->filterDbDate($row['create_datetime']),
-            'createdBy'         => $this->filterDbInt($row['create_by']),
-
-            'parentName'        => null,
+        return [
+            'roleId'     => $this->filterDbId($row['id']),
+            'name'       => $row['role_id'],
+            'isDefault'  => $this->filterDbBool($row['is_default']),
+            'parentId'   => $this->filterDbId($row['parent_id']),
+            'createdOn'  => $this->filterDbDate($row['create_datetime']),
+            'createdBy'  => $this->filterDbInt($row['create_by']),
+            'parentName' => null,
         ];
-        return $processedRow;
     }
 
     public function getRolesValueOptions()
     {
         $cacheKey = 'roles-value-options';
-        if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+        if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
             return $cache;
         }
-        $roles = $this->getRoles();
+        $roles  = $this->getRoles();
         $return = [];
         foreach ($roles as $role) {
-            $return[$role['roleId']] = $role['name'] .
-               ($role['parentId'] ? ' (child of ' . $role['parentName'] . ')' : '');
+            $return[$role['roleId']] = $role['name']
+               . ($role['parentId'] ? ' (child of ' . $role['parentName'] . ')' : '');
         }
-        $this->cacheEntityObjects($cacheKey, $return, ['user-role']);
+        $this->sionCacheService->cacheEntityObjects($cacheKey, $return, ['user-role']);
         return $return;
     }
 
     /**
      * Gets list of user role links
+     *
      * @return mixed[]
      */
     protected function getUserRoleLinker($userIds = [])
     {
         $cacheKey = 'user-role-linker';
-        if (null !== ($cache = $this->fetchCachedEntityObjects($cacheKey))) {
+        if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
             return $cache;
         }
         $gateway = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME);
-        $select = $this->getSelectPrototype('user-role-link');
+        $select  = $this->getSelectPrototype('user-role-link');
         if (! empty($userIds)) {
             $select->where(['user_id' => $userIds]);
         }
@@ -492,50 +502,40 @@ class UserTable extends SionTable implements UserMapperInterface
         $objects = [];
         foreach ($results as $row) {
             $processedRow = $this->processUserRoleLinkerRow($row);
-            $objects[] = $processedRow;
+            $objects[]    = $processedRow;
         }
-        $this->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role', 'user-role-link']);
+        $this->sionCacheService->cacheEntityObjects($cacheKey, $objects, ['user', 'user-role', 'user-role-link']);
         return $objects;
     }
 
     /**
-     * @return (\DateTime|int|bool|int|mixed|null)[]
-     *
-     * @psalm-return array{linkId: int|null, userId: int|null, roleId: int|null, createdOn: \DateTime, createdBy: int|null, name: mixed, isDefault: bool, parentId: int|null}
+     * @return (DateTime|int|bool|int|mixed|null)[]
+     * @psalm-return array{linkId: (int|null), userId: (int|null), roleId: (int|null),
+     * createdOn: DateTime, createdBy: (int|null), name: mixed, isDefault: bool, parentId: (int|null)}
      */
     protected function processUserRoleLinkerRow(array $row): array
     {
         return [
-            'linkId'            => $this->filterDbId($row['id']),
-            'userId'            => $this->filterDbId($row['user_id']),
-            'roleId'            => $this->filterDbId($row['role_id']),
-            'createdOn'         => $this->filterDbDate($row['create_datetime']),
-            'createdBy'         => $this->filterDbInt($row['create_by']),
+            'linkId'    => $this->filterDbId($row['id']),
+            'userId'    => $this->filterDbId($row['user_id']),
+            'roleId'    => $this->filterDbId($row['role_id']),
+            'createdOn' => $this->filterDbDate($row['create_datetime']),
+            'createdBy' => $this->filterDbInt($row['create_by']),
 
             //from user_role
-            'name'              => $row['role_name'],
-            'isDefault'         => $this->filterDbBool($row['is_default']),
-            'parentId'          => $this->filterDbId($row['parent_id']),
+            'name'      => $row['role_name'],
+            'isDefault' => $this->filterDbBool($row['is_default']),
+            'parentId'  => $this->filterDbId($row['parent_id']),
         ];
     }
 
     /**
      * Check if a user has a certain role
-     * @param int $userId
-     * @param int $roleId
-     * @return bool
      */
-    public function userHasRole($userId, $roleId)
+    public function userHasRole(int $userId, int $roleId): bool
     {
-        //@todo this could be done with a simple SQL (if it's not called too often)
-        $userId = $this->filterDbId($userId);
-        $roleId = $this->filterDbId($roleId);
-        if (! $userId) {
-            throw new \InvalidArgumentException('Invalid user passed.');
-        }
-        if (! $roleId) {
-            throw new \InvalidArgumentException('Invalid role passed.');
-        }
+        Assert::greaterThan($userId, 0);
+        Assert::greaterThan($roleId, 0);
         $user = $this->getUser($userId);
         if (! $user) {
             return false;
@@ -552,7 +552,6 @@ class UserTable extends SionTable implements UserMapperInterface
      *
      * @param array $newUser
      * @param array $oldUser
-     *
      * @psalm-return 0|positive-int
      */
     protected function updateUserRoles(array $newUser, array $oldUser): int
@@ -570,10 +569,10 @@ class UserTable extends SionTable implements UserMapperInterface
         } else {
             $oldRoles = [];
         }
-        $allRoles = $this->getRoles();
-        $allRoleIds = array_keys($allRoles);
+        $allRoles     = $this->getRoles();
+        $allRoleIds   = array_keys($allRoles);
         $tableGateway = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME);
-        $roles = [];
+        $roles        = [];
         foreach ($allRoleIds as $roleId) {
             $roles[$roleId] = [
                 //don't use strict checks because we can't be sure roleIds will always be the same type
@@ -588,27 +587,25 @@ class UserTable extends SionTable implements UserMapperInterface
             }
             $data = ['user_id' => $newUser['userId'], 'role_id' => $roleId];
             if ($oldNew['new'] && ! $oldNew['old']) { //insert a role
-                $result = 0;
-                $data['create_datetime'] = $this->formatDbDate(new \DateTime(null, new \DateTimeZone('UTC')));
+                $data['create_datetime'] = $this->formatDbDate(new DateTime('now', new DateTimeZone('UTC')));
                 if (isset($this->actingUserId)) {
                     $data['create_by'] = $this->actingUserId;
                 }
-                $result = $tableGateway->insert($data);
+                $result   = $tableGateway->insert($data);
                 $return[] = [
-                    'method'    => 'insert',
-                    'data'      => $data,
-                    'result'    => $result,
+                    'method' => 'insert',
+                    'data'   => $data,
+                    'result' => $result,
                 ];
                 continue;
             }
             if (! $oldNew['new'] && $oldNew['old']) { //delete a role
-                $result = $tableGateway->delete($data);
+                $result   = $tableGateway->delete($data);
                 $return[] = [
-                    'method'    => 'delete',
-                    'data'      => $data,
-                    'result'    => $result
+                    'method' => 'delete',
+                    'data'   => $data,
+                    'result' => $result,
                 ];
-                continue;
             }
         }
         if (isset($this->logger)) {
@@ -618,7 +615,7 @@ class UserTable extends SionTable implements UserMapperInterface
          * Even though SionTable::updateEntity should clear cache after an update, this function
          * could be called from somewhere else. Clear the cache just in case
          */
-        $this->removeDependentCacheItems('user');
+        $this->sionCacheService->removeDependentCacheItems(['user']);
 
         return count($return);
     }
@@ -627,7 +624,6 @@ class UserTable extends SionTable implements UserMapperInterface
      * no validation of id
      *
      * @todo report errors
-     *
      * @param int|string $id
      * @param string $newPass
      */
@@ -635,7 +631,7 @@ class UserTable extends SionTable implements UserMapperInterface
     {
         $result = $this->getTableGateway(self::USER_TABLE_NAME)
             ->update(['password' => $newPass], ['user_id' => $id]);
-        $this->removeDependentCacheItems('user');
+        $this->sionCacheService->removeDependentCacheItems(['user']);
         return $result;
     }
 
@@ -661,19 +657,18 @@ class UserTable extends SionTable implements UserMapperInterface
     }
 
     /**
-     * @throws \Exception
-     * @return \JUser\Service\Mailer
+     * @throws Exception
+     * @return Mailer
      */
     public function getMailer()
     {
         if (! isset($this->mailer)) {
-            throw new \Exception('The mailer is not set.');
+            throw new Exception('The mailer is not set.');
         }
         return $this->mailer;
     }
 
     /**
-     * @param Mailer $mailer
      * @return self
      */
     public function setMailer(Mailer $mailer)

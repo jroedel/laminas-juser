@@ -1,93 +1,89 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Controller;
 
-use JUser\Form\EditUserForm;
-use Laminas\Mvc\Controller\AbstractActionController;
-use Laminas\View\Model\ViewModel;
-use JUser\Model\UserTable;
+use DateInterval;
+use DateTime;
+use DateTimeZone;
+use Exception;
+use InvalidArgumentException;
 use JUser\Form\ChangeOtherPasswordForm;
-use JUser\Form\DeleteUserForm;
-use Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger;
-use Laminas\Crypt\Password\Bcrypt;
-use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
-use JUser\Service\Mailer;
+use JUser\Form\DeleteUserForm;
+use JUser\Form\EditUserForm;
+use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Model\User;
-use Laminas\Log\LoggerAwareTrait;
+use JUser\Model\UserTable;
+use JUser\Service\Mailer;
+use Laminas\Crypt\Password\Bcrypt;
+use Laminas\Http\Response;
+use Laminas\Log\LoggerInterface;
+use Laminas\Mvc\Controller\AbstractActionController;
+use Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger;
+use Laminas\Stdlib\ResponseInterface;
+use Laminas\View\Model\ModelInterface;
+use Laminas\View\Model\ViewModel;
+use LmcUser\Options\ModuleOptions;
+use Psalm\Node\Stmt\VirtualElse;
+use SionModel\Person\PersonProviderInterface;
+use Webmozart\Assert\Assert;
+
+use function array_key_exists;
+use function array_keys;
 
 /**
- *
- * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  * @todo   fix activation
  * @todo   email admins to alert new user request
  */
 class UsersController extends AbstractActionController
 {
-    use LoggerAwareTrait;
-    
-    public const VERIFICATION_VERIFIED = 'verified';
-    public const VERIFICATION_EXPIRED = 'expired';
+    public const VERIFICATION_VERIFIED                  = 'verified';
+    public const VERIFICATION_EXPIRED                   = 'expired';
     public const VERIFICATION_TOKEN_EXPIRATION_INTERVAL = 'P1D';
 
-    protected $userTable;
-
-    protected $services = [];
-
-    public function setUserTable(UserTable $userTable): void
-    {
-        $this->userTable = $userTable;
+    public function __construct(
+        private UserTable $userTable,
+        private LoggerInterface $logger,
+        private ModuleOptions $lmcModuleOptions,
+        private Mailer $mailer,
+        private PersonProviderInterface $personProvider,
+        private EditUserForm $editUserForm,
+        private CreateRoleForm $createRoleForm
+    ) {
     }
 
-    public function setServices(array $services): void
+    public function thanksAction(): ModelInterface|ResponseInterface
     {
-        $this->services = $services;
-    }
-
-    public function hasService($identifier): bool
-    {
-        return array_key_exists($identifier, $this->services);
-    }
-
-    public function getService(string $identifier)
-    {
-        if (! array_key_exists($identifier, $this->services)) {
-            throw new \Exception("No service `$identifier` found.");
-        }
-        return $this->services[$identifier];
-    }
-
-    public function thanksAction(): void
-    {
+        return new ViewModel();
     }
 
     /**
-     * @return (ChangeOtherPasswordForm|array|int)[]|\Laminas\Http\Response
-     *
-     * @psalm-return \Laminas\Http\Response|array{userId: int, user: array, form: ChangeOtherPasswordForm}
+     * @return (ChangeOtherPasswordForm|array|int)[]|Response
+     * @psalm-return Response|array{userId: int, user: array, form: ChangeOtherPasswordForm}
      */
-    public function changePasswordAction(): array|\Laminas\Http\Response
+    public function changePasswordAction(): ModelInterface|ResponseInterface
     {
-        $id = (int)$this->params('user_id');
+        $id = (int) $this->params('user_id');
         if (! $id) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
-        /** @var UserTable $table */
-        $table = $this->getService(UserTable::class);
-        $lmcOptions = $this->getService('lmcuser_module_options');
-        $form = new ChangeOtherPasswordForm($lmcOptions);
-        $request = $this->getRequest();
+        $table      = $this->userTable;
+        $lmcOptions = $this->lmcModuleOptions;
+        $form       = new ChangeOtherPasswordForm($lmcOptions);
+        $request    = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost();
-            if ($data['userId'] != $id) {
+            if ($data['userId'] !== $id) {
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                     ->addMessage('Error in form submission.');
                 return $this->redirect()->toRoute('juser');
             }
             $form->setData($data);
             if ($form->isValid()) {
-                $data = $form->getData();
+                $data   = $form->getData();
                 $bcrypt = new Bcrypt();
                 $bcrypt->setCost($lmcOptions->getPasswordCost());
                 $pass = $bcrypt->create($data['newCredential']);
@@ -105,32 +101,31 @@ class UsersController extends AbstractActionController
         }
         $user = $table->getUser($id);
 
-        return [
+        return new ViewModel([
             'userId' => $id,
-            'user' => $user,
-            'form' => $form,
-        ];
+            'user'   => $user,
+            'form'   => $form,
+        ]);
     }
 
-    public function verifyEmailAction(): ViewModel|\Laminas\Http\Response
+    public function verifyEmailAction(): ModelInterface|ResponseInterface
     {
         $token = $this->params()->fromQuery('token');
         if (! isset($token)) {
             $this->redirect()->toRoute('welcome');
         }
 
-        /** @var UserTable $table */
-        $table = $this->getService(UserTable::class);
-        $logger = $this->getLogger();
+        $table  = $this->userTable;
+        $logger = $this->logger;
         $logger->debug("JUser: receiving a request to verify user", ['verificationToken' => $token]);
-        
+
         $user = $table->getUserFromToken($token);
         if (! isset($user)) {
             $logger->alert(
                 "JUser: we were unable to find the user based on their verification token.",
                 ['verificationToken' => $token]
             );
-            
+
             //@todo add a requestEmailVerificationAction(), redirect users to this
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
             ->addMessage('Unable to verify email address.');
@@ -138,30 +133,28 @@ class UsersController extends AbstractActionController
         }
 
         //expired or validated
-        $status = null;
-        $now = new \DateTime(null, new \DateTimeZone('UTC'));
+        $now = new DateTime('now', new DateTimeZone('UTC'));
         if (! isset($user['verificationExpiration']) || $now > $user['verificationExpiration']) {
             $status = self::VERIFICATION_EXPIRED;
-            $user = self::setNewVerificationToken($user);
+            $user   = self::setNewVerificationToken($user);
             $table->updateEntity('user', $user['userId'], $user);
-            
+
             $logger->alert(
                 "JUser: The user's verification token was expired, we'll send them a new one.",
                 ['email' => $user['email']]
             );
-            
-            /** @var Mailer $mailer */
-            $mailer = $this->getService(Mailer::class);
+
+            $mailer = $this->mailer;
             $mailer->sendVerificationEmail($user);
         } else {
             $status = self::VERIFICATION_VERIFIED;
-            
+
             $logger->info(
                 "JUser: The user was successfully verified.",
                 ['email' => $user['email']]
             );
-                
-            $user['active'] = true;
+
+            $user['active']        = true;
             $user['emailVerified'] = true;
             //update status
             $table->updateEntity('user', $user['userId'], $user);
@@ -169,42 +162,25 @@ class UsersController extends AbstractActionController
             //@todo allow spontaeneous login
         }
         return new ViewModel([
-            'user' => $user,
+            'user'   => $user,
             'status' => $status,
         ]);
     }
 
-    public function indexAction()
+    public function indexAction(): ModelInterface|ResponseInterface
     {
-        $persons = null;
-
-        $config = $this->getService('JUser\Config');
-        if (array_key_exists('person_provider', $config)) {
-            $personProvider = $config['person_provider'];
-            if ($this->hasService($personProvider)) {
-                /** @var PersonValueOptionsProviderInterface $provider **/
-                $provider = $this->getService($personProvider);
-                if (! $provider instanceof PersonValueOptionsProviderInterface) {
-                    throw new \InvalidArgumentException(
-                        '`person_provider` specified in the JUser config does'
-                        . ' not implement the PersonValueOptionsProviderInterface.'
-                    );
-                }
-                $persons = $provider->getPersons();
-            }
-        }
+        $persons = $this->personProvider->getPersons();
         $users = $this->userTable->getUsers();
         return new ViewModel([
-            'users' => $users,
-            'persons' => $persons
+            'users'   => $users,
+            'persons' => $persons,
         ]);
     }
 
-    public function editAction(): ViewModel|\Laminas\Http\Response
+    public function editAction(): ModelInterface|ResponseInterface
     {
-        /** @var UserTable $table **/
         $table = $this->userTable;
-        $id = (int) $this->params()->fromRoute('user_id');
+        $id    = (int) $this->params()->fromRoute('user_id');
         if (! $id) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
@@ -217,14 +193,13 @@ class UsersController extends AbstractActionController
             return $this->redirect()->toRoute('juser');
         }
 
-        /** @var EditUserForm $form */
-        $form = $this->getService(EditUserForm::class);
+        $form = $this->editUserForm;
         $form->prepareForEdit();
         $form->setData($user);
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost()->toArray();
-            if ($data['userId'] != $id) { // make sure the user is trying to update the right user
+            if ($data['userId'] !== $id) { // make sure the user is trying to update the right user
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                     ->addMessage('Error in form submission, please try again later.');
                 return $this->redirect()->toRoute('juser');
@@ -236,9 +211,9 @@ class UsersController extends AbstractActionController
                 if (! $isPersonIdSet) {
                     unset($data['personId']);
                 }
-                
-                $this->getLogger()->info("Updating user", ['userId' => $id, 'data' => $data]);
-                    
+
+                $this->logger->info("Updating user", ['userId' => $id, 'data' => $data]);
+
                 if ($table->updateEntity('user', $id, $data)) {
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('User successfully updated.');
@@ -252,28 +227,25 @@ class UsersController extends AbstractActionController
                     ->addMessage('Error in form submission, please review.');
             }
         }
-        $userIdData = ['userId' => $id];
-        $changePasswordForm = new ChangeOtherPasswordForm($this->getService('lmcuser_module_options'));
+        $userIdData         = ['userId' => $id];
+        $changePasswordForm = new ChangeOtherPasswordForm($this->lmcModuleOptions);
         $changePasswordForm->setData($userIdData);
         $deleteUserForm = new DeleteUserForm();
         $deleteUserForm->setData($userIdData);
 
         return new ViewModel([
-            'userId' => $id,
-            'user' => $user,
-            'form' => $form,
+            'userId'             => $id,
+            'user'               => $user,
+            'form'               => $form,
             'changePasswordForm' => $changePasswordForm,
-            'deleteUserForm' => $deleteUserForm,
+            'deleteUserForm'     => $deleteUserForm,
         ]);
     }
 
-    public function createAction(): ViewModel|\Laminas\Http\Response
+    public function createAction(): ModelInterface|ResponseInterface
     {
-        /** @var UserTable $table **/
         $table = $this->userTable;
-
-        /** @var EditUserForm $form */
-        $form = $this->getService(EditUserForm::class);
+        $form  = $this->editUserForm;
 
         //@todo find a way to get this out of here
         $form->setValidatorsForCreate();
@@ -290,7 +262,7 @@ class UsersController extends AbstractActionController
                     $data['password'] = $this->hashPassword($data['password']);
                 }
                 try {
-                    if (! ($table->createEntity('user', $data))) {
+                    if (! $table->createEntity('user', $data)) {
                         $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                             ->addMessage('Error in form submission, please review.');
                     } else {
@@ -298,7 +270,7 @@ class UsersController extends AbstractActionController
                             ->addMessage('User successfully created.');
                         return $this->redirect()->toRoute('juser');
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                         ->addMessage('Error in form submission, please review.');
                 }
@@ -307,7 +279,7 @@ class UsersController extends AbstractActionController
                     ->addMessage('Error in form submission, please review.');
             }
         } else {
-            $rolesList = $form->get('rolesList');
+            $rolesList    = $form->get('rolesList');
             $defaultRoles = $table->getDefaultRoles();
             $rolesList->setValue(array_keys($defaultRoles));
         }
@@ -316,26 +288,22 @@ class UsersController extends AbstractActionController
         ]);
     }
 
-    protected function hashPassword($password): string
+    protected function hashPassword(string $password): string
     {
-        $lmcOptions = $this->getService('lmcuser_module_options');
+        Assert::notEmpty($password);
         $bcrypt = new Bcrypt();
-        $bcrypt->setCost($lmcOptions->getPasswordCost());
-        $pass = $bcrypt->create($password);
-        return $pass;
+        $bcrypt->setCost($this->lmcModuleOptions->getPasswordCost());
+        return $bcrypt->create($password);
     }
 
     protected function generatePassword(): void
     {
     }
 
-    public function createRoleAction(): ViewModel|\Laminas\Http\Response
+    public function createRoleAction(): ModelInterface|ResponseInterface
     {
-        /** @var UserTable $table **/
-        $table = $this->userTable;
-
-        /** @var EditUserForm $form */
-        $form = $this->getService(CreateRoleForm::class);
+        $table   = $this->userTable;
+        $form    = $this->createRoleForm;
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost()->toArray();
@@ -347,7 +315,7 @@ class UsersController extends AbstractActionController
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('Role successfully created.');
                     return $this->redirect()->toRoute('juser');
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                         ->addMessage('Error in form submission, please review.');
                 }
@@ -361,17 +329,17 @@ class UsersController extends AbstractActionController
         ]);
     }
 
-    public function deleteAction(): ViewModel|\Laminas\Http\Response
+    public function deleteAction(): ViewModel|Response
     {
-        $id = (int)$this->params('user_id');
+        $id = (int) $this->params('user_id');
         if (! $id) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
 
-        $table = $this->userTable;
-        $form = new DeleteUserForm();
+        $table   = $this->userTable;
+        $form    = new DeleteUserForm();
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost();
@@ -397,18 +365,18 @@ class UsersController extends AbstractActionController
 
         return new ViewModel([
             'userId' => $id,
-            'user' => $user,
-            'form' => $form,
+            'user'   => $user,
+            'form'   => $form,
         ]);
     }
 
     protected static function setNewVerificationToken(
-        $user,
-        $expirationInterval = self::VERIFICATION_TOKEN_EXPIRATION_INTERVAL
-    ) {
+        array $user,
+        string $expirationInterval = self::VERIFICATION_TOKEN_EXPIRATION_INTERVAL
+    ): array {
         $user['verificationToken'] = User::generateVerificationToken();
-        $dt = new \DateTime(null, new \DateTimeZone('UTC'));
-        $dt->add(new \DateInterval($expirationInterval));
+        $dt                        = new DateTime('now', new DateTimeZone('UTC'));
+        $dt->add(new DateInterval($expirationInterval));
         $user['verificationExpiration'] = $dt;
         return $user;
     }

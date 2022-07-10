@@ -6,35 +6,46 @@ namespace JUser\Service;
 
 use JUser\Model\UserTable;
 use Laminas\Db\Adapter\Adapter;
+use Laminas\Log\LoggerInterface;
+use Laminas\Mvc\I18n\Translator;
 use Laminas\ServiceManager\Factory\FactoryInterface;
+use LmcUser\Service\User;
 use Psr\Container\ContainerInterface;
+use SionModel\Db\Model\PredicatesTable;
+use SionModel\I18n\LanguageSupport;
+use SionModel\Problem\EntityProblem;
+use SionModel\Service\EntitiesService;
+use SionModel\Service\SionCacheService;
 
 class UserTableFactory implements FactoryInterface
 {
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
-        //@todo how can we get an identity if the process requires this very UserTable?
-//         $authService = $container->get('lmcuser_auth_service');
-//         if ($user = $authService->getIdentity()) {
-//             $userId = $user->getId();
-//         } else {
-//             $userId = null;
-//         }
+        /** @var  User $userService **/
+//        $userService  = $container->get('lmcuser_user_service');
+//        $user         = $userService->getAuthService()->getIdentity();
+//        $actingUserId = $user ? (int) $user->id : null;
 
-        $dbAdapter = $container->get(Adapter::class);
-        $table     = new UserTable($dbAdapter, $container, null);
+        $adapter                = $container->get(Adapter::class);
+        $entitiesService        = $container->get(EntitiesService::class);
+        $sionCacheService       = $container->get(SionCacheService::class);
+        $entityProblemPrototype = $container->get(EntityProblem::class);
+        $languageSupport        = $container->get(LanguageSupport::class);
+        $logger                 = $container->get(LoggerInterface::class);
+        $config                 = $container->get('Config');
+        $mailer                 = $container->get(Mailer::class);
 
-        $cache = $container->get('JUser\Cache');
-        $em    = $container->get('Application')->getEventManager();
-        $table->setPersistentCache($cache);
-        $table->wireOnFinishTrigger($em);
-
-        $mailer = $container->get(Mailer::class);
-        $table->setMailer($mailer);
-
-        $logger = $container->get('JUser\Logger');
-        $table->setLogger($logger);
-
-        return $table;
+        return new UserTable(
+            adapter: $adapter,
+            entitySpecifications: $entitiesService->getEntities(),
+            sionCacheService: $sionCacheService,
+            entityProblemPrototype: $entityProblemPrototype,
+            userTable: null,
+            languageSupport: $languageSupport,
+            logger: $logger,
+            actingUserId: null,
+            config: $config['sion_model'],
+            mailer: $mailer
+        );
     }
 }
