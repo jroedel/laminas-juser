@@ -16,7 +16,7 @@ $this->headTitle($title);
     <th><?php echo $this->translate("Roles");?></th>
     <th><?php echo $this->translate("Person");?></th>
 </tr>
-<?php  foreach ($users as $user) : ?>
+<?php  foreach ($this->users as $user) : ?>
 <tr>
     <td><?php echo $this->escapeHtml($user['username']);
     if ($this->isAllowed('route/juser/user/edit')) :

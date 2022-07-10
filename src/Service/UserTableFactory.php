@@ -1,19 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Service;
 
-use Laminas\ServiceManager\Factory\FactoryInterface;
-use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use Laminas\Db\Adapter\Adapter;
+use Laminas\ServiceManager\Factory\FactoryInterface;
+use Psr\Container\ContainerInterface;
 
 class UserTableFactory implements FactoryInterface
 {
-    /**
-     * Create an object
-     *
-     * @inheritdoc
-     */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         //@todo how can we get an identity if the process requires this very UserTable?
@@ -25,20 +22,18 @@ class UserTableFactory implements FactoryInterface
 //         }
 
         $dbAdapter = $container->get(Adapter::class);
-        $table = new UserTable($dbAdapter, $container, null);
+        $table     = new UserTable($dbAdapter, $container, null);
 
         $cache = $container->get('JUser\Cache');
-        $em = $container->get('Application')->getEventManager();
+        $em    = $container->get('Application')->getEventManager();
         $table->setPersistentCache($cache);
         $table->wireOnFinishTrigger($em);
 
         $mailer = $container->get(Mailer::class);
         $table->setMailer($mailer);
 
-        if ($container->has('JUser\Logger')) {
-            $logger = $container->get('JUser\Logger');
-            $table->setLogger($logger);
-        }
+        $logger = $container->get('JUser\Logger');
+        $table->setLogger($logger);
 
         return $table;
     }
