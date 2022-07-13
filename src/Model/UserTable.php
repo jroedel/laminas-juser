@@ -55,7 +55,7 @@ class UserTable extends SionTable implements UserMapperInterface
             languageSupport: $languageSupport,
             logger: $logger,
             actingUserId: $actingUserId,
-            config: $config
+            generalConfig: $config
         );
     }
 

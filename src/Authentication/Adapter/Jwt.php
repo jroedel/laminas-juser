@@ -5,21 +5,19 @@ declare(strict_types=1);
 namespace JUser\Authentication\Adapter;
 
 use Exception;
-use interop\container\containerinterface;
 use Laminas\Authentication\Adapter\AdapterInterface;
 use Laminas\Authentication\Result as AuthenticationResult;
 use Laminas\Authentication\Result;
-use Laminas\EventManager\EventInterface;
-use Laminas\ServiceManager\ServiceManager;
+use Laminas\Filter\FilterInterface;
+use Laminas\Log\LoggerInterface;
 use Laminas\Stdlib\RequestInterface;
-// use Laminas\Session\Container as SessionContainer;
+use Laminas\Validator\ValidatorInterface;
 use LmcUser\Mapper\UserInterface as UserMapperInterface;
 use LmcUser\Options\ModuleOptions;
 
 use function in_array;
 use function is_object;
 use function property_exists;
-use function trim;
 
 /**
  * The plan here is to copy over code from ApiController to check the validity of the JWT.
@@ -31,27 +29,19 @@ use function trim;
  */
 class Jwt implements AdapterInterface
 {
-    /** @var UserMapperInterface */
-    protected $mapper;
-
     /** @var callable */
     protected $credentialPreprocessor;
 
-    /** @var ServiceManager */
-    protected $serviceManager;
-
-    /** @var ModuleOptions */
-    protected $options;
-
-    /**
-     * Called when user id logged out
-     *
-     * @param EventInterface $e
-     */
-//     public function logout(EventInterface $e)
-//     {
-//         $this->getStorage()->clear();
-//     }
+    public function __construct(
+        private UserMapperInterface $mapper,
+        private ModuleOptions $options,
+        private RequestInterface $request,
+        private LoggerInterface $logger,
+        private ValidatorInterface $authorizationHeaderValidator,
+        private FilterInterface $authorizationHeaderFilter,
+        private array $config
+    ) {
+    }
 
     public function authenticate(): Result
     {
@@ -65,10 +55,10 @@ class Jwt implements AdapterInterface
 //             return;
 //         }
 
-        $request = $this->getServiceManager()->get('Request');
+        $request = $this->request;
 //         $response = $event->getResponse();
 //         $isAuthorizationRequired = $event->getRouteMatch()->getParam('isAuthorizationRequired');
-        $config = $this->getServiceManager()->get('Config');
+        $config = $this->config;
 
         if (
             isset($config['ApiRequest']) && isset($config['ApiRequest']['jwtAuth'])
@@ -150,25 +140,25 @@ class Jwt implements AdapterInterface
 
     /**
      * Check Request object have Authorization token or not
-     *
-     * @param RequestInterface $request
-     * @return string
      */
-    public function findJwtToken($request)
+    public function findJwtToken(RequestInterface $request): string|null
     {
-        $jwtToken = $request->getHeaders("Authorization") ? $request->getHeaders("Authorization")->getFieldValue() : '';
-        if ($jwtToken) {
-            //@TODO this is very wrong! We're stripping the characters in Bearer off the Authorization header
-            $jwtToken = trim(trim($jwtToken, "Bearer"), " ");
-            return $jwtToken;
+        $jwtToken = $request->getHeaders("Authorization")
+            ? $request->getHeaders("Authorization")->getFieldValue()
+            : null;
+        if ($jwtToken && $this->authorizationHeaderValidator->isValid($jwtToken)) {
+//            $this->logger->info('We found a JWT: '.$this->authorizationHeaderFilter->filter($jwtToken));
+            return $this->authorizationHeaderFilter->filter($jwtToken);
         }
         if ($request->isGet()) {
-            $jwtToken = $request->getQuery('token');
+            //@todo add some validation
+            return $request->getQuery('token');
         }
         if ($request->isPost()) {
-            $jwtToken = $request->getPost('token');
+            //@todo add some validation
+             return $request->getPost('token');
         }
-        return $jwtToken;
+        return null;
     }
 
     /**
@@ -185,64 +175,13 @@ class Jwt implements AdapterInterface
         return $decodeToken;
     }
 
-    /**
-     * getMapper
-     *
-     * @return UserMapperInterface
-     */
-    public function getMapper()
+    public function getOptions(): ModuleOptions
     {
-        if (null === $this->mapper) {
-            $this->mapper = $this->getServiceManager()->get('lmcuser_user_mapper');
-        }
-
-        return $this->mapper;
-    }
-
-    /**
-     * setMapper
-     *
-     * @return Jwt
-     */
-    public function setMapper(UserMapperInterface $mapper)
-    {
-        $this->mapper = $mapper;
-
-        return $this;
-    }
-
-    /**
-     * Retrieve service manager instance
-     *
-     * @return ServiceManager
-     */
-    public function getServiceManager()
-    {
-        return $this->serviceManager;
-    }
-
-    /**
-     * Set service manager instance
-     */
-    public function setServiceManager(containerinterface $serviceManager): void
-    {
-        $this->serviceManager = $serviceManager;
-    }
-
-    public function setOptions(ModuleOptions $options): void
-    {
-        $this->options = $options;
-    }
-
-    /**
-     * @return ModuleOptions
-     */
-    public function getOptions()
-    {
-        if ($this->options === null) {
-            $this->setOptions($this->getServiceManager()->get('lmcuser_module_options'));
-        }
-
         return $this->options;
+    }
+
+    public function getMapper(): UserMapperInterface
+    {
+        return $this->mapper;
     }
 }

@@ -1,22 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Provider\Identity;
 
 use BjyAuthorize\Provider\Identity\LmcUserLaminasDb;
 
 class LmcUserZendDbPlusSelfAsRole extends LmcUserLaminasDb
 {
-
-    /**
-     *
-     * {@inheritDoc}
-     * @see \BjyAuthorize\Provider\Identity\LmcUserZendDb::getIdentityRoles()
-     */
     public function getIdentityRoles()
     {
-        $roles = parent::getIdentityRoles();
+        $roles       = parent::getIdentityRoles();
         $authService = $this->userService->getAuthService();
-        $identity = $authService->getIdentity();
+        $identity    = $authService->getIdentity();
         if (isset($identity)) {
             $userId = $identity->getId();
             if (isset($userId)) {

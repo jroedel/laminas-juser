@@ -44,7 +44,7 @@ class UserTableFactory implements FactoryInterface
             languageSupport: $languageSupport,
             logger: $logger,
             actingUserId: null,
-            config: $config['sion_model'],
+            config: $config,
             mailer: $mailer
         );
     }

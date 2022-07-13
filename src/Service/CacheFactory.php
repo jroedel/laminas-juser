@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Service;
 
+use Exception;
 use Laminas\Cache\StorageFactory;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Psr\Container\ContainerInterface;
@@ -12,7 +15,7 @@ class CacheFactory implements FactoryInterface
     {
         $config = $container->get('config');
         if (! isset($config['juser']) || ! isset($config['juser']['cache_options'])) {
-            throw new \Exception('Missing JUser cache configuration');
+            throw new Exception('Missing JUser cache configuration');
         }
 
         return StorageFactory::factory($config['juser']['cache_options']);

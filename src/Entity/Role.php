@@ -1,36 +1,20 @@
 <?php
 
-/**
- * BjyAuthorize Module (https://github.com/bjyoungblood/BjyAuthorize)
- *
- * @link https://github.com/bjyoungblood/BjyAuthorize for the canonical source repository
- * @license http://framework.zend.com/license/new-bsd New BSD License
- */
+declare(strict_types=1);
 
 namespace JUser\Entity;
 
 use BjyAuthorize\Acl\HierarchicalRoleInterface;
 
-/**
- * An example entity that represents a role.
- *
- * @author Tom Oram <tom@scl.co.uk>
- */
 class Role implements HierarchicalRoleInterface
 {
-    /**
-     * @var int
-     */
+    /** @var int */
     protected $id;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     protected $roleId;
 
-    /**
-     * @var Role
-     */
+    /** @var Role */
     protected $parent;
 
     /**
@@ -47,12 +31,11 @@ class Role implements HierarchicalRoleInterface
      * Set the id.
      *
      * @param int $id
-     *
      * @return void
      */
     public function setId($id)
     {
-        $this->id = (int)$id;
+        $this->id = (int) $id;
     }
 
     /**
@@ -69,7 +52,6 @@ class Role implements HierarchicalRoleInterface
      * Set the role id.
      *
      * @param string $roleId
-     *
      * @return void
      */
     public function setRoleId($roleId)
@@ -91,7 +73,6 @@ class Role implements HierarchicalRoleInterface
      * Set the parent role.
      *
      * @param Role $role
-     *
      * @return void
      */
     public function setParent(Role $parent)
