@@ -18,7 +18,6 @@ use Laminas\Session\SessionManager;
 use Laminas\Session\Storage\SessionArrayStorage;
 use LmcUser\Authentication\Adapter\Db;
 use LmcUser\Form\LoginFilter;
-use Swift_Mailer;
 
 use const PHP_EOL;
 
@@ -284,14 +283,14 @@ return [
     ],
     'service_manager' => [
         'factories'     => [
-            Model\UserTable::class     => Service\UserTableFactory::class,
-            Form\EditUserForm::class   => Service\EditUserFormFactory::class,
-            Form\CreateRoleForm::class => Service\CreateRoleFormFactory::class,
-            'JUser\Config'             => Service\ConfigServiceFactory::class,
-            'JUser\Cache'              => Service\CacheFactory::class,
-            Service\Mailer::class                 => Service\MailerFactory::class,
-            LmcUserZendDbPlusSelfAsRole::class    => LmcUserLaminasDbPlusSelfAsRoleFactory::class,
-            UserIdRoles::class                    => UserIdRolesFactory::class,
+            Model\UserTable::class             => Service\UserTableFactory::class,
+            Form\EditUserForm::class           => Service\EditUserFormFactory::class,
+            Form\CreateRoleForm::class         => Service\CreateRoleFormFactory::class,
+            'JUser\Config'                     => Service\ConfigServiceFactory::class,
+            'JUser\Cache'                      => Service\CacheFactory::class,
+            Service\Mailer::class              => Service\MailerFactory::class,
+            LmcUserZendDbPlusSelfAsRole::class => LmcUserLaminasDbPlusSelfAsRoleFactory::class,
+            UserIdRoles::class                 => UserIdRolesFactory::class,
             Authentication\Adapter\CredentialOrTokenQueryParams::class
                 => Service\CredentialOrTokenQueryParamsFactory::class,
             Authentication\Adapter\Jwt::class => Service\JwtFactory::class,
