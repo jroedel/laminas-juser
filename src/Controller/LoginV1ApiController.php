@@ -6,25 +6,27 @@ namespace JUser\Controller;
 
 use DateInterval;
 use DateTime;
+use DateTimeInterface;
 use DateTimeZone;
 use Exception;
 use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
 use JUser\Model\User;
 use JUser\Model\UserTable;
 use Laminas\Authentication\Result;
-use Laminas\I18n\Translator\TranslatorAwareTrait;
 use Laminas\InputFilter\Input;
-use Laminas\InputFilter\InputFilterInterface;
-use Laminas\Log\LoggerAwareTrait;
+use Laminas\Log\LoggerInterface;
 use Laminas\Mail\Message;
 use Laminas\Mail\MessageFactory;
 use Laminas\Mail\Transport\TransportInterface;
 use Laminas\Math\Rand;
+use Laminas\Mvc\I18n\Translator;
 use Laminas\Validator\EmailAddress;
 use Laminas\View\Model\JsonModel;
 use LmcUser\Entity\UserInterface;
+use LmcUser\Form\LoginFilter;
 use Locale;
 use RestApi\Controller\ApiController;
+use Webmozart\Assert\Assert;
 
 use function array_shift;
 use function call_user_func;
@@ -32,7 +34,6 @@ use function count;
 use function gettype;
 use function in_array;
 use function is_array;
-use function is_callable;
 use function is_numeric;
 use function is_object;
 use function method_exists;
@@ -40,27 +41,24 @@ use function sprintf;
 
 class LoginV1ApiController extends ApiController
 {
-    use LoggerAwareTrait;
-    use TranslatorAwareTrait;
-
     protected const LOGIN_ACTION_VERIFICATION_TOKEN_REQUEST = 'verification-token-request';
     protected const LOGIN_ACTION_AUTHENTICATE_BY_CREDENTIAL = 'authenticate';
+    private const TRANSLATOR_TEXT_DOMAIN                    = 'JUser';
 
     /**
-     * Set by the api_verification_request_non_registered_user_email_handler
-     *
-     * @var callable $apiVerificationRequestNonRegisteredUserEmailHandler
+     * @param callable $apiVerificationRequestNonRegisteredUserEmailHandler
      */
-    protected $apiVerificationRequestNonRegisteredUserEmailHandler;
-
-    protected ?InputFilterInterface $loginFilter = null;
-
     public function __construct(
         private CredentialOrTokenQueryParams $adapter,
         private UserTable $table,
         private TransportInterface $mailTransport,
-        private array $config
+        private LoggerInterface $logger,
+        private Translator $translator,
+        private LoginFilter $loginFilter,
+        private $apiVerificationRequestNonRegisteredUserEmailHandler,
+        private array $config,
     ) {
+        Assert::isCallable($this->apiVerificationRequestNonRegisteredUserEmailHandler);
     }
 
     public function loginAction(): JsonModel
@@ -76,9 +74,6 @@ class LoginV1ApiController extends ApiController
 
         //@todo should we do some validation first?
 
-        /**
-         * @var Result $auth
-         */
         $authResult = $this->adapter->authenticate();
         if (! $authResult->isValid()) {
             if (Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
@@ -102,10 +97,8 @@ class LoginV1ApiController extends ApiController
      * 1. They have a user or the consuming package finds/creates one for us
      * 2. The user isActive
      * 3. The user is not a multi-person user
-     *
-     * @return JsonModel
      */
-    public function requestVerificationTokenAction()
+    public function requestVerificationTokenAction(): JsonModel
     {
         $identityParam = $this->params()->fromQuery('identity');
         if (! $this->isIdentityValueValid($identityParam)) {
@@ -174,7 +167,7 @@ class LoginV1ApiController extends ApiController
                             'username' => $userObject->getUsername(),
                         ]
                     );
-                    if (! $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail())) {
+                    if (! $this->createAndSendVerificationEmail((int) $userObject->getId(), $userObject->getEmail())) {
                         //logging is handled by createAndSendVerificationEmail
                         $this->httpStatusCode         = 500;
                         $this->apiResponse['message'] = $this->translate('Error sending verification email');
@@ -209,10 +202,8 @@ class LoginV1ApiController extends ApiController
      * give the user a JWT iff:
      * 1. they have an account
      * 2. they gave a valid (non-expired) token corresponding to their account
-     *
-     * @return JsonModel
      */
-    public function loginWithVerificationTokenAction()
+    public function loginWithVerificationTokenAction(): JsonModel
     {
         //@todo do more logging here
         $identityParam = $this->params()->fromQuery('identity');
@@ -230,13 +221,19 @@ class LoginV1ApiController extends ApiController
         }
         $id         = $userObject->getId();
         $userRecord = $this->table->getUser($id);
+        $objects    = $this->table->queryObjects('user', ['userId' => $id]);
+        Assert::isArray($objects);
+        $this->table->linkUsers($objects);
+        Assert::notEmpty($objects);
+        Assert::keyExists($objects, $id);
+        $userRecord = $objects[$id];
         $token      = $this->params()->fromQuery('token');
         $now        = new DateTime();
         if (
             ! isset($userRecord['verificationToken'])
             || ! isset($token)
             || ! isset($userRecord['verificationExpiration'])
-            || ! $userRecord['verificationExpiration'] instanceof DateTime
+            || ! $userRecord['verificationExpiration'] instanceof DateTimeInterface
             || $userRecord['verificationExpiration'] < $now
         ) {
             $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail());
@@ -276,22 +273,20 @@ class LoginV1ApiController extends ApiController
 
     /**
      * Simplify the process of checking if we have a translator and using the correct domain/locale
-     *
-     * @return string
      */
-    protected function translate(string $message)
+    protected function translate(string $message): string
     {
         if ($this->getTranslator()) {
             $message = $this->getTranslator()->translate(
                 $message,
-                $this->getTranslatorTextDomain(),
+                self::TRANSLATOR_TEXT_DOMAIN,
                 Locale::getDefault()
             );
         }
         return $message;
     }
 
-    protected function lookupUserObject($identityParam): UserInterface|null
+    protected function lookupUserObject(string $identityParam): UserInterface|null
     {
         static $fields;
         if (! isset($fields)) {
@@ -315,11 +310,9 @@ class LoginV1ApiController extends ApiController
     /**
      * Create a verification token and send it to the user
      *
-     * @param int $userId
-     * @param string $userEmail
      * @return boolean
      */
-    protected function createAndSendVerificationEmail($userId, $userEmail)
+    protected function createAndSendVerificationEmail(int $userId, string $userEmail)
     {
         try { //there could be db errors here
             $verificationToken = $this->createUserVerificationToken($userId);
@@ -347,11 +340,8 @@ class LoginV1ApiController extends ApiController
 
     /**
      * Generate a new verification token and save it to the user table in the database
-     *
-     * @param int $userId
-     * @return string
      */
-    protected function createUserVerificationToken($userId)
+    protected function createUserVerificationToken(int $userId): string
     {
         $token              = User::generateVerificationToken($this->config['juser']['api_verification_token_length']);
         $expirationInterval = $this->config['juser']['api_verification_token_expiration_interval'];
@@ -368,24 +358,20 @@ class LoginV1ApiController extends ApiController
 
     /**
      * Generate an email for the user
-     *
-     * @param string $token
-     * @param string $to
-     * @return Message
      */
-    protected function createVerificationEmail($token, $to)
+    protected function createVerificationEmail(string $token, string $to): Message
     {
         $messageConfig = $this->config['juser']['verification_email_message'];
         $body          = $messageConfig['body'];
         if ($this->getTranslator()) {
             $messageConfig['subject'] = $this->getTranslator()->translate(
                 $messageConfig['subject'],
-                $this->getTranslatorTextDomain(),
+                self::TRANSLATOR_TEXT_DOMAIN,
                 Locale::getDefault()
             );
             $body                     = $this->getTranslator()->translate(
                 $body,
-                $this->getTranslatorTextDomain(),
+                self::TRANSLATOR_TEXT_DOMAIN,
                 Locale::getDefault()
             );
         }
@@ -399,14 +385,17 @@ class LoginV1ApiController extends ApiController
      * Creates a new JWT token from the juser config options and returns it in an
      * array format that may be returned as a response
      *
-     * @param int $userId
      * @return string[]
      */
-    protected function getNewJwtTokenResponse($userId)
+    protected function getNewJwtTokenResponse(int $userId)
     {
         static $options;
         if (! is_array($options)) {
-            $config  = $this->config['juser'];
+            $config = $this->config['juser'];
+            Assert::keyExists($this->config['juser'], 'jwt_id_length');
+            Assert::greaterThanEq($config['jwt_id_length'], 6);
+            Assert::keyExists($this->config['juser'], 'jwt_id_charlist');
+            Assert::keyExists($this->config['juser'], 'jwt_expiration_interval');
             $options = [
                 'jwt_id_length'           => $config['jwt_id_length'],
                 'jwt_id_charlist'         => $config['jwt_id_charlist'],
@@ -415,7 +404,7 @@ class LoginV1ApiController extends ApiController
         }
         $jwtId      = Rand::getString($options['jwt_id_length'], $options['jwt_id_charlist']);
         $expiration = new DateTime('now', new DateTimeZone('UTC'));
-        $expiration->add(new DateInterval($config['jwt_expiration_interval']));
+        $expiration->add(new DateInterval($options['jwt_expiration_interval']));
         $payload = [
             'sub' => $userId,
             'exp' => $expiration->format('U'),
@@ -429,10 +418,8 @@ class LoginV1ApiController extends ApiController
 
     /**
      * Doesn't look up the user, just checks that it's a possible value
-     *
-     * @param string $value
      */
-    protected function isIdentityValueValid($value): bool
+    protected function isIdentityValueValid(string $value): bool
     {
         /** @var Input $identityInput */
         $identityInput = $this->loginFilter->get('identity');
@@ -443,11 +430,8 @@ class LoginV1ApiController extends ApiController
 
     /**
      * Check if a string is an email address
-     *
-     * @param string $text
-     * @return boolean
      */
-    protected static function isEmailAddress($text)
+    protected static function isEmailAddress(string $text): bool
     {
         static $validator;
         if (! isset($validator)) {
@@ -456,22 +440,13 @@ class LoginV1ApiController extends ApiController
         return $validator->isValid($text);
     }
 
-    public function setApiVerificationRequestNonRegisteredUserEmailHandler(
-        callable $apiVerificationRequestNonRegisteredUserEmailHandler
-    ): static {
-        if (! is_callable($apiVerificationRequestNonRegisteredUserEmailHandler)) {
-            throw new Exception('Value must be callable');
-        }
-        $this->apiVerificationRequestNonRegisteredUserEmailHandler =
-            $apiVerificationRequestNonRegisteredUserEmailHandler;
-
-        return $this;
+    public function getLogger(): LoggerInterface
+    {
+        return $this->logger;
     }
 
-    public function setLoginFilter(InputFilterInterface $loginFilter): static
+    public function getTranslator(): Translator
     {
-        $this->loginFilter = $loginFilter;
-
-        return $this;
+        return $this->translator;
     }
 }

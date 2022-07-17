@@ -76,7 +76,7 @@ class UserTable extends SionTable implements UserMapperInterface
         }
 
         //if we've got an inactive user, notify the user to look for a verification email
-        if ('authenticate' === $caller && ! $userArray['active'] && ! $userArray['emailVerified']) {
+        if ('authenticate' === $caller && 0 === $userArray['active'] && ! $userArray['emailVerified']) {
             $this->getMailer()->onInactiveUser($userObject, $this);
         }
 
@@ -104,7 +104,7 @@ class UserTable extends SionTable implements UserMapperInterface
         }
 
         //notify the user to look for a verification email
-        if ('authenticate' === $caller && ! $userArray['active'] && ! $userArray['emailVerified']) {
+        if ('authenticate' === $caller && 0 === $userArray['active'] && ! $userArray['emailVerified']) {
             $this->getMailer()->onInactiveUser($userObject, $this);
         }
 
@@ -275,8 +275,8 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function getUsernames(array $ids = [])
     {
+        $cacheKey = 'usernames';
         if (empty($ids)) {
-            $cacheKey = 'usernames';
             if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
                 return $cache;
             }
@@ -324,7 +324,7 @@ class UserTable extends SionTable implements UserMapperInterface
             'isMultiPersonUser'      => $this->filterDbBool($row['multi_person_user']),
             'verificationToken'      => $row['verification_token'],
             'verificationExpiration' => $this->filterDbDate($row['verification_expiration']),
-            'active'                 => $this->filterDbBool($row['state']),
+            'active'                 => $this->filterDbInt($row['state']),
             'personId'               => $this->filterDbId($row['PersID']),
             'roles'                  => [],
             'rolesList'              => [],

@@ -154,7 +154,7 @@ class UsersController extends AbstractActionController
                 ['email' => $user['email']]
             );
 
-            $user['active']        = true;
+            $user['active']        = 1;
             $user['emailVerified'] = true;
             //update status
             $table->updateEntity('user', $user['userId'], $user);

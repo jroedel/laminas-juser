@@ -1,9 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Model;
 
-use LmcUser\Entity\UserInterface;
+use DateInterval;
+use DateTime;
+use DateTimeInterface;
+use DateTimeZone;
 use Laminas\Math\Rand;
+use LmcUser\Entity\UserInterface;
+
+use function array_merge;
+use function implode;
+use function is_array;
+use function range;
 
 class User implements UserInterface
 {
@@ -11,75 +22,53 @@ class User implements UserInterface
     public const VERIFICATION_TOKEN_LENGTH = 32;
     /**
      * Id 0 means to be inserted
-     * @var int $id
      */
-    public $id = 0;
+    private int $id = 0;
 
-    /**
-     * @var string $username
-     */
-    public $username;
+    private string $username;
 
-    /**
-     * @var string $email
-     */
-    public $email;
+    private string $email;
 
-    /**
-     * @var string $displayName
-     */
-    public $displayName;
+    private string $displayName;
 
-    /**
-     * @var string $password
-     */
-    public $password;
+    private string $password;
 
     /**
      * One state must mean change password
-     * @var int $state
      */
-    public $state = 0;
+    private int $state = 0;
 
     /**
      * Force user to change password if this bit is set
-     * @var bool $mustChangePassword
      */
-    public $mustChangePassword = false;
+    private bool $mustChangePassword = false;
 
     /**
      * 32-character random alphanumeric nonce for verifying email addresses
-     * @var string $verificationToken
      */
-    public $verificationToken;
+    private ?string $verificationToken = null;
 
     /**
      * The time when the token will no longer be valid
-     * @var \DateTime $verificationExpiration
      */
-    public $verificationExpiration;
+    private ?DateTimeInterface $verificationExpiration = null;
 
     /**
      * denotes a user used by multiple people, these shouldn't be able to change the password
-     * @var bool $multiPersonUser
      */
-    public $multiPersonUser = false;
+    private bool $multiPersonUser = false;
 
-    /**
-     * @var string $updateDatetime
-     */
-    public $updateDatetime;
+    /** @var string $updateDatetime */
+    private $updateDatetime;
 
-    /**
-     * @var string $createDatetime
-     */
-    public $createDatetime;
+    /** @var string $createDatetime */
+    private $createDatetime;
 
-    public $roles;
+    private $roles;
 
-    public $rolesList;
+    private $rolesList;
 
-    public function __construct($data = [])
+    public function __construct(array $data = [])
     {
         if (is_array($data) && ! empty($data)) {
             $this->exchangeArray($data);
@@ -88,104 +77,60 @@ class User implements UserInterface
 
     public function exchangeArray(array $data): void
     {
-        $this->id = isset($data['userId']) ? $data['userId'] : null;
-        $this->username = isset($data['username']) ? $data['username'] : null;
-        $this->email = isset($data['email']) ? $data['email'] : null;
-        $this->displayName = isset($data['displayName']) ? $data['displayName'] : null;
-        $this->password = isset($data['password']) ? $data['password'] : null;
-        $this->state = isset($data['active']) ? $data['active'] : null;
-        $this->mustChangePassword = isset($data['mustChangePassword']) ? $data['mustChangePassword'] : null;
-        $this->multiPersonUser = isset($data['isMultiPersonUser']) ? $data['isMultiPersonUser'] : null;
-        $this->verificationToken = isset($data['verificationToken']) ? $data['verificationToken'] : null;
+        $this->id                     = isset($data['userId']) ? (int) $data['userId'] : null;
+        $this->username               = $data['username'] ?? null;
+        $this->email                  = $data['email'] ?? null;
+        $this->displayName            = $data['displayName'] ?? null;
+        $this->password               = $data['password'] ?? null;
+        $this->state                  = $data['active'] ?? 0;
+        $this->mustChangePassword     = $data['mustChangePassword'] ?? false;
+        $this->multiPersonUser        = $data['isMultiPersonUser'] ?? false;
+        $this->verificationToken      = $data['verificationToken'] ?? null;
         $this->verificationExpiration = $data['verificationExpiration'];
-        $this->createDatetime = isset($data['createdOn'])
+        $this->createDatetime         = isset($data['createdOn'])
             ? $data['createdOn']->format('Y-m-d H:i:s') : null;
-        $this->updateDatetime = isset($data['updatedOn'])
+        $this->updateDatetime         = isset($data['updatedOn'])
             ? $data['updatedOn']->format('Y-m-d H:i:s') : null;
-        $this->roles = isset($data['roles']) ? $data['roles'] : null;
-        $this->rolesList = isset($data['rolesList']) ? $data['rolesList'] : null;
-//         'createdBy'         => $this->filterDbInt($row['create_by']),
-//         'updatedBy'         => $this->filterDbInt($row['update_by']),
-//         'emailVerified'     => $this->filterDbBool($row['email_verified']),
-//            'languages'         => $this->filterDbArray($row['lang'], ';'),
-//         'personId'          => $this->filterDbId($row['PersID']),
-//         'roles'             => [],
-//         'rolesList'         => [],
+        $this->roles                  = $data['roles'] ?? null;
+        $this->rolesList              = $data['rolesList'] ?? null;
     }
 
-    /**
-     * @return (\DateTime|array|bool|int|mixed|string)[]
-     *
-     * @psalm-return array{userId: int, username: string, email: string, displayName: string, password: string, createdOn: string, updatedOn: string, mustChangePassword: bool, isMultiPersonUser: bool, verificationToken: string, verificationExpiration: \DateTime, active: int, roles: array<empty, empty>|mixed, rolesList: array<empty, empty>|mixed}
-     */
     public function getArrayCopy(): array
     {
-        $data = [
-            'userId'            => $this->id,
-            'username'          => $this->username,
-            'email'             => $this->email,
-            'displayName'       => $this->displayName,
-            'password'          => $this->password,
-            'createdOn'         => $this->createDatetime,
-//             'createdBy'         => $this->filterDbInt($row['create_by']),
-            'updatedOn'         => $this->updateDatetime,
-//             'updatedBy'         => $this->filterDbInt($row['update_by']),
-//             'emailVerified'     => $this->filterDbBool($row['email_verified']),
-            'mustChangePassword' => $this->mustChangePassword,
-            'isMultiPersonUser' => $this->multiPersonUser,
-            'verificationToken' => $this->verificationToken,
+        return [
+            'userId'                 => $this->id,
+            'username'               => $this->username,
+            'email'                  => $this->email,
+            'displayName'            => $this->displayName,
+            'password'               => $this->password,
+            'createdOn'              => $this->createDatetime,
+            'updatedOn'              => $this->updateDatetime,
+            'mustChangePassword'     => $this->mustChangePassword,
+            'isMultiPersonUser'      => $this->multiPersonUser,
+            'verificationToken'      => $this->verificationToken,
             'verificationExpiration' => $this->verificationExpiration,
-            'active'            => $this->state,
-            'roles'             => isset($this->roles) ? $this->roles : [],
-            'rolesList'         => isset($this->rolesList) ? $this->rolesList : [],
+            'active'                 => $this->state,
+            'roles'                  => $this->roles ?? [],
+            'rolesList'              => $this->rolesList ?? [],
 //            'languages'         => $this->filterDbArray($row['lang'], ';'),
 //             'personId'          => $this->filterDbId($row['PersID']),
         ];
-        return $data;
     }
 
     /**
      * Get id.
-     *
-     * @return int
      */
-    public function getId()
+    public function getId(): int
     {
         return $this->id;
     }
 
     /**
-     * Set id.
-     *
-     * @param int $id
-     * @return UserInterface
-     */
-    public function setId($id)
-    {
-        $this->id = (int) $id;
-        return $this;
-    }
-
-    /**
      * Get username.
-     *
-     * @return string
      */
-    public function getUsername()
+    public function getUsername(): string
     {
         return $this->username;
-    }
-
-    /**
-     * Set username.
-     *
-     * @param string $username
-     * @return UserInterface
-     */
-    public function setUsername($username)
-    {
-        $this->username = $username;
-        return $this;
     }
 
     /**
@@ -196,18 +141,6 @@ class User implements UserInterface
     public function getEmail()
     {
         return $this->email;
-    }
-
-    /**
-     * Set email.
-     *
-     * @param string $email
-     * @return UserInterface
-     */
-    public function setEmail($email)
-    {
-        $this->email = $email;
-        return $this;
     }
 
     /**
@@ -243,18 +176,6 @@ class User implements UserInterface
     }
 
     /**
-     * Set password.
-     *
-     * @param string $password
-     * @return UserInterface
-     */
-    public function setPassword($password)
-    {
-        $this->password = $password;
-        return $this;
-    }
-
-    /**
      * Get state.
      *
      * @return int
@@ -262,18 +183,6 @@ class User implements UserInterface
     public function getState()
     {
         return $this->state;
-    }
-
-    /**
-     * Set state.
-     *
-     * @param int $state
-     * @return UserInterface
-     */
-    public function setState($state)
-    {
-        $this->state = $state;
-        return $this;
     }
 
     /**
@@ -287,18 +196,6 @@ class User implements UserInterface
     }
 
     /**
-     * Set mustChangePassword.
-     *
-     * @param bool $mustChangePassword
-     * @return UserInterface
-     */
-    public function setMustChangePassword($mustChangePassword)
-    {
-        $this->mustChangePassword = (bool)$mustChangePassword;
-        return $this;
-    }
-
-    /**
      * Get multi person user bit
      *
      * @return bool
@@ -309,19 +206,8 @@ class User implements UserInterface
     }
 
     /**
-     * Set multiPersonUser.
-     *
-     * @param bool $multiPersonUser
-     * @return UserInterface
-     */
-    public function setMultiPersonUser($multiPersonUser)
-    {
-        $this->multiPersonUser = (bool)$multiPersonUser;
-        return $this;
-    }
-
-    /**
      * Get the verificationToken value
+     *
      * @return string
      */
     public function getVerificationToken()
@@ -335,34 +221,20 @@ class User implements UserInterface
 
     /**
      * Generate a verification token
-     * @return string
      */
-    public static function generateVerificationToken($tokenLength = self::VERIFICATION_TOKEN_LENGTH)
+    public static function generateVerificationToken(int $tokenLength = self::VERIFICATION_TOKEN_LENGTH): string
     {
         static $charList;
         if (! isset($charList)) {
             $charList = implode('', array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
         }
-        $verificationToken = Rand::getString($tokenLength, $charList);
-        return $verificationToken;
-    }
-
-    /**
-     * Set the verificationToken value
-     * @param string $verificationToken
-     * @return self
-     */
-    public function setVerificationToken(?string $verificationToken)
-    {
-        $this->verificationToken = $verificationToken;
-        return $this;
+        return Rand::getString($tokenLength, $charList);
     }
 
     /**
      * Get the verificationExpiration date value
-     * @return \DateTime
      */
-    public function getVerificationExpiration()
+    public function getVerificationExpiration(): DateTimeInterface|null
     {
         if (! isset($this->verificationExpiration)) {
             //if we don't have one, make one up (mainly for registration)
@@ -374,87 +246,55 @@ class User implements UserInterface
 
     public function isVerificationTokenValid(): bool
     {
-        if (! isset($this->verificationExpiration) || ! $this->verificationExpiration instanceof \DateTime) {
+        if (! isset($this->verificationExpiration) || ! $this->verificationExpiration instanceof DateTime) {
             return false;
         }
-        $now = new \DateTime(null, new \DateTimeZone('UTC'));
+        $now = new DateTime('now', new DateTimeZone('UTC'));
         return $now <= $this->verificationExpiration;
     }
 
     /**
      * Force the reset of the verification token expiration
-     * @return self
      */
-    public function resetVerificationExpiration()
+    public function resetVerificationExpiration(): void
     {
-        $dt = new \DateTime(null, new \DateTimeZone('UTC'));
+        $dt = new DateTime('now', new DateTimeZone('UTC'));
         //@todo make interval configurable
-        $dt->add(new \DateInterval('P1D'));
+        $dt->add(new DateInterval('P1D'));
         $this->verificationExpiration = $dt;
-        return $this;
-    }
-
-    /**
-     * Set the verificationExpiration value
-     * @param \DateTime $verificationExpiration
-     * @return self
-     */
-    public function setVerificationExpiration($verificationExpiration)
-    {
-        $this->verificationExpiration = $verificationExpiration;
-        return $this;
     }
 
     /**
      * Get the updateDatetime value
+     *
      * @return string
      */
     public function getUpdateDatetime()
     {
         if (! isset($this->updateDatetime)) {
-            $dt = new \DateTime(null, new \DateTimeZone('UTC'));
+            $dt                   = new DateTime('now', new DateTimeZone('UTC'));
             $this->updateDatetime = $dt->format('Y-m-d H:i:s');
         }
         return $this->updateDatetime;
     }
 
     /**
-     * Set the updateDatetime value
-     * @param string $updateDatetime
-     * @return self
-     */
-    public function setUpdateDatetime($updateDatetime)
-    {
-        $this->updateDatetime = $updateDatetime;
-        return $this;
-    }
-
-    /**
      * Get the createDatetime value
+     *
      * @return string
      */
     public function getCreateDatetime()
     {
         if (! isset($this->createDatetime)) {
-            $dt = new \DateTime(null, new \DateTimeZone('UTC'));
+            $dt                   = new DateTime('now', new DateTimeZone('UTC'));
             $this->createDatetime = $dt->format('Y-m-d H:i:s');
         }
         return $this->createDatetime;
     }
 
     /**
-     * Set the createDatetime value
-     * @param string $createDatetime
-     * @return self
-     */
-    public function setCreateDatetime($createDatetime)
-    {
-        $this->createDatetime = $createDatetime;
-        return $this;
-    }
-
-    /**
      * Generate and set a new verification token and reset the expiration for a day from now
+     *
      * @return self
      */
     public function setNewVerificationToken()
@@ -462,6 +302,55 @@ class User implements UserInterface
         $this->verificationToken = null;
         $this->getVerificationToken();
         $this->resetVerificationExpiration();
+        return $this;
+    }
+
+    /**
+     * @param int $id
+     */
+    public function setId($id): static
+    {
+        $this->id = $id;
+        return $this;
+    }
+
+    /**
+     * @param string $username
+     * @return User
+     */
+    public function setUsername($username): static
+    {
+        $this->username = $username;
+        return $this;
+    }
+
+    /**
+     * @param string $email
+     * @return User
+     */
+    public function setEmail($email): static
+    {
+        $this->email = $email;
+        return $this;
+    }
+
+    /**
+     * @param string $password
+     * @return User
+     */
+    public function setPassword($password): User
+    {
+        $this->password = $password;
+        return $this;
+    }
+
+    /**
+     * @param int $state
+     * @return User
+     */
+    public function setState($state): User
+    {
+        $this->state = $state;
         return $this;
     }
 }
