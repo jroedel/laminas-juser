@@ -59,13 +59,17 @@ class UserTable extends SionTable implements UserMapperInterface
         );
     }
 
+    /**
+     * @param string $email
+     * @throws Exception
+     */
     public function findByEmail($email): User|null
     {
         $dbt    = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $caller = $dbt[1]['function'] ?? null;
         $this->logger->debug("JUser: Looking up user by email", ['email' => $email, 'caller' => $caller]);
         $results = $this->queryObjects('user', ['email' => $email]);
-        if (! isset($results) || empty($results)) {
+        if (empty($results)) {
             return null;
         }
         $this->linkUsers($results);
@@ -117,6 +121,8 @@ class UserTable extends SionTable implements UserMapperInterface
      */
     public function findById($id): User|null
     {
+        Assert::integerish($id);
+        $id = (int) $id;
         $this->logger->debug("JUser: Looking up user by id", ['id' => $id]);
         $userArray  = $this->getUser($id);
         $userObject = null;
@@ -127,7 +133,7 @@ class UserTable extends SionTable implements UserMapperInterface
         return $userObject;
     }
 
-    public function insertUser(User $user)
+    public function insertUser(User $user): void
     {
         //figure out what the calling function is. If a user is registering, trigger the email here
         $data = $user->getArrayCopy();
@@ -145,8 +151,9 @@ class UserTable extends SionTable implements UserMapperInterface
             $data['roles']     = $defaultRoles;
             $data['rolesList'] = array_keys($defaultRoles);
         }
-        $result = $this->createEntity('user', $data);
-        $this->logger->info("JUser: Finished inserting a new user.", ['result' => $result]);
+        $newId = $this->createEntity('user', $data);
+        Assert::greaterThan($newId, 0);
+        $this->logger->info("JUser: Finished inserting a new user.", ['newId' => $newId]);
         if ('register' === $caller) {
             //we need to send the registration email
             try {
@@ -159,10 +166,9 @@ class UserTable extends SionTable implements UserMapperInterface
                 );
             }
         }
-        return $result;
     }
 
-    public function updateUser(UserInterface $user)
+    public function updateUser(UserInterface $user): array
     {
         $data = $user->getArrayCopy();
         if (isset($this->logger)) {
@@ -170,36 +176,32 @@ class UserTable extends SionTable implements UserMapperInterface
             $caller = $dbt[1]['function'] ?? null;
             $this->logger->info("About to update a user.", ['caller' => $caller, 'user' => $user]);
         }
-        $result = $this->updateEntity('user', $data['userId'], $data);
-        if (false === $result) {
-            if (isset($this->logger)) {
-                $this->logger->err("Failed updating a user.", ['result' => $result, 'user' => $user]);
-            }
-            throw new Exception('Error inserting a new user.');
-        } else {
-            if (isset($this->logger)) {
-                $this->logger->info("Finished updating a user.", ['result' => $result]);
-            }
+        $newUserData = $this->updateEntity('user', $data['userId'], $data);
+        Assert::notEmpty($newUserData);
+        if (isset($this->logger)) {
+            $this->logger->info("Finished updating a user.", ['result' => $newUserData]);
         }
-        return $result;
+        return $newUserData;
     }
 
-    public function insert(UserInterface $user)
+    public function insert(UserInterface $user): void
     {
-        return $this->insertUser($user);
+        Assert::isInstanceOf($user, User::class);
+        $this->insertUser($user);
     }
 
-    public function update(UserInterface $user)
+    public function update(UserInterface $user): array
     {
+        Assert::isInstanceOf($user, User::class);
         return $this->updateUser($user);
     }
 
     /**
      * Gets list of users
      *
-     * @return mixed[]
+     * @throws Exception
      */
-    public function getUsers(array $ids = [])
+    public function getUsers(array $ids = []): array
     {
         if (empty($ids)) {
             $cacheKey = 'all-linked-users';
@@ -228,9 +230,8 @@ class UserTable extends SionTable implements UserMapperInterface
      * Add role data to an array of user arrays (the array must be keyed on the userId)
      *
      * @param array $users
-     * @return void
      */
-    public function linkUsers(array &$users)
+    public function linkUsers(array &$users): void
     {
         if (empty($users)) {
             return;
@@ -257,6 +258,12 @@ class UserTable extends SionTable implements UserMapperInterface
         }
     }
 
+    /**
+     * Accepts an array of User data and fills the 'roles' and 'rolesList' keys
+     *
+     * @param array $user
+     * @throws Exception
+     */
     public function linkUser(array &$user): void
     {
         $roleLinks = $this->queryObjects('user-role-link', ['userId' => $user['userId']]);
@@ -270,10 +277,10 @@ class UserTable extends SionTable implements UserMapperInterface
     /**
      * Get an associative array of giving the username of each userId in the user table
      *
-     * @param array $ids
      * @return string[]
+     * @throws Exception
      */
-    public function getUsernames(array $ids = [])
+    public function getUsernames(array $ids = []): array
     {
         $cacheKey = 'usernames';
         if (empty($ids)) {
@@ -307,7 +314,7 @@ class UserTable extends SionTable implements UserMapperInterface
      * verificationToken: mixed, verificationExpiration: DateTime, active: bool,
      * personId: (int|null), roles: array<empty, empty>, rolesList: array<empty, empty>}
      */
-    protected function processUserRow($row): array
+    protected function processUserRow(array $row): array
     {
         return [
             'userId'                 => $row['user_id'],
@@ -357,11 +364,8 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * Get user properties
-     *
-     * @param int|string $id
-     * @return mixed[]
      */
-    public function getUser($id)
+    public function getUser(int $id): array|null
     {
         //see if we can grab the user out of the cache
         $cacheKey = 'all-linked-users';
@@ -658,22 +662,12 @@ class UserTable extends SionTable implements UserMapperInterface
 
     /**
      * @throws Exception
-     * @return Mailer
      */
-    public function getMailer()
+    public function getMailer(): Mailer
     {
         if (! isset($this->mailer)) {
             throw new Exception('The mailer is not set.');
         }
         return $this->mailer;
-    }
-
-    /**
-     * @return self
-     */
-    public function setMailer(Mailer $mailer)
-    {
-        $this->mailer = $mailer;
-        return $this;
     }
 }

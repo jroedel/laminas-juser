@@ -91,6 +91,7 @@ class Mailer
             'force_canonical' => true,
             'query'           => ['token' => $user['verificationToken']],
         ]);
+        //@todo extract this into config
         $body    = <<<EOT
 Dear %s,
 
