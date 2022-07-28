@@ -8,12 +8,11 @@ use DateInterval;
 use DateTime;
 use DateTimeZone;
 use Exception;
-use InvalidArgumentException;
+use JTranslate\Controller\Plugin\NowMessenger;
 use JUser\Form\ChangeOtherPasswordForm;
 use JUser\Form\CreateRoleForm;
 use JUser\Form\DeleteUserForm;
 use JUser\Form\EditUserForm;
-use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Model\User;
 use JUser\Model\UserTable;
 use JUser\Service\Mailer;
@@ -26,11 +25,9 @@ use Laminas\Stdlib\ResponseInterface;
 use Laminas\View\Model\ModelInterface;
 use Laminas\View\Model\ViewModel;
 use LmcUser\Options\ModuleOptions;
-use Psalm\Node\Stmt\VirtualElse;
 use SionModel\Person\PersonProviderInterface;
 use Webmozart\Assert\Assert;
 
-use function array_key_exists;
 use function array_keys;
 
 /**
@@ -59,10 +56,6 @@ class UsersController extends AbstractActionController
         return new ViewModel();
     }
 
-    /**
-     * @return (ChangeOtherPasswordForm|array|int)[]|Response
-     * @psalm-return Response|array{userId: int, user: array, form: ChangeOtherPasswordForm}
-     */
     public function changePasswordAction(): ModelInterface|ResponseInterface
     {
         $id = (int) $this->params('user_id');
@@ -70,17 +63,15 @@ class UsersController extends AbstractActionController
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
+        /** @var NowMessenger $nowMessenger */
+        $nowMessenger = $this->plugin('nowMessenger');
+        Assert::isInstanceOf($nowMessenger, NowMessenger::class);
         $table      = $this->userTable;
         $lmcOptions = $this->lmcModuleOptions;
-        $form       = new ChangeOtherPasswordForm($lmcOptions);
+        $form       = new ChangeOtherPasswordForm();
         $request    = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost();
-            if ($data['userId'] !== $id) {
-                $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                    ->addMessage('Error in form submission.');
-                return $this->redirect()->toRoute('juser');
-            }
             $form->setData($data);
             if ($form->isValid()) {
                 $data   = $form->getData();
@@ -92,8 +83,11 @@ class UsersController extends AbstractActionController
                     ->addMessage('User password updated successfully.');
                 return $this->redirect()->toRoute('juser');
             } else {
-                $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                    ->addMessage('Please review the form and resubmit.');
+                $messages = $form->getMessages();
+                $nowMessenger->setNamespace(NowMessenger::NAMESPACE_ERROR);
+                $nowMessenger->addMessage(
+                    'Error in form submission, please review: ' . implode(', ', array_keys($messages))
+                );
             }
         } else {
             $userIdData = ['userId' => $id];
@@ -102,9 +96,8 @@ class UsersController extends AbstractActionController
         $user = $table->getUser($id);
 
         return new ViewModel([
-            'userId' => $id,
-            'user'   => $user,
-            'form'   => $form,
+            'user' => $user,
+            'form' => $form,
         ]);
     }
 
@@ -170,7 +163,7 @@ class UsersController extends AbstractActionController
     public function indexAction(): ModelInterface|ResponseInterface
     {
         $persons = $this->personProvider->getPersons();
-        $users = $this->userTable->getUsers();
+        $users   = $this->userTable->getUsers();
         return new ViewModel([
             'users'   => $users,
             'persons' => $persons,
@@ -228,7 +221,7 @@ class UsersController extends AbstractActionController
             }
         }
         $userIdData         = ['userId' => $id];
-        $changePasswordForm = new ChangeOtherPasswordForm($this->lmcModuleOptions);
+        $changePasswordForm = new ChangeOtherPasswordForm();
         $changePasswordForm->setData($userIdData);
         $deleteUserForm = new DeleteUserForm();
         $deleteUserForm->setData($userIdData);

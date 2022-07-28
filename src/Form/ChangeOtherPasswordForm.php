@@ -1,46 +1,40 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Form;
 
+use Laminas\Filter\StringTrim;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
-use LmcUser\Options\ModuleOptions;
+use Laminas\Validator\Identical;
+use Laminas\Validator\StringLength;
 
 class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterface
 {
-    /**
-     *
-     * @var ModuleOptions $lmcOptions
-     */
-    protected $lmcOptions;
+    public const MIN_PASSWORD_LENGTH = 6;
 
-    public function __construct(ModuleOptions $lmcOptions)
+    public function __construct()
     {
         // we want to ignore the name passed
         parent::__construct('change_other_password');
-        $this->lmcOptions = $lmcOptions;
-
         $this->add([
-            'name' => 'userId',
-            'type' => 'Hidden',
-        ]);
-        $this->add([
-            'name' => 'newCredential',
-            'type' => 'Password',
+            'name'       => 'newCredential',
+            'type'       => 'Password',
             'attributes' => [
                 'required' => true,
             ],
-            'options' => [
+            'options'    => [
                 'label' => 'Password',
             ],
         ]);
         $this->add([
-            'name' => 'newCredentialVerify',
-            'type' => 'Password',
+            'name'       => 'newCredentialVerify',
+            'type'       => 'Password',
             'attributes' => [
                 'required' => true,
             ],
-            'options' => [
+            'options'    => [
                 'label' => 'Verify Password',
             ],
         ]);
@@ -49,57 +43,44 @@ class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterfa
             'type' => 'csrf',
         ]);
         $this->add([
-            'name' => 'submit',
-            'type' => 'Submit',
+            'name'       => 'submit',
+            'type'       => 'Submit',
             'attributes' => [
                 'value' => 'Change Password',
-                'id' => 'submit',
-                'class' => 'btn-primary'
+                'id'    => 'submit',
+                'class' => 'btn-primary',
             ],
         ]);
         $this->add([
-            'name' => 'cancel',
-            'type' => 'Button',
+            'name'       => 'cancel',
+            'type'       => 'Button',
             'attributes' => [
-                'value' => 'Cancel',
-                'id' => 'cancel',
-                'data-dismiss' => 'modal'
+                'value'        => 'Cancel',
+                'id'           => 'cancel',
+                'data-dismiss' => 'modal',
             ],
         ]);
     }
 
+    /**
+     * @return array[]
+     */
     public function getInputFilterSpecification()
     {
         return [
-            'userId' => [
-                'required' => true,
-                'validators' => [
-                    [
-                        'name'    => 'Laminas\Validator\Db\RecordExists',
-                        'options' => [
-                            'table' => $this->lmcOptions->getTableName(),
-                            'field' => 'user_id',
-                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
-                            'messages' => [
-                                \Laminas\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND => 'User not found in database'
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            'newCredential' => [
+            'newCredential'       => [
                 'name'       => 'newCredential',
                 'required'   => true,
                 'validators' => [
                     [
-                        'name'    => 'StringLength',
+                        'name'    => StringLength::class,
                         'options' => [
-                            'min' => 4,
+                            'min' => self::MIN_PASSWORD_LENGTH,
                         ],
                     ],
                 ],
-                'filters'   => [
-                    ['name' => 'StringTrim'],
+                'filters'    => [
+                    ['name' => StringTrim::class],
                 ],
             ],
             'newCredentialVerify' => [
@@ -107,20 +88,20 @@ class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterfa
                 'required'   => true,
                 'validators' => [
                     [
-                        'name'    => 'StringLength',
+                        'name'    => StringLength::class,
                         'options' => [
-                            'min' => 4,
+                            'min' => self::MIN_PASSWORD_LENGTH,
                         ],
                     ],
                     [
-                        'name' => 'identical',
+                        'name'    => Identical::class,
                         'options' => [
-                            'token' => 'newCredential'
+                            'token' => 'newCredential',
                         ],
                     ],
                 ],
-                'filters'   => [
-                    ['name' => 'StringTrim'],
+                'filters'    => [
+                    ['name' => StringTrim::class],
                 ],
             ],
         ];

@@ -47,13 +47,9 @@ aria-labelledby="mySmallModalLabel">
         echo sprintf($this->translate("You are about to change %s 's password"), $this->user['username']);
         ?></p>
         <?php $form = $this->changePasswordForm;
-            $form->setAttribute('action', $this->url(
-                'juser/user/change-password',
-                ['user_id' => $this->userId]
-            ));
+            $form->setAttribute('action', $this->url('juser/user/change-password', [], [], true));
             $form->prepare();
             echo $this->form()->openTag($form);
-            echo $this->formRow($form->get('userId'));
             echo $this->formRow($form->get('newCredential'));
             echo $this->formRow($form->get('newCredentialVerify'));
             echo $this->formRow($form->get('security'));
