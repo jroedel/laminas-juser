@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JUser\Form;
 
+use JUser\Filter\HashPasswordForLmcUser;
 use Laminas\Filter\StringTrim;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
@@ -12,9 +13,7 @@ use Laminas\Validator\StringLength;
 
 class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterface
 {
-    public const MIN_PASSWORD_LENGTH = 6;
-
-    public function __construct()
+    public function __construct(private HashPasswordForLmcUser $hashPasswordForLmcUser)
     {
         // we want to ignore the name passed
         parent::__construct('change_other_password');
@@ -75,24 +74,18 @@ class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterfa
                     [
                         'name'    => StringLength::class,
                         'options' => [
-                            'min' => self::MIN_PASSWORD_LENGTH,
+                            'min' => EditUserForm::MIN_PASSWORD_LENGTH,
                         ],
                     ],
                 ],
                 'filters'    => [
-                    ['name' => StringTrim::class],
+                    $this->hashPasswordForLmcUser,
                 ],
             ],
             'newCredentialVerify' => [
                 'name'       => 'newCredentialVerify',
                 'required'   => true,
                 'validators' => [
-                    [
-                        'name'    => StringLength::class,
-                        'options' => [
-                            'min' => self::MIN_PASSWORD_LENGTH,
-                        ],
-                    ],
                     [
                         'name'    => Identical::class,
                         'options' => [

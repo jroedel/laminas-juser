@@ -7,7 +7,6 @@ namespace JUser;
 use BjyAuthorize\Provider\Role\LaminasDb;
 use JUser\Provider\Identity\LmcUserZendDbPlusSelfAsRole;
 use JUser\Provider\Role\UserIdRoles;
-use JUser\Service\LmcUserLaminasDbPlusSelfAsRoleFactory;
 use JUser\Service\UserIdRolesFactory;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Router\Http\Literal;
@@ -283,18 +282,20 @@ return [
     ],
     'service_manager' => [
         'factories'     => [
-            Model\UserTable::class             => Service\UserTableFactory::class,
-            Form\EditUserForm::class           => Service\EditUserFormFactory::class,
-            Form\CreateRoleForm::class         => Service\CreateRoleFormFactory::class,
-            'JUser\Config'                     => Service\ConfigServiceFactory::class,
-            'JUser\Cache'                      => Service\CacheFactory::class,
-            Service\Mailer::class              => Service\MailerFactory::class,
-            LmcUserZendDbPlusSelfAsRole::class => LmcUserLaminasDbPlusSelfAsRoleFactory::class,
-            UserIdRoles::class                 => UserIdRolesFactory::class,
+            Model\UserTable::class              => Service\UserTableFactory::class,
+            Form\EditUserForm::class            => Service\EditUserFormFactory::class,
+            Form\CreateRoleForm::class          => Service\CreateRoleFormFactory::class,
+            Form\ChangeOtherPasswordForm::class => Service\ChangeOtherPasswordFormFactory::class,
+            'JUser\Config'                      => Service\ConfigServiceFactory::class,
+            'JUser\Cache'                       => Service\CacheFactory::class,
+            Service\Mailer::class               => Service\MailerFactory::class,
+            LmcUserZendDbPlusSelfAsRole::class  => Service\LmcUserLaminasDbPlusSelfAsRoleFactory::class,
+            UserIdRoles::class                  => UserIdRolesFactory::class,
             Authentication\Adapter\CredentialOrTokenQueryParams::class
                 => Service\CredentialOrTokenQueryParamsFactory::class,
-            Authentication\Adapter\Jwt::class => Service\JwtFactory::class,
-            LoginFilter::class                => Service\LoginFilterFactory::class,
+            Authentication\Adapter\Jwt::class    => Service\JwtFactory::class,
+            LoginFilter::class                   => Service\LoginFilterFactory::class,
+            Filter\HashPasswordForLmcUser::class => Service\HashPasswordForLmcUserFactory::class,
         ],
         'invokables'    => [
             View\RedirectionStrategy::class => View\RedirectionStrategy::class,
@@ -303,24 +304,18 @@ return [
             // Mapping services to their class names is required
             // since the ServiceManager is not a declarative DIC.
             'class_map' => [
-                Form\CreateRoleForm::class => Form\CreateRoleForm::class,
-                Form\EditUserForm::class   => Form\EditUserForm::class,
-                Service\Mailer::class      => Service\Mailer::class,
+                Form\CreateRoleForm::class           => Form\CreateRoleForm::class,
+                Form\EditUserForm::class             => Form\EditUserForm::class,
+                Service\Mailer::class                => Service\Mailer::class,
+                Filter\HashPasswordForLmcUser::class => Filter\HashPasswordForLmcUser::class,
             ],
         ],
         'delegators'    => [
-            Form\CreateRoleForm::class => [
-                LazyServiceFactory::class,
-            ],
-            Form\EditUserForm::class   => [
-                LazyServiceFactory::class,
-            ],
-            Service\Mailer::class      => [
-                LazyServiceFactory::class,
-            ],
-            'lmcuser_register_form'    => [
-                Service\RegisterFormDelegateFactory::class,
-            ],
+            Filter\HashPasswordForLmcUser::class => [LazyServiceFactory::class],
+            Form\CreateRoleForm::class           => [LazyServiceFactory::class],
+            Form\EditUserForm::class             => [LazyServiceFactory::class],
+            Service\Mailer::class                => [LazyServiceFactory::class],
+            'lmcuser_register_form'              => [Service\RegisterFormDelegateFactory::class],
         ],
         'aliases'       => [
             'BjyAuthorize\Cache'  => 'JUser\Cache',

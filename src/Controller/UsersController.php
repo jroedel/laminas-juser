@@ -29,11 +29,8 @@ use SionModel\Person\PersonProviderInterface;
 use Webmozart\Assert\Assert;
 
 use function array_keys;
+use function implode;
 
-/**
- * @todo   fix activation
- * @todo   email admins to alert new user request
- */
 class UsersController extends AbstractActionController
 {
     public const VERIFICATION_VERIFIED                  = 'verified';
@@ -45,9 +42,10 @@ class UsersController extends AbstractActionController
         private LoggerInterface $logger,
         private ModuleOptions $lmcModuleOptions,
         private Mailer $mailer,
-        private PersonProviderInterface $personProvider,
         private EditUserForm $editUserForm,
-        private CreateRoleForm $createRoleForm
+        private CreateRoleForm $createRoleForm,
+        private ChangeOtherPasswordForm $changeOtherPasswordForm,
+        private ?PersonProviderInterface $personProvider,
     ) {
     }
 
@@ -66,19 +64,15 @@ class UsersController extends AbstractActionController
         /** @var NowMessenger $nowMessenger */
         $nowMessenger = $this->plugin('nowMessenger');
         Assert::isInstanceOf($nowMessenger, NowMessenger::class);
-        $table      = $this->userTable;
-        $lmcOptions = $this->lmcModuleOptions;
-        $form       = new ChangeOtherPasswordForm();
-        $request    = $this->getRequest();
+        $table   = $this->userTable;
+        $form    = $this->changeOtherPasswordForm;
+        $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost();
             $form->setData($data);
             if ($form->isValid()) {
-                $data   = $form->getData();
-                $bcrypt = new Bcrypt();
-                $bcrypt->setCost($lmcOptions->getPasswordCost());
-                $pass = $bcrypt->create($data['newCredential']);
-                $table->updateUserPassword($id, $pass);
+                $data = $form->getData();
+                $table->updateUserPassword($id, $data['newCredential']);
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                     ->addMessage('User password updated successfully.');
                 return $this->redirect()->toRoute('juser');
@@ -89,9 +83,6 @@ class UsersController extends AbstractActionController
                     'Error in form submission, please review: ' . implode(', ', array_keys($messages))
                 );
             }
-        } else {
-            $userIdData = ['userId' => $id];
-            $form->setData($userIdData);
         }
         $user = $table->getUser($id);
 
@@ -152,7 +143,7 @@ class UsersController extends AbstractActionController
             //update status
             $table->updateEntity('user', $user['userId'], $user);
 
-            //@todo allow spontaeneous login
+            //@todo allow spontaneous login
         }
         return new ViewModel([
             'user'   => $user,
@@ -162,7 +153,7 @@ class UsersController extends AbstractActionController
 
     public function indexAction(): ModelInterface|ResponseInterface
     {
-        $persons = $this->personProvider->getPersons();
+        $persons = $this->personProvider?->getPersons();
         $users   = $this->userTable->getUsers();
         return new ViewModel([
             'users'   => $users,
@@ -180,23 +171,21 @@ class UsersController extends AbstractActionController
             return $this->redirect()->toRoute('juser');
         }
         $user = $table->getUser($id);
-        if (! $user) {
+        if (! isset($user)) {
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
 
+        /** @var NowMessenger $nowMessenger */
+        $nowMessenger = $this->plugin('nowMessenger');
+        Assert::isInstanceOf($nowMessenger, NowMessenger::class);
         $form = $this->editUserForm;
         $form->prepareForEdit();
         $form->setData($user);
         $request = $this->getRequest();
         if ($request->isPost()) {
-            $data = $request->getPost()->toArray();
-            if ($data['userId'] !== $id) { // make sure the user is trying to update the right user
-                $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                    ->addMessage('Error in form submission, please try again later.');
-                return $this->redirect()->toRoute('juser');
-            }
+            $data          = $request->getPost()->toArray();
             $isPersonIdSet = isset($data['personId']);
             $form->setData($data);
             if ($form->isValid()) {
@@ -212,19 +201,23 @@ class UsersController extends AbstractActionController
                         ->addMessage('User successfully updated.');
                     return $this->redirect()->toUrl($this->url()->fromRoute('juser'));
                 } else {
-                    $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                        ->addMessage('Error in form submission, please review.');
+                    $this->logger->crit(
+                        "We submitted a user update, but something went wrong",
+                        ['userId' => $id, 'data' => $data]
+                    );
+                    $nowMessenger->setNamespace(FlashMessenger::NAMESPACE_ERROR);
+                    $nowMessenger->addMessage('Error in form submission, please review.');
                 }
             } else {
-                $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                    ->addMessage('Error in form submission, please review.');
+                $messages = $form->getMessages();
+                $nowMessenger->setNamespace(NowMessenger::NAMESPACE_ERROR);
+                $nowMessenger->addMessage(
+                    'Error in form submission, please review: ' . implode(', ', array_keys($messages))
+                );
             }
         }
-        $userIdData         = ['userId' => $id];
-        $changePasswordForm = new ChangeOtherPasswordForm();
-        $changePasswordForm->setData($userIdData);
-        $deleteUserForm = new DeleteUserForm();
-        $deleteUserForm->setData($userIdData);
+        $changePasswordForm = $this->changeOtherPasswordForm;
+        $deleteUserForm     = new DeleteUserForm();
 
         return new ViewModel([
             'userId'             => $id,
@@ -289,10 +282,6 @@ class UsersController extends AbstractActionController
         return $bcrypt->create($password);
     }
 
-    protected function generatePassword(): void
-    {
-    }
-
     public function createRoleAction(): ModelInterface|ResponseInterface
     {
         $table   = $this->userTable;
@@ -330,18 +319,21 @@ class UsersController extends AbstractActionController
                 ->addMessage('User not found.');
             return $this->redirect()->toRoute('juser');
         }
+        $table = $this->userTable;
+        if (! $table->existsEntity('user', $id)) {
+            $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
+                ->addMessage('User not found.');
+            return $this->redirect()->toRoute('juser');
+        }
 
-        $table   = $this->userTable;
         $form    = new DeleteUserForm();
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost();
             $form->setData($data);
-            if ($form->isValid() && $form->getData()['userId'] == $id) {
-                if (1 != ($result = $table->deleteUser($id))) {
-                    $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                        ->addMessage('Database error deleting user. ' . $result);
-                }
+            if ($form->isValid()) {
+                $result = $table->deleteUser($id);
+                Assert::eq($result, 1);
             } else {
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                     ->addMessage('User not found.');
@@ -350,10 +342,9 @@ class UsersController extends AbstractActionController
             $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                 ->addMessage('User deleted.');
             return $this->redirect()->toRoute('juser');
-        } else {
-            $userIdData = ['userId' => $id];
-            $form->setData($userIdData);
         }
+        $userIdData = ['userId' => $id];
+        $form->setData($userIdData);
         $user = $table->getUser($id);
 
         return new ViewModel([

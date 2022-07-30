@@ -1,6 +1,8 @@
 <?php
 $title = 'User Management';
 $this->headTitle($title);
+/** @var array|null $persons */
+$persons = $this->persons;
 ?>
 <h1><?php echo $this->escapeHtml($this->translate($title)); ?></h1>
 <p><a href="<?php echo $this->url('juser/create');?>"><?php echo $this->translate("Add new user");
@@ -14,7 +16,10 @@ $this->headTitle($title);
     <th><?php echo $this->translate("Display Name");?></th>
     <th><?php echo $this->translate("Active");?></th>
     <th><?php echo $this->translate("Roles");?></th>
-    <th><?php echo $this->translate("Person");?></th>
+    <?php if (isset($persons)):?>
+    <th><?php echo $this->translate("Person");?></th><?php
+    endif;
+    ?>
 </tr>
 <?php  foreach ($this->users as $user) : ?>
 <tr>
@@ -31,12 +36,15 @@ $this->headTitle($title);
         $rolesText[] = $this->escapeHtml($role['name']);
     }
     echo implode(', ', $rolesText);?></td>
+    <?php if (isset($persons)):?>
     <td><?php if (
-    isset($user['personId']) &&
-            isset($this->persons[$user['personId']])
-) {
+        isset($user['personId']) &&
+        isset($this->persons[$user['personId']])
+)   {
         echo $this->formatPerson($this->persons[$user['personId']], ['editPencil' => true]);
-        }?></td>
+    }?></td><?php
+    endif;
+    ?>
 </tr>
 <?php endforeach; ?>
 </table>

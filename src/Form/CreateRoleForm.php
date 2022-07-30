@@ -1,53 +1,57 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Form;
 
+use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
+use Laminas\Validator\Db\NoRecordExists;
 use Laminas\Validator\Regex;
 
 class CreateRoleForm extends Form implements InputFilterProviderInterface
 {
     protected $filterSpec;
 
-    public function __construct($name = null)
+    public function __construct()
     {
         // we want to ignore the name passed
         parent::__construct('role_create');
 
         $this->setAttribute('method', 'post');
         $this->add([
-            'name' => 'name',
+            'name'       => 'name',
             'attributes' => [
                 'type' => 'text',
-                'size' => '30'
+                'size' => '30',
             ],
-            'options' => [
-                'label' => 'Role name'
-            ]
+            'options'    => [
+                'label' => 'Role name',
+            ],
         ]);
 
         $this->add([
-            'name' => 'parentId',
-            'type' => 'Select',
+            'name'    => 'parentId',
+            'type'    => 'Select',
             'options' => [
-                'label' => 'Parent',
-                'empty_option' => '',
+                'label'            => 'Parent',
+                'empty_option'     => '',
                 'unselected_value' => '',
             ],
         ]);
 
         $this->add([
-            'name' => 'isDefault',
-            'type' => 'Checkbox',
-            'options' => [
-                'label' => 'Automatically give to new users?',
-                'checked_value' => '1',
-                'unchecked_value' => '0',
+            'name'       => 'isDefault',
+            'type'       => 'Checkbox',
+            'options'    => [
+                'label'              => 'Automatically give to new users?',
+                'checked_value'      => '1',
+                'unchecked_value'    => '0',
                 'use_hidden_element' => true,
             ],
             'attributes' => [
-                'value'   => '0',
+                'value' => '0',
             ],
         ]);
 
@@ -56,12 +60,12 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
             'type' => 'csrf',
         ]);
         $this->add([
-            'name' => 'submit',
+            'name'       => 'submit',
             'attributes' => [
                 'class' => 'btn-primary',
-                'type' => 'submit',
+                'type'  => 'submit',
                 'value' => 'Submit',
-                'id' => 'submit'
+                'id'    => 'submit',
             ],
         ]);
     }
@@ -69,31 +73,31 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
     public function getInputFilterSpecification()
     {
         return [
-            'name' => [
-                'required' => true,
-                'filters'  => [
+            'name'      => [
+                'required'   => true,
+                'filters'    => [
                     ['name' => 'StripTags'],
                     ['name' => 'StringTrim'],
                 ],
                 'validators' => [
                     [
-                        'name'    => 'Regex',
-                        'options' => [
+                        'name'     => 'Regex',
+                        'options'  => [
                             'pattern' => '/\A[0-9A-Za-z_]+\z/',
                         ],
                         'messages' => [
-                            Regex::INVALID => 'Please use only numbers, letters, or underscore.'
+                            Regex::INVALID => 'Please use only numbers, letters, or underscore.',
                         ],
                     ],
                     [
-                        'name'    => 'Laminas\Validator\Db\NoRecordExists',
+                        'name'    => NoRecordExists::class,
                         'options' => [
-                            'table' => 'user_role',
-                            'field' => 'role_id',
-                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                            'table'    => 'user_role',
+                            'field'    => 'role_id',
+                            'adapter'  => GlobalAdapterFeature::getStaticAdapter(),
                             'messages' => [
-                                \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
-                                    => 'Role id already exists in database'
+                                NoRecordExists::ERROR_RECORD_FOUND
+                                    => 'Role id already exists in database',
                             ],
                         ],
                     ],
@@ -102,7 +106,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
             'isDefault' => [
                 'required' => false,
             ],
-            'parentId' => [
+            'parentId'  => [
                 'required' => false,
                 'filters'  => [
                     ['name' => 'ToNull'],

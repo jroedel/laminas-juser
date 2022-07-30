@@ -1,65 +1,42 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Form;
 
+use Laminas\Form\Element\Button;
+use Laminas\Form\Element\Csrf;
+use Laminas\Form\Element\Submit;
 use Laminas\Form\Form;
-use Laminas\InputFilter\InputFilterProviderInterface;
 
-class DeleteUserForm extends Form implements InputFilterProviderInterface
+class DeleteUserForm extends Form
 {
-    public function __construct($name = null)
+    public function __construct()
     {
         // we want to ignore the name passed
         parent::__construct('delete_user');
 
         $this->add([
-            'name' => 'userId',
-            'type' => 'Hidden',
-        ]);
-        $this->add([
             'name' => 'security',
-            'type' => 'csrf',
+            'type' => Csrf::class,
         ]);
         $this->add([
-            'name' => 'delete',
-            'type' => 'Submit',
+            'name'       => 'delete',
+            'type'       => Submit::class,
             'attributes' => [
                 'value' => 'Delete',
-                'id' => 'submit',
-                'class' => 'btn-danger'
+                'id'    => 'submit',
+                'class' => 'btn-danger',
             ],
         ]);
         $this->add([
-            'name' => 'cancel',
-            'type' => 'Button',
+            'name'       => 'cancel',
+            'type'       => Button::class,
             'attributes' => [
-                'value' => 'Cancel',
-                'id' => 'cancel',
-                'data-dismiss' => 'modal'
+                'value'        => 'Cancel',
+                'id'           => 'cancel',
+                'data-dismiss' => 'modal',
             ],
         ]);
-    }
-
-    public function getInputFilterSpecification()
-    {
-        return [
-            'userId' => [
-                'required' => true,
-                'validators' => [
-                    [
-                        'name'    => 'Laminas\Validator\Db\RecordExists',
-                        'options' => [
-                            'table' => 'user',
-                            'field' => 'user_id',
-                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
-                            'messages' => [
-                                \Laminas\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND =>
-                                    'Assignment not found in database'
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-        ];
     }
 }

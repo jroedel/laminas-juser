@@ -1,182 +1,204 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Form;
 
+use Exception;
+use JUser\Filter\HashPasswordForLmcUser;
+use Laminas\Db\Adapter\AdapterInterface;
+use Laminas\Filter\Boolean;
+use Laminas\Filter\StringTrim;
+use Laminas\Filter\StripTags;
+use Laminas\Filter\ToInt;
+use Laminas\Filter\ToNull;
+use Laminas\Form\Element\Checkbox;
+use Laminas\Form\Element\Csrf;
+use Laminas\Form\Element\Password;
+use Laminas\Form\Element\Select;
+use Laminas\Form\Element\Submit;
+use Laminas\Form\Element\Text;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
+use Laminas\Validator\Db\AbstractDb;
+use Laminas\Validator\Db\NoRecordExists;
+use Laminas\Validator\EmailAddress;
+use Laminas\Validator\Identical;
 use Laminas\Validator\Regex;
+use Laminas\Validator\StringLength;
+use Webmozart\Assert\Assert;
+
+use function array_keys;
 
 class EditUserForm extends Form implements InputFilterProviderInterface
 {
-    protected $filterSpec;
-    protected $hasPersonData = false;
+    public const MIN_PASSWORD_LENGTH = 6;
 
-    public function __construct($name = null)
-    {
+    protected array $filterSpec = [];
+
+    public function __construct(
+        private AdapterInterface $adapter,
+        private HashPasswordForLmcUser $hashPasswordForLmcUser,
+        array $rolesValueOptions,
+        ?array $personValueOptions
+    ) {
         // we want to ignore the name passed
         parent::__construct('user_edit');
 
         $this->setAttribute('method', 'post');
         $this->add([
-            'name' => 'userId',
+            'name'       => 'username',
             'attributes' => [
-                'type' => 'hidden'
+                'type' => Text::class,
+                'size' => '30',
+            ],
+            'options'    => [
+                'label' => 'Username',
             ],
         ]);
         $this->add([
-            'name' => 'username',
+            'name'       => 'email',
             'attributes' => [
-                'type' => 'text',
-                'size' => '30'
+                'type' => Text::class,
+                'size' => '50',
             ],
-            'options' => [
-                'label' => 'Username'
+            'options'    => [
+                'label' => 'Email',
             ],
         ]);
         $this->add([
-            'name' => 'email',
+            'name'       => 'displayName',
             'attributes' => [
-                'type' => 'text',
-                'size' => '50'
+                'type' => Text::class,
+                'size' => '50',
             ],
-            'options' => [
-                'label' => 'Email'
-            ],
-        ]);
-        $this->add([
-            'name' => 'displayName',
-            'attributes' => [
-                'type' => 'text',
-                'size' => '50'
-            ],
-            'options' => [
-                'label' => 'Display Name'
+            'options'    => [
+                'label' => 'Display Name',
             ],
         ]);
 
         $this->add([
-            'name' => 'password',
-            'type' => 'Password',
+            'name'       => 'password',
+            'type'       => Password::class,
             'attributes' => [
                 'required' => true,
             ],
-            'options' => [
+            'options'    => [
                 'label' => 'Password',
             ],
         ]);
         $this->add([
-            'name' => 'passwordVerify',
-            'type' => 'Password',
+            'name'       => 'passwordVerify',
+            'type'       => Password::class,
             'attributes' => [
                 'required' => true,
             ],
-            'options' => [
+            'options'    => [
                 'label' => 'Verify Password',
             ],
         ]);
         $this->add([
-            'name' => 'emailVerified',
-            'type' => 'Checkbox',
-            'options' => [
-                'label' => 'Email verified',
-                'checked_value' => '1',
-                'unchecked_value' => '0',
+            'name'       => 'emailVerified',
+            'type'       => Checkbox::class,
+            'options'    => [
+                'label'              => 'Email verified',
+                'checked_value'      => '1',
+                'unchecked_value'    => '0',
                 'use_hidden_element' => false,
             ],
             'attributes' => [
-                'value'           => 0,
+                'value' => 0,
             ],
         ]);
         $this->add([
-            'name' => 'mustChangePassword',
-            'type' => 'Checkbox',
-            'options' => [
-                'label' => 'Must change password at next logon?',
-                'checked_value' => '1',
-                'unchecked_value' => '0',
+            'name'       => 'mustChangePassword',
+            'type'       => Checkbox::class,
+            'options'    => [
+                'label'              => 'Must change password at next logon?',
+                'checked_value'      => '1',
+                'unchecked_value'    => '0',
                 'use_hidden_element' => true,
             ],
             'attributes' => [
-                'value'   => '0',
+                'value' => '0',
             ],
         ]);
         $this->add([
-            'name' => 'isMultiPersonUser',
-            'type' => 'Checkbox',
-            'options' => [
-                'label' => 'Multi-person user?',
-                'checked_value' => '1',
-                'unchecked_value' => '0',
+            'name'       => 'isMultiPersonUser',
+            'type'       => Checkbox::class,
+            'options'    => [
+                'label'              => 'Multi-person user?',
+                'checked_value'      => '1',
+                'unchecked_value'    => '0',
                 'use_hidden_element' => true,
             ],
             'attributes' => [
-                'value'   => '0',
+                'value' => '0',
             ],
         ]);
         $this->add([
-            'name' => 'active',
-            'type' => 'Checkbox',
-            'options' => [
-                'label' => 'Active',
-                'checked_value' => '1',
-                'unchecked_value' => '0',
+            'name'       => 'active',
+            'type'       => Checkbox::class,
+            'options'    => [
+                'label'              => 'Active',
+                'checked_value'      => '1',
+                'unchecked_value'    => '0',
                 'use_hidden_element' => false,
             ],
             'attributes' => [
-                'value'           => 0,
+                'value' => 0,
             ],
         ]);
+
+        Assert::notEmpty($rolesValueOptions);
         $this->add([
-            'name' => 'rolesList',
-            'type' => 'Select',
+            'name'       => 'rolesList',
+            'type'       => Select::class,
+            'options'    => [
+                'value_options' => $rolesValueOptions,
+                'label'         => 'Roles',
+            ],
             'attributes' => [
                 'multiple' => 'multiple',
             ],
-            'options' => [
-                'label' => 'Roles',
-            ],
         ]);
-        $this->add([
-            'name' => 'personId',
-            'type' => 'Select',
-            'options' => [
-                'label' => 'Person reference',
-                'empty_option' => '',
-                'disable_inarray_validator' => true,
-            ],
-            'attributes' => [
-            ],
-        ]);
+
+        if (isset($personValueOptions)) {
+            $this->add([
+                'name'       => 'personId',
+                'type'       => Select::class,
+                'options'    => [
+                    'label'         => 'Person reference',
+                    'empty_option'  => '',
+                    'value_options' => $personValueOptions,
+                ],
+                'attributes' => [],
+            ]);
+        } else {
+            $this->add([
+                'name'       => 'personId',
+                'type'       => Select::class,
+                'options'    => [
+                    'label'                     => 'Person reference',
+                    'empty_option'              => '',
+                    'disable_inarray_validator' => true,
+                ],
+                'attributes' => [],
+            ]);
+        }
         $this->add([
             'name' => 'security',
-            'type' => 'csrf',
+            'type' => Csrf::class,
         ]);
         $this->add([
-            'name' => 'submit',
+            'name'       => 'submit',
             'attributes' => [
                 'class' => 'btn-primary',
-                'type' => 'submit',
+                'type'  => Submit::class,
                 'value' => 'Submit',
-                'id' => 'submit'
+                'id'    => 'submit',
             ],
         ]);
-    }
-
-    public function getHasPersonData()
-    {
-        return $this->hasPersonData;
-    }
-
-    /**
-     * Set value options for the personId field
-     * @param bool $hasPersonData
-     * @return \JUser\Form\EditUserForm
-     */
-    public function setPersonValueOptions(array $personValueOptions)
-    {
-        $this->get('personId')->setValueOptions($personValueOptions);
-        $this->hasPersonData = true;
-        return $this;
     }
 
     /**
@@ -195,122 +217,109 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         $this->filterSpec = $spec;
     }
 
+    /**
+     * @return array
+     */
     public function getInputFilterSpecification()
     {
         if ($this->filterSpec) {
             return $this->filterSpec;
         }
         $this->filterSpec = [
-            'userId' => [
-                'required' => true,
-                'filters'  => [
-                    ['name' => 'Int'],
-                    ['name' => 'ToNull'],
-                ],
-            ],
-            'username' => [
-                'required' => true,
-                'filters'  => [
-                    ['name' => 'StripTags'],
-                    ['name' => 'StringTrim'],
+            'username'           => [
+                'required'   => true,
+                'filters'    => [
+                    ['name' => StripTags::class],
+                    ['name' => StringTrim::class],
                 ],
                 'validators' => [
                     [
-                        'name'    => 'Regex',
-                        'options' => [
+                        'name'     => Regex::class,
+                        'options'  => [
                             'pattern' => '/\A[0-9A-Za-z-_.]+\z/',
                         ],
                         'messages' => [
-                            Regex::INVALID => 'Please use only numbers, letters, dash, underscore or period.'
+                            Regex::INVALID => 'Please use only numbers, letters, dash, underscore or period.',
                         ],
                     ],
                 ],
             ],
-            'email' => [
-                'required' => true,
-                'filters'  => [
-                    ['name' => 'StringTrim'],
+            'email'              => [
+                'required'   => true,
+                'filters'    => [
+                    ['name' => StringTrim::class],
                 ],
                 'validators' => [
                     [
-                        'name' => 'EmailAddress',
+                        'name' => EmailAddress::class,
                     ],
                 ],
             ],
-            'displayName' => [
-                'required' => true,
-                'filters'  => [
-                    ['name' => 'StringTrim'],
+            'displayName'        => [
+                'required'   => true,
+                'filters'    => [
+                    ['name' => StringTrim::class],
                 ],
                 'validators' => [
                     [
-                        'name' => 'StringLength',
+                        'name'    => 'StringLength',
                         'options' => [
                             'min' => 4,
-                            'max' => 40
+                            'max' => 40,
                         ],
                     ],
                 ],
             ],
-            'personId' => [
+            'personId'           => [
                 'required' => false,
-                'filters' => [
-                    ['name' => 'ToInt'],
-                    ['name' => 'ToNull'],
+                'filters'  => [
+                    ['name' => ToInt::class],
+                    ['name' => ToNull::class],
                 ],
             ],
-            'emailVerified' => [
+            'emailVerified'      => [
                 'required' => false,
-                'filters' => [
-                    ['name' => 'Boolean'],
+                'filters'  => [
+                    ['name' => Boolean::class],
                 ],
             ],
             'mustChangePassword' => [
                 'required' => false,
             ],
-            'isMultiPersonUser' => [
+            'isMultiPersonUser'  => [
                 'required' => false,
             ],
-            'active' => [
+            'active'             => [
                 'required' => false,
-                'filters' => [
-                    ['name' => 'Boolean'],
+                'filters'  => [
+                    ['name' => Boolean::class],
                 ],
             ],
-            'password' => [
+            'password'           => [
                 'required'   => false,
                 'validators' => [
                     [
-                        'name'    => 'StringLength',
+                        'name'    => StringLength::class,
                         'options' => [
-                            'min' => 4,
+                            'min' => self::MIN_PASSWORD_LENGTH,
                         ],
                     ],
                 ],
-                'filters'   => [
-                    ['name' => 'StringTrim'],
+                'filters'    => [
+                    $this->hashPasswordForLmcUser,
                 ],
             ],
-            'passwordVerify' => [
+            'passwordVerify'     => [
                 'required'   => false,
                 'validators' => [
                     [
-                        'name'    => 'StringLength',
+                        'name'    => Identical::class,
                         'options' => [
-                            'min' => 4,
-                        ],
-                    ],
-                    [
-                        'name' => 'identical',
-                        'options' => [
-                            'token' => 'password'
+                            'token' => 'password',
                         ],
                     ],
                 ],
-                'filters'   => [
-                    ['name' => 'StringTrim'],
-                ],
-            ]
+            ],
         ];
         return $this->filterSpec;
     }
@@ -318,39 +327,36 @@ class EditUserForm extends Form implements InputFilterProviderInterface
     public function setValidatorsForCreate(): void
     {
         $spec = $this->getInputFilterSpecification();
-        if ($spec && isset($spec['userId']) && $spec['userId']) {
-            $spec['userId']['required'] = false;
-        }
         try { //use try block in case there is no StaticAdapter
             if ($spec && isset($spec['displayName']) && $spec['displayName']) {
                 $spec['displayName']['validators'][] = [
-                    'name'    => 'Laminas\Validator\Db\NoRecordExists',
+                    'name'    => NoRecordExists::class,
                     'options' => [
-                        'table' => 'user',
-                        'field' => 'display_name',
-                        'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                        'table'    => 'user',
+                        'field'    => 'display_name',
+                        'adapter'  => $this->adapter,
                         'messages' => [
-                            \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
-                                => 'Display name already exists in database'
+                            AbstractDb::ERROR_RECORD_FOUND
+                                => 'Display name already exists in database',
                         ],
                     ],
                 ];
             }
             if ($spec && isset($spec['username']) && $spec['username']) {
                 $spec['username']['validators'][] = [
-                    'name'    => 'Laminas\Validator\Db\NoRecordExists',
+                    'name'    => NoRecordExists::class,
                     'options' => [
-                        'table' => 'user',
-                        'field' => 'username',
-                        'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                        'table'    => 'user',
+                        'field'    => 'username',
+                        'adapter'  => $this->adapter,
                         'messages' => [
-                            \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
-                                => 'Username already exists in database'
+                            AbstractDb::ERROR_RECORD_FOUND
+                                => 'Username already exists in database',
                         ],
                     ],
                 ];
             }
-        } catch (\Exception $e) {
+        } catch (Exception) {
         }
         $this->setInputFilterSpecification($spec);
     }

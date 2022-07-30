@@ -1,4 +1,7 @@
 <?php
+
+use JUser\Form\DeleteUserForm;
+
 $title = 'Edit User';
 $this->headTitle($title);
 ?>
@@ -7,7 +10,6 @@ $this->headTitle($title);
 <?php $form = $this->form;
 $this->form->prepare();
 echo $this->form()->openTag($form);
-echo $this->formRow($form->get('userId'));
 echo $this->formRow($form->get('username'));
 echo $this->formRow($form->get('email'));
 echo $this->formRow($form->get('displayName'));
@@ -75,14 +77,12 @@ aria-labelledby="mySmallModalLabel">
       </div>
       <div class="modal-body">
         <p><?php echo sprintf($this->translate("You are about to delete %s"), $this->user['username']); ?></p>
-        <?php $form = $this->deleteUserForm;
-            $form->setAttribute('action', $this->url(
-                'juser/user/delete',
-                ['user_id' => $this->userId]
-            ));
+        <?php
+            /** @var DeleteUserForm $form */
+            $form = $this->deleteUserForm;
+            $form->setAttribute('action', $this->url('juser/user/delete', [], [], true));
             $form->prepare();
             echo $this->form()->openTag($form);
-            echo $this->formRow($form->get('userId'));
             echo $this->formRow($form->get('security'));
             echo $this->formSubmit($form->get('delete'));
             echo '&nbsp;';
