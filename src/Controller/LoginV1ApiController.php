@@ -125,7 +125,7 @@ class LoginV1ApiController extends ApiController
                 return $this->createResponse();
             }
             if (method_exists($userObject, 'getMultiPersonUser') && $userObject->getMultiPersonUser()) {
-                $this->getLogger()->debug(
+                $this->getLogger()->notice(
                     'JUser: A verification token was requested (and denied) for a multi-person user',
                     ['identity' => $identityParam]
                 );
@@ -145,7 +145,7 @@ class LoginV1ApiController extends ApiController
             return $this->createResponse();
         } elseif ($this->isEmailAddress($identityParam)) {
             if (isset($this->apiVerificationRequestNonRegisteredUserEmailHandler)) {
-                $this->getLogger()->debug(
+                $this->getLogger()->notice(
                     'JUser: A verification token was requested, but no user exists. '
                     . 'Calling apiVerificationRequestNonRegisteredUserEmailHandler to see if they give us a user.',
                     [
@@ -159,7 +159,7 @@ class LoginV1ApiController extends ApiController
                     $identityParam
                 );
                 if ($userObject instanceof UserInterface) {
-                    $this->getLogger()->debug(
+                    $this->getLogger()->notice(
                         'JUser: Calling apiVerificationRequestNonRegisteredUserEmailHandler gave us a User!',
                         [
                             'identity' => $identityParam,
@@ -182,7 +182,7 @@ class LoginV1ApiController extends ApiController
                     if ('object' === $returnType) {
                         $returnType = $userObject::class;
                     }
-                    $this->getLogger()->debug(
+                    $this->getLogger()->notice(
                         'JUser: Calling apiVerificationRequestNonRegisteredUserEmailHandler didn\'t give us a User',
                         [
                             'identity'   => $identityParam,
@@ -324,7 +324,7 @@ class LoginV1ApiController extends ApiController
             return false;
         }
         $message = $this->createVerificationEmail($verificationToken, $userEmail);
-        $this->getLogger()->debug('JUser: About to attempt sending verification email to user', ['userId' => $userId]);
+        $this->getLogger()->info('JUser: About to attempt sending verification email to user', ['userId' => $userId]);
         try {
             $this->mailTransport->send($message);
         } catch (Exception $e) {
@@ -352,7 +352,7 @@ class LoginV1ApiController extends ApiController
             $userId,
             ['verificationToken' => $token, 'verificationExpiration' => $expiration]
         );
-        $this->getLogger()->debug('JUser: A new API verification token was recorded in the db', ['userId' => $userId]);
+        $this->getLogger()->info('JUser: A new API verification token was recorded in the db', ['userId' => $userId]);
         return $token;
     }
 

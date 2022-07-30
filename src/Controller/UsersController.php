@@ -101,7 +101,7 @@ class UsersController extends AbstractActionController
 
         $table  = $this->userTable;
         $logger = $this->logger;
-        $logger->debug("JUser: receiving a request to verify user", ['verificationToken' => $token]);
+        $logger->info("JUser: receiving a request to verify user", ['verificationToken' => $token]);
 
         $user = $table->getUserFromToken($token);
         if (! isset($user)) {

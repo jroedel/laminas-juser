@@ -34,7 +34,7 @@ class Mailer
 
     public function onRegister(User $user): void
     {
-        $this->logger->debug("JUser: Recieved a trigger for register.post");
+        $this->logger->info("JUser: Received a trigger for register.post");
         $userArray                      = [];
         $userArray['verificationToken'] = $user->getVerificationToken();
         $userArray['displayName']       = $user->getDisplayName();
@@ -147,7 +147,7 @@ EOT;
                 'elapsedSeconds'    => $timeElapsedSecs,
             ]);
         } else {
-            $this->logger->debug("JUser: Finished sending verification email.", [
+            $this->logger->info("JUser: Finished sending verification email.", [
                 'email'             => $user['email'],
                 'verificationToken' => substr($user['verificationToken'], 0, 4) . '...',
                 'elapsedSeconds'    => $timeElapsedSecs,
