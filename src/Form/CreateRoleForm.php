@@ -4,18 +4,26 @@ declare(strict_types=1);
 
 namespace JUser\Form;
 
-use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
+use Laminas\Db\Adapter\AdapterInterface;
+use Laminas\Filter\StringTrim;
+use Laminas\Filter\StripTags;
+use Laminas\Filter\ToNull;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
+use Laminas\Validator\Db\AbstractDb;
 use Laminas\Validator\Db\NoRecordExists;
 use Laminas\Validator\Regex;
+use SionModel\Entity\Entity;
+use Webmozart\Assert\Assert;
 
 class CreateRoleForm extends Form implements InputFilterProviderInterface
 {
-    protected $filterSpec;
-
-    public function __construct()
-    {
+    public function __construct(
+        private AdapterInterface $adapter,
+        private Entity $userRoleEntitySpec,
+        array $rolesValueOptions
+    ) {
+        Assert::keyExists($this->userRoleEntitySpec->updateColumns, 'name');
         // we want to ignore the name passed
         parent::__construct('role_create');
 
@@ -38,6 +46,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
                 'label'            => 'Parent',
                 'empty_option'     => '',
                 'unselected_value' => '',
+                'value_options'    => $rolesValueOptions,
             ],
         ]);
 
@@ -70,18 +79,21 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
         ]);
     }
 
+    /**
+     * @return array
+     */
     public function getInputFilterSpecification()
     {
         return [
             'name'      => [
                 'required'   => true,
                 'filters'    => [
-                    ['name' => 'StripTags'],
-                    ['name' => 'StringTrim'],
+                    ['name' => StripTags::class],
+                    ['name' => StringTrim::class],
                 ],
                 'validators' => [
                     [
-                        'name'     => 'Regex',
+                        'name'     => Regex::class,
                         'options'  => [
                             'pattern' => '/\A[0-9A-Za-z_]+\z/',
                         ],
@@ -92,11 +104,11 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
                     [
                         'name'    => NoRecordExists::class,
                         'options' => [
-                            'table'    => 'user_role',
-                            'field'    => 'role_id',
-                            'adapter'  => GlobalAdapterFeature::getStaticAdapter(),
+                            'table'    => $this->userRoleEntitySpec->tableName,
+                            'field'    => $this->userRoleEntitySpec->updateColumns['name'],
+                            'adapter'  => $this->adapter,
                             'messages' => [
-                                NoRecordExists::ERROR_RECORD_FOUND
+                                AbstractDb::ERROR_RECORD_FOUND
                                     => 'Role id already exists in database',
                             ],
                         ],
@@ -109,7 +121,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
             'parentId'  => [
                 'required' => false,
                 'filters'  => [
-                    ['name' => 'ToNull'],
+                    ['name' => ToNull::class],
                 ],
             ],
         ];

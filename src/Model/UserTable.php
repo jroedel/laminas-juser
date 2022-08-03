@@ -30,10 +30,6 @@ use const DEBUG_BACKTRACE_IGNORE_ARGS;
 
 class UserTable extends SionTable implements UserMapperInterface
 {
-    public const USER_TABLE_NAME             = 'user';
-    public const ROLE_TABLE_NAME             = 'user_role';
-    public const USER_ROLE_LINKER_TABLE_NAME = 'user_role_linker';
-
     public function __construct(
         AdapterInterface $adapter,
         array $entitySpecifications,
@@ -382,28 +378,16 @@ class UserTable extends SionTable implements UserMapperInterface
         return null;
     }
 
-    /**
-     * no validation of id
-     *
-     * @todo report errors
-     * @param int|string $id
-     */
-    public function deleteUser($id): int
+    public function deleteUser(int $id): void
     {
-        $result = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME)
+        $this->getTableGateway($this->getEntitySpecification('user-role-link')->tableName)
         ->delete(['user_id' => $id]);
-        $result = $this->getTableGateway(self::USER_TABLE_NAME)
+        $this->getTableGateway($this->getEntitySpecification('user')->tableName)
         ->delete(['user_id' => $id]);
         $this->sionCacheService->removeDependentCacheItems(['user']);
-        return $result;
     }
 
-    /**
-     * Gets list of roles
-     *
-     * @return mixed[]
-     */
-    public function getRoles()
+    public function getRoles(): array
     {
         $cacheKey = 'role';
         if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
@@ -425,10 +409,6 @@ class UserTable extends SionTable implements UserMapperInterface
         }
     }
 
-    /**
-     * @return array[]
-     * @psalm-return array<array>
-     */
     public function getDefaultRoles(): array
     {
         return $this->queryObjects('user-role', ['isDefault' => '1']);
@@ -469,7 +449,7 @@ class UserTable extends SionTable implements UserMapperInterface
         if (null !== ($cache = $this->sionCacheService->fetchCachedEntityObjects($cacheKey))) {
             return $cache;
         }
-        $gateway = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME);
+        $gateway = $this->getTableGateway($this->getEntitySpecification('user-role-link')->tableName);
         $select  = $this->getSelectPrototype('user-role-link');
         if (! empty($userIds)) {
             $select->where(['user_id' => $userIds]);
@@ -534,7 +514,7 @@ class UserTable extends SionTable implements UserMapperInterface
         $oldRoles     = $fullCurrentUserDataButWithOldRoles['rolesList'];
         $allRoles     = $this->getRoles();
         $allRoleIds   = array_keys($allRoles);
-        $tableGateway = $this->getTableGateway(self::USER_ROLE_LINKER_TABLE_NAME);
+        $tableGateway = $this->getTableGateway($this->getEntitySpecification('user-role-link')->tableName);
         $roles        = [];
         foreach ($allRoleIds as $roleId) {
             $roles[$roleId] = [
@@ -583,7 +563,7 @@ class UserTable extends SionTable implements UserMapperInterface
 
     public function updateUserPassword(int $id, string $newPass): void
     {
-        $result = $this->getTableGateway(self::USER_TABLE_NAME)
+        $result = $this->getTableGateway($this->getEntitySpecification('user')->tableName)
             ->update(['password' => $newPass], ['user_id' => $id]);
         Assert::eq($result, 1);
         $this->sionCacheService->removeDependentCacheItems(['user']);
@@ -599,11 +579,12 @@ class UserTable extends SionTable implements UserMapperInterface
             $select->order(['role_id']);
         }
         if ('user-role-link' === $entity) {
+            $userRoleTableName     = $this->getEntitySpecification('user-role')->tableName;
+            $userRoleLinkTableName = $this->getEntitySpecification('user-role-link')->tableName;
             $select->join(
-                'user_role',
-                'user_role.id = user_role_linker.role_id',
-                ['role_name' => 'role_id', 'is_default', 'parent_id'],
-                Select::JOIN_INNER
+                $userRoleTableName,
+                "$userRoleTableName.id = $userRoleLinkTableName.role_id",
+                ['role_name' => 'role_id', 'is_default', 'parent_id']
             );
             $select->order(['user_id', 'role_id']);
         }

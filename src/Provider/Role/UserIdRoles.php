@@ -1,33 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JUser\Provider\Role;
 
-use Laminas\Db\Sql\Select;
-use BjyAuthorize\Provider\Role\ProviderInterface;
-use Laminas\Db\TableGateway\TableGatewayInterface;
 use BjyAuthorize\Acl\Role;
+use BjyAuthorize\Provider\Role\ProviderInterface;
+use Laminas\Db\Sql\Select;
+use Laminas\Db\TableGateway\TableGatewayInterface;
+use Laminas\Permissions\Acl\Role\RoleInterface;
+use Webmozart\Assert\Assert;
 
 class UserIdRoles implements ProviderInterface
 {
-    /**
-     *
-     * @var TableGatewayInterface $tableGateway
-     */
-    protected $tableGateway;
-
-    protected $tableName = 'user';
-
-    public function __construct($tableGateway)
+    public function __construct(private TableGatewayInterface $tableGateway, private string $userTableName)
     {
-        $this->tableGateway = $tableGateway;
     }
 
+    /**
+     * @return RoleInterface[]
+     */
     public function getRoles()
     {
-        // get roles associated with the logged in user
+        // get roles associated with the logged-in user
         $sql = new Select();
 
-        $sql->from($this->tableName)
+        $sql->from($this->userTableName)
         ->columns(['user_id']);
 
         $results = $this->tableGateway->selectWith($sql);
@@ -35,6 +33,7 @@ class UserIdRoles implements ProviderInterface
         $roles = [];
         foreach ($results as $row) {
             $userId = $row['user_id'];
+            Assert::integerish($userId);
             $roles[] = new Role("user_$userId");
         }
 
