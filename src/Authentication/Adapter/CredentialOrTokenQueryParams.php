@@ -2,11 +2,11 @@
 
 namespace JUser\Authentication\Adapter;
 
-use Zend\Authentication\Result as AuthenticationResult;
-use Zend\Crypt\Password\Bcrypt;
-use Zend\Http\Header\HeaderInterface;
+use Laminas\Authentication\Result as AuthenticationResult;
+use Laminas\Crypt\Password\Bcrypt;
+use Laminas\Http\Header\HeaderInterface;
 use ZfcUser\Authentication\Adapter\Db;
-use Zend\Stdlib\RequestInterface;
+use Laminas\Stdlib\RequestInterface;
 
 class CredentialOrTokenQueryParams extends Db
 {
@@ -22,12 +22,12 @@ class CredentialOrTokenQueryParams extends Db
     protected $request;
 
     /**
-     * @param \Zend\EventManager\EventInterface $e
+     * @param \Laminas\EventManager\EventInterface $e
      * @return AuthenticationResult
      */
-    public function authenticate(\Zend\EventManager\EventInterface $e = null)
+    public function authenticate(\Laminas\EventManager\EventInterface $e = null)
     {
-        /** @var \Zend\Http\PhpEnvironment\Request $request */
+        /** @var \Laminas\Http\PhpEnvironment\Request $request */
         $request = $this->getRequest();
         //we're only interested in json requests, otherwise
         $contentType = $request->getHeader('Content-Type');

@@ -2,9 +2,9 @@
 
 namespace JUser;
 
-use Zend\Mvc\MvcEvent;
-use Zend\Db\TableGateway\Feature\GlobalAdapterFeature;
-use Zend\Session\ManagerInterface;
+use Laminas\Mvc\MvcEvent;
+use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
+use Laminas\Session\ManagerInterface;
 
 class Module
 {

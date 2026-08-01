@@ -2,13 +2,13 @@
 
 namespace JUser;
 
-use Zend\Db\Adapter\Adapter;
+use Laminas\Db\Adapter\Adapter;
 use ZfcUser\Authentication\Adapter\Db;
-use Zend\Router\Http\Literal;
-use Zend\Router\Http\Segment;
-use Zend\ServiceManager\Proxy\LazyServiceFactory;
-use Zend\Session;
-use Zend\Session\Storage\SessionArrayStorage;
+use Laminas\Router\Http\Literal;
+use Laminas\Router\Http\Segment;
+use Laminas\ServiceManager\Proxy\LazyServiceFactory;
+use Laminas\Session;
+use Laminas\Session\Storage\SessionArrayStorage;
 use JUser\Provider\Identity\ZfcUserZendDbPlusSelfAsRole;
 use JUser\Service\ZfcUserZendDbPlusSelfAsRoleFactory;
 use JUser\Provider\Role\UserIdRoles;
@@ -107,7 +107,7 @@ return [
         /* role providers simply provide a list of roles that should be inserted
          * into the Zend\Acl instance. the module comes with two providers, one
          * to specify roles in a config file and one to load roles using a
-         * Zend\Db adapter.
+         * Laminas\Db adapter.
         */
         'role_providers' => [
             /* here, 'guest' and 'user are defined as top-level roles, with
@@ -326,7 +326,7 @@ return [
             ],
         ],
         'aliases' => [
-            \Zend\Session\SessionManager::class => Session\ManagerInterface::class,
+            \Laminas\Session\SessionManager::class => Session\ManagerInterface::class,
             'zfcuser_user_mapper'           => Model\UserTable::class,
         ],
 

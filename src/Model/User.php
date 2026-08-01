@@ -3,7 +3,7 @@
 namespace JUser\Model;
 
 use ZfcUser\Entity\UserInterface;
-use Zend\Math\Rand;
+use Laminas\Math\Rand;
 
 class User implements UserInterface
 {

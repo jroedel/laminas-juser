@@ -2,11 +2,11 @@
 
 namespace JUser\Service;
 
-use Zend\I18n\Translator\TranslatorInterface;
-use Zend\I18n\Translator\TranslatorAwareInterface;
+use Laminas\I18n\Translator\TranslatorInterface;
+use Laminas\I18n\Translator\TranslatorAwareInterface;
 use JUser\Model\UserTable;
-use Zend\Router\RouteStackInterface;
-use Zend\Log\LoggerInterface;
+use Laminas\Router\RouteStackInterface;
+use Laminas\Log\LoggerInterface;
 use JUser\Model\User;
 
 class Mailer implements TranslatorAwareInterface
@@ -35,7 +35,7 @@ class Mailer implements TranslatorAwareInterface
     protected $router;
 
     /**
-     * @var \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
+     * @var \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
      */
     protected $flashMessenger;
 
@@ -321,7 +321,7 @@ EOT;
 
     /**
      * Get the flashMessenger object
-     * @return \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger
+     * @return \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger
      */
     public function getFlashMessenger()
     {
@@ -330,10 +330,10 @@ EOT;
 
     /**
      * Set the flashMessenger object
-     * @param \Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
+     * @param \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
      * @return self
      */
-    public function setFlashMessenger(\Zend\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger)
+    public function setFlashMessenger(\Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger)
     {
         $this->flashMessenger = $flashMessenger;
         return $this;

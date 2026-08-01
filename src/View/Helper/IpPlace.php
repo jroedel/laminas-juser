@@ -4,7 +4,7 @@
 
 namespace JUser\View\Helper;
 
-use Zend\View\Helper\AbstractHelper;
+use Laminas\View\Helper\AbstractHelper;
 
 class IpPlace extends AbstractHelper
 {

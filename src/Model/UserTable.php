@@ -2,7 +2,7 @@
 
 namespace JUser\Model;
 
-use Zend\Db\Sql\Select;
+use Laminas\Db\Sql\Select;
 use ZfcUser\Mapper\UserInterface as UserMapperInterface;
 use SionModel\Db\Model\SionTable;
 use JUser\Service\Mailer;

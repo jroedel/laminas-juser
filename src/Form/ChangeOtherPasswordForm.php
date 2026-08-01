@@ -2,8 +2,8 @@
 
 namespace JUser\Form;
 
-use Zend\Form\Form;
-use Zend\InputFilter\InputFilterProviderInterface;
+use Laminas\Form\Form;
+use Laminas\InputFilter\InputFilterProviderInterface;
 use ZfcUser\Options\ModuleOptions;
 
 class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterface
@@ -75,13 +75,13 @@ class ChangeOtherPasswordForm extends Form implements InputFilterProviderInterfa
                 'required' => true,
                 'validators' => [
                     [
-                        'name'    => 'Zend\Validator\Db\RecordExists',
+                        'name'    => 'Laminas\Validator\Db\RecordExists',
                         'options' => [
                             'table' => $this->zfcOptions->getTableName(),
                             'field' => 'user_id',
-                            'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
                             'messages' => [
-                                \Zend\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND => 'User not found in database'
+                                \Laminas\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND => 'User not found in database'
                             ],
                         ],
                     ],

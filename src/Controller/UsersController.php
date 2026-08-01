@@ -3,18 +3,18 @@
 namespace JUser\Controller;
 
 use JUser\Form\EditUserForm;
-use Zend\Mvc\Controller\AbstractActionController;
-use Zend\View\Model\ViewModel;
+use Laminas\Mvc\Controller\AbstractActionController;
+use Laminas\View\Model\ViewModel;
 use JUser\Model\UserTable;
 use JUser\Form\ChangeOtherPasswordForm;
 use JUser\Form\DeleteUserForm;
-use Zend\Mvc\Plugin\FlashMessenger\FlashMessenger;
-use Zend\Crypt\Password\Bcrypt;
+use Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger;
+use Laminas\Crypt\Password\Bcrypt;
 use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
 use JUser\Service\Mailer;
 use JUser\Model\User;
-use Zend\Log\LoggerInterface;
+use Laminas\Log\LoggerInterface;
 
 /**
  *

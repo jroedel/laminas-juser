@@ -2,8 +2,8 @@
 
 namespace JUser\Form;
 
-use Zend\Form\Form;
-use Zend\InputFilter\InputFilterProviderInterface;
+use Laminas\Form\Form;
+use Laminas\InputFilter\InputFilterProviderInterface;
 
 class DeleteUserForm extends Form implements InputFilterProviderInterface
 {
@@ -47,13 +47,13 @@ class DeleteUserForm extends Form implements InputFilterProviderInterface
                 'required' => true,
                 'validators' => [
                     [
-                        'name'    => 'Zend\Validator\Db\RecordExists',
+                        'name'    => 'Laminas\Validator\Db\RecordExists',
                         'options' => [
                             'table' => 'user',
                             'field' => 'user_id',
-                            'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
                             'messages' => [
-                                \Zend\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND =>
+                                \Laminas\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND =>
                                     'Assignment not found in database'
                             ],
                         ],

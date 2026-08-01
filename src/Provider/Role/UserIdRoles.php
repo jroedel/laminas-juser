@@ -2,9 +2,9 @@
 
 namespace JUser\Provider\Role;
 
-use Zend\Db\Sql\Select;
+use Laminas\Db\Sql\Select;
 use BjyAuthorize\Provider\Role\ProviderInterface;
-use Zend\Db\TableGateway\TableGatewayInterface;
+use Laminas\Db\TableGateway\TableGatewayInterface;
 use BjyAuthorize\Acl\Role;
 
 class UserIdRoles implements ProviderInterface

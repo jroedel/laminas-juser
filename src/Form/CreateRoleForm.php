@@ -2,9 +2,9 @@
 
 namespace JUser\Form;
 
-use Zend\Form\Form;
-use Zend\InputFilter\InputFilterProviderInterface;
-use Zend\Validator\Regex;
+use Laminas\Form\Form;
+use Laminas\InputFilter\InputFilterProviderInterface;
+use Laminas\Validator\Regex;
 
 class CreateRoleForm extends Form implements InputFilterProviderInterface
 {
@@ -86,13 +86,13 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
                         ],
                     ],
                     [
-                        'name'    => 'Zend\Validator\Db\NoRecordExists',
+                        'name'    => 'Laminas\Validator\Db\NoRecordExists',
                         'options' => [
                             'table' => 'user_role',
                             'field' => 'role_id',
-                            'adapter' => \Zend\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
                             'messages' => [
-                                \Zend\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
+                                \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
                                     => 'Role id already exists in database'
                             ],
                         ],

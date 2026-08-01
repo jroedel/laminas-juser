@@ -3,7 +3,7 @@
 namespace JUser\Service;
 
 use JUser\Controller\UsersController;
-use Zend\ServiceManager\Factory\FactoryInterface;
+use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
 

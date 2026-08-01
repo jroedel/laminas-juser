@@ -3,12 +3,12 @@
 namespace JUser\Controller;
 
 use RestApi\Controller\ApiController;
-use Zend\Validator\EmailAddress;
-use Zend\Math\Rand;
+use Laminas\Validator\EmailAddress;
+use Laminas\Math\Rand;
 use Carbon\Carbon;
 use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
 use JUser\Model\UserTable;
-use Zend\Mail\Transport\TransportInterface;
+use Laminas\Mail\Transport\TransportInterface;
 use JUser\Model\User;
 
 class LoginV1ApiController extends ApiController
@@ -82,11 +82,11 @@ class LoginV1ApiController extends ApiController
             return $this->createResponse();
         } else { //we pass it on to the authenticator
             /**
-             * @var \Zend\Authentication\Result $auth
+             * @var \Laminas\Authentication\Result $auth
              */
             $authResult = $this->adapter->authenticate();
             if (! $authResult->isValid()) {
-                if (\Zend\Authentication\Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
+                if (\Laminas\Authentication\Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
                     $this->httpStatusCode = 400;
                 } else {
                     $this->httpStatusCode = 401;
@@ -219,7 +219,7 @@ class LoginV1ApiController extends ApiController
     {
         $messageConfig = $this->config['juser']['verification_email_message'];
         $messageConfig['body'] = sprintf($messageConfig['body'], $token);
-        $message = \Zend\Mail\MessageFactory::getInstance($messageConfig);
+        $message = \Laminas\Mail\MessageFactory::getInstance($messageConfig);
         $message->addTo($to)->addBcc($bcc);
         return $message;
     }
