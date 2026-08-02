@@ -405,7 +405,9 @@ class UserTable extends SionTable
     }
 
     /**
-     * Invalidate the user's outstanding verification token (single use)
+     * Consume the user's verification token after successful redemption:
+     * burn it (single use, prevents replay) and mark the email address
+     * verified, since redeeming something sent to it proves ownership.
      * @param int $userId
      * @return mixed
      */
@@ -414,6 +416,7 @@ class UserTable extends SionTable
         return $this->updateEntity('user', $userId, [
             'verificationToken' => null,
             'verificationExpiration' => null,
+            'emailVerified' => 1,
         ]);
     }
 
