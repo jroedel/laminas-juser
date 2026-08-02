@@ -1,6 +1,6 @@
 {
     "name": "jroedel/zf3-juser",
-    "description": "A fork of manuakasam/SamUser. Glues together ZfcUser, BjyAuthorize, SlmLocale, and GoalioRememberMe",
+    "description": "Passwordless (magic-link) user module for Laminas MVC; integrates with BjyAuthorize and SlmLocale",
     "license": "MIT",
     "keywords": [
         "framework",
@@ -15,13 +15,10 @@
         "laminas/laminas-crypt": "^2.4.0 || ^3.1.0",
         "laminas/laminas-math": "^2.7 || ^3.0",
         "kokspflanze/bjy-authorize": "dev-master",
-        "jroedel/zf-snap-geoip": "^3.0",
-        "zf-commons/zfc-user": "3.x@dev",
         "jroedel/locale": "dev-master@dev",
         "beaucal/beaucal-invalid-session": "^0.3.0",
         "swiftmailer/swiftmailer": "^6.0",
-        "jroedel/zf2-sion-model": "dev-master",
-        "multidots/zf3-rest-api": "dev-master"
+        "jroedel/zf2-sion-model": "dev-master"
     },
 	"autoload": {
     	"psr-4": {
@@ -32,10 +29,6 @@
 	   {
 	     "type": "vcs",
 	     "url": "https://github.com/basz/SlmLocale"
-	   },
-	   {
-	     "type": "vcs",
-	     "url": "https://github.com/jroedel/ZfSnapGeoip"
 	   },
 	   {
 	     "type": "vcs",
