@@ -16,7 +16,6 @@
         "laminas/laminas-math": "^2.7 || ^3.0",
         "kokspflanze/bjy-authorize": "dev-master",
         "jroedel/locale": "dev-master@dev",
-        "beaucal/beaucal-invalid-session": "^0.3.0",
         "swiftmailer/swiftmailer": "^6.0",
         "jroedel/zf2-sion-model": "dev-master"
     },

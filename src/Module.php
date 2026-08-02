@@ -21,8 +21,16 @@ class Module
         $app = $e->getApplication();
         $sm = $app->getServiceManager();
 
-        //enable session manager
-        $sm->get(ManagerInterface::class);
+        //enable session manager, and start it here so that a session which
+        //fails validation (see the 'session_manager'.'validators' config) is
+        //discarded rather than fataling the request. This was the whole job of
+        //the BeaucalInvalidSession module, abandoned and never PHP 8 ready.
+        $sessionManager = $sm->get(ManagerInterface::class);
+        try {
+            $sessionManager->start();
+        } catch (\Exception $e) {
+            session_unset();
+        }
 
         //The static adapter is needed for the EditUserForm
         $config = $sm->get('Config');
