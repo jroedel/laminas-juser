@@ -5,7 +5,6 @@ namespace JUser;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Router\Http\Literal;
 use Laminas\Router\Http\Segment;
-use Laminas\ServiceManager\Proxy\LazyServiceFactory;
 use Laminas\Session;
 use Laminas\Session\Storage\SessionArrayStorage;
 use JUser\Provider\Identity\ZfcUserZendDbPlusSelfAsRole;
@@ -349,26 +348,6 @@ return [
         ],
         'invokables'  => [
             View\RedirectionStrategy::class => View\RedirectionStrategy::class,
-        ],
-        'lazy_services' => [
-            // Mapping services to their class names is required
-            // since the ServiceManager is not a declarative DIC.
-            'class_map' => [
-                Form\CreateRoleForm::class   => Form\CreateRoleForm::class,
-                Form\EditUserForm::class     => Form\EditUserForm::class,
-                Service\Mailer::class        => Service\Mailer::class,
-            ],
-        ],
-        'delegators' => [
-            Form\CreateRoleForm::class => [
-                LazyServiceFactory::class,
-            ],
-            Form\EditUserForm::class => [
-                LazyServiceFactory::class,
-            ],
-            Service\Mailer::class => [
-                LazyServiceFactory::class,
-            ],
         ],
         'aliases' => [
             \Laminas\Session\SessionManager::class => Session\ManagerInterface::class,
