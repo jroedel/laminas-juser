@@ -2,228 +2,167 @@
 
 namespace JUser\Controller;
 
-use RestApi\Controller\ApiController;
-use Laminas\Validator\EmailAddress;
-use Laminas\Math\Rand;
 use Carbon\Carbon;
-use JUser\Authentication\Adapter\CredentialOrTokenQueryParams;
-use JUser\Model\UserTable;
-use Laminas\Mail\Transport\TransportInterface;
 use JUser\Model\User;
+use JUser\Model\UserTable;
+use JUser\Service\LoginTokenService;
+use JUser\Service\Mailer;
+use Laminas\Log\LoggerInterface;
+use Laminas\Math\Rand;
+use Laminas\Validator\EmailAddress;
+use RestApi\Controller\ApiController;
 
+/**
+ * Passwordless sign-in for API clients.
+ *
+ * Two steps, both keyed on an email address or username:
+ *  1. request-verification-token: we mail a short single-use code
+ *  2. login-with-verification-token: the code is exchanged for a JWT
+ *
+ * There is no credential/password grant. There never will be again.
+ */
 class LoginV1ApiController extends ApiController
 {
-    protected const LOGIN_ACTION_VERIFICATION_TOKEN_REQUEST = 'verification-token-request';
-    protected const LOGIN_ACTION_AUTHENTICATE_BY_CREDENTIAL = 'authenticate';
-
-    /**
-     * @var CredentialOrTokenQueryParams $adapter
-     */
-    protected $adapter;
-
-    /**
-     * @var UserTable $table
-     */
+    /** @var UserTable $table */
     protected $table;
-    
-    /**
-     * @var TransportInterface $mailTransport
-     */
-    protected $mailTransport;
-    
+
+    /** @var LoginTokenService $tokenService */
+    protected $tokenService;
+
+    /** @var Mailer $mailer */
+    protected $mailer;
+
     /**
      * Application config
      * @var array $config
      */
     protected $config;
 
+    /** @var LoggerInterface|null $logger */
+    protected $logger;
+
     public function __construct(
-        CredentialOrTokenQueryParams $adapter,
-        UserTable $table, 
-        TransportInterface $mailTransport,
+        UserTable $table,
+        LoginTokenService $tokenService,
+        Mailer $mailer,
         array $config
     ) {
-        $this->adapter = $adapter;
         $this->table = $table;
-        $this->mailTransport = $mailTransport;
+        $this->tokenService = $tokenService;
+        $this->mailer = $mailer;
         $this->config = $config;
     }
 
     /**
-     * Should always be GET
-     * There are 3 query parameters we look at:
-     * 1. identity (required)
-     * 2. credential - the user password. Not every user will have a password
-     * 3. token - a verification token sent to email. There's only one valid user token at a time
-     *
-     * There are 3 main cases handled here:
-     * A. They just give just us an identity param - we check if the account exists
-     *      If not, AND the email is in the person table, a new account will be created.
-     *      If everything checks out, we send an email (out-of-band verification) with a token.
-     *      We return a 202 code if the email was sent. Otherwise, we'll send a ...@todo finish
-     * B. They give us an 'identity' and 'token' query param. We check the user table to see if
-     *      it matches AND is still valid. If so, we return a JSON response with a JWT
-     * C. They send us an 'identity' and 'credential'. We check if they match, and return a JWT.
+     * The old password grant used to live here. It's gone.
      */
     public function loginAction()
     {
-        //make sure verb is GET
-        if ('GET' !== $this->getRequest()->getMethod()) {
+        $this->httpStatusCode = 400;
+        $this->apiResponse['message'] = 'Passwords are no longer accepted. Request a login code at '
+            . '/api/v1/users/request-verification-token and exchange it at '
+            . '/api/v1/users/login-with-verification-token.';
+        return $this->createResponse();
+    }
+
+    /**
+     * Mail a short login code to the account matching the given identity.
+     * The response never reveals whether the account exists.
+     */
+    public function requestVerificationTokenAction()
+    {
+        $identityParam = $this->getIdentityParam();
+
+        if (null !== $identityParam) {
+            try {
+                $userObject = $this->lookupUserObject($identityParam);
+                if ($userObject instanceof User && $this->tokenService->mayIssueToken($userObject)) {
+                    $code = $this->tokenService->issueApiCode($userObject);
+                    $this->mailer->sendLoginCodeEmail(
+                        $userObject,
+                        $code,
+                        $this->tokenService->getApiCodeExpirationMinutes()
+                    );
+                }
+            } catch (\Exception $e) {
+                //deliberately swallowed: the caller learns nothing either way
+                if (isset($this->logger)) {
+                    $this->logger->err("JUser: Failed to issue an API login code.", ['exception' => $e]);
+                }
+            }
+        }
+
+        $this->httpStatusCode = 200;
+        $this->apiResponse['message'] = 'If that account exists, a login code is on its way by email.';
+        return $this->createResponse();
+    }
+
+    /**
+     * Exchange a valid login code for a JWT.
+     */
+    public function loginWithVerificationTokenAction()
+    {
+        $identityParam = $this->getIdentityParam();
+        $token = $this->params()->fromQuery('token', $this->params()->fromPost('token'));
+
+        if (null === $identityParam || ! is_string($token) || '' === trim($token)) {
+            $this->apiResponse['message'] = 'Please provide both an identity and a token.';
             $this->httpStatusCode = 400;
-            $this->apiResponse['message'] = 'This method only accepts GET requests.';
             return $this->createResponse();
         }
 
-        $queryParams = $this->params()->fromQuery();
-        if (count($queryParams) === 1 && isset($queryParams['identity'])) { //we handle this
-            //@todo
-            $this->httpStatusCode = 503;
-            $this->apiResponse['message'] = 'We haven\'t yet finished developing emailed verification tokens.';
-            return $this->createResponse();
-        } else { //we pass it on to the authenticator
-            /**
-             * @var \Laminas\Authentication\Result $auth
-             */
-            $authResult = $this->adapter->authenticate();
-            if (! $authResult->isValid()) {
-                if (\Laminas\Authentication\Result::FAILURE_UNCATEGORIZED === $authResult->getCode()) {
-                    $this->httpStatusCode = 400;
-                } else {
-                    $this->httpStatusCode = 401;
-                }
-                $this->apiResponse['message'] = $authResult->getMessages()[0];
-                return $this->createResponse();
-            }
-            $jwtResponse = $this->getNewJwtTokenResponse($authResult->getIdentity()['id']);
-            //@todo log the creation of this JWT
-            //@todo we should register the JWT id in the database just for auditing.
-            $this->httpStatusCode = 200;
-            $this->apiResponse = $jwtResponse;
-            return $this->createResponse();
-        }
-    }
-    
-    public function requestVerificationTokenAction()
-    {
-        $identityParam = $this->params()->fromQuery('identity');
         $userObject = $this->lookupUserObject($identityParam);
-        //just check the identity parameter, look them up and send an email
-        if ($userObject) {
-            $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail());
-        } elseif ($this->isEmailAddress($identityParam)) {
-            //here we should allow the package user to send us a function to see if we allow a new account to create
-            /*
-             * @todo Allow for consuming package to decide if an email address should be allowed to make an account
-             * How do we do this? a Validator to which we pass an email address and they just respond TRUE or FALSE
-             * * The user sets a config with a service.
-             * Should new users be created automatically when api/v1/users/request-verification-token
-             * allow_auto_account_creation_through_api=bool
-             * Allows the user to allow or deny the creation of an account according to email address:
-             * auto_account_creation_through_api_email_validator
-             */
-            
-        } else {
-            //there's nothing we can do here. Just error out
-        }
-        $this->httpStatusCode = 200;
-        $this->apiResponse['message'] = 'Hang in there champ, you\'ll be getttin that email.';
-        return $this->createResponse();
-    }
-    
-    public function loginWithVerificationTokenAction()
-    {
-        /*
-         * give the user a JWT iff:
-         * 1. they have an account
-         * 2. they gave a valid (non-expired) token corresponding to their account
-         */
-        $identityParam = $this->params()->fromQuery('identity');
-        $userObject = $this->lookupUserObject($identityParam);
-        //just check the identity parameter, look them up and send an email
-        if (! is_object($userObject) || !is_numeric($userObject->getId())) {
-            $this->apiResponse['message'] = "User identity not found.";
+        if (! $userObject instanceof User || ! is_numeric($userObject->getId())) {
+            //same message as a bad token, so we don't confirm which accounts exist
+            $this->apiResponse['message'] = 'Invalid or expired token.';
             $this->httpStatusCode = 401;
             return $this->createResponse();
         }
-        $id = $userObject->getId();
-        $userRecord = $this->table->getUser($id);
-        $token = $this->params()->fromQuery('token');
-        $now = new \DateTime();
-        if (! isset($userRecord['verificationToken']) 
-            || !isset($token)
-            || !isset($userRecord['verificationExpiration'])
-            || !$userRecord['verificationExpiration'] instanceof \DateTime
-            || $userRecord['verificationExpiration'] < $now 
-        ) {
-            $this->createAndSendVerificationEmail($userObject->getId(), $userObject->getEmail());
-            $this->apiResponse['message'] = "We could not verify the identity, an email has been resent to the user.";
+
+        if (! $this->tokenService->redeemTokenForUser($userObject, $token)) {
+            $this->apiResponse['message'] = 'Invalid or expired token.';
             $this->httpStatusCode = 401;
             return $this->createResponse();
         }
-        if ($userRecord['verificationToken'] !== $token) {
-            $this->apiResponse['message'] = "Invalid token.";
-            $this->httpStatusCode = 401;
-            return $this->createResponse();
+
+        //redeeming the code proves the address works, so the account goes live
+        if (1 != $userObject->getState()) {
+            $this->table->activateUser($userObject->getId());
         }
+
         $this->apiResponse = $this->getNewJwtTokenResponse($userObject->getId());
         $this->httpStatusCode = 200;
         return $this->createResponse();
     }
-    
+
+    /**
+     * @return string|null
+     */
+    protected function getIdentityParam()
+    {
+        $identity = $this->params()->fromQuery('identity', $this->params()->fromPost('identity'));
+        if (! is_string($identity)) {
+            return null;
+        }
+        $identity = trim($identity);
+        return '' === $identity ? null : $identity;
+    }
+
+    /**
+     * @param string $identityParam
+     * @return User|null
+     */
     protected function lookupUserObject($identityParam)
     {
-        static $fields;
-        if (!isset($fields)) {
-            $fields = $this->adapter->getOptions()->getAuthIdentityFields();
-        }
-        $userObject = null;
-        while (count($fields) > 0 && !isset($userObject)) {
-            $mode = array_shift($fields);
-            switch ($mode) {
-                case 'username':
-                    $userObject = $this->table->findByUsername($identityParam);
-                    break;
-                case 'email':
-                    $userObject = $this->table->findByEmail($identityParam);
-                    break;
+        if (self::isEmailAddress($identityParam)) {
+            $userObject = $this->table->findByEmail($identityParam);
+            if ($userObject instanceof User) {
+                return $userObject;
             }
         }
-        return $userObject;
+        return $this->table->findByUsername($identityParam);
     }
-    
-    protected function createAndSendVerificationEmail($userId, $userEmail)
-    {
-        $verificationToken = $this->createUserVerificationToken($userId);
-        $message = $this->createVerificationEmail($verificationToken, $userEmail);
-//         var_dump('were sending email to '.$userEmail);
-        $this->mailTransport->send($message);
-//         var_dump('weve presumably sent the message');
-    }
-    
-    protected function createUserVerificationToken($userId)
-    {
-        $token = User::generateVerificationToken($this->config['juser']['api_verification_token_length']);
-        $expirationInterval = $this->config['juser']['api_verification_token_expiration_interval'];
-        $expiration = new \DateTime(null, new \DateTimeZone('UTC'));
-        $expiration->add(new \DateInterval($expirationInterval));
-        $this->table->updateEntity(
-            'user',
-            $userId,
-            ['verificationToken' => $token, 'verificationExpiration' => $expiration]
-        );
-        //@todo log this
-        return $token;
-    }
-    
-    protected function createVerificationEmail($token, $to, $bcc = [])
-    {
-        $messageConfig = $this->config['juser']['verification_email_message'];
-        $messageConfig['body'] = sprintf($messageConfig['body'], $token);
-        $message = \Laminas\Mail\MessageFactory::getInstance($messageConfig);
-        $message->addTo($to)->addBcc($bcc);
-        return $message;
-    }
-    
+
     protected function getNewJwtTokenResponse($userId)
     {
         $jwtId = Rand::getString(10);
@@ -250,5 +189,15 @@ class LoginV1ApiController extends ApiController
             $validator = new EmailAddress();
         }
         return $validator->isValid($text);
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     * @return self
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+        return $this;
     }
 }

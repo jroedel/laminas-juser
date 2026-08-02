@@ -1,0 +1,29 @@
+<?php
+/** @var \Laminas\View\Renderer\PhpRenderer $this */
+/** @var \JUser\Form\LoginForm $form */
+$form = $this->form;
+$isRegistration = (bool) $this->isRegistration;
+$title = $isRegistration ? $this->translate('Register') : $this->translate('Sign in');
+$this->headTitle($title);
+?>
+<h1><?php echo $this->escapeHtml($title); ?></h1>
+
+<p><?php echo $this->escapeHtml($isRegistration
+    ? $this->translate('Enter your email address and we\'ll send you a link to get started. '
+        . 'There\'s no password to choose or remember.')
+    : $this->translate('Enter your email address and we\'ll send you a link to sign in. '
+        . 'There\'s no password to remember.')); ?></p>
+
+<?php
+$form->prepare();
+echo $this->form()->openTag($form);
+echo $this->formRow($form->get('email'));
+echo $this->formHidden($form->get('redirect'));
+echo $this->formRow($form->get('security'));
+echo $this->formSubmit($form->get('submit'));
+echo $this->form()->closeTag();
+?>
+
+<p class="help-block"><?php echo $this->escapeHtml($this->translate(
+    'The link works once and expires shortly after we send it.'
+)); ?></p>

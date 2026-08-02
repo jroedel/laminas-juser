@@ -3,15 +3,20 @@
 namespace JUser\Model;
 
 use Laminas\Db\Sql\Select;
-use ZfcUser\Mapper\UserInterface as UserMapperInterface;
 use SionModel\Db\Model\SionTable;
 use JUser\Service\Mailer;
 
-class UserTable extends SionTable implements UserMapperInterface
+class UserTable extends SionTable
 {
     public const USER_TABLE_NAME = 'user';
     public const ROLE_TABLE_NAME = 'user_role';
     public const USER_ROLE_LINKER_TABLE_NAME = 'user_role_linker';
+
+    /** Maximum length of the username column */
+    public const USERNAME_MAX_LENGTH = 255;
+
+    /** Maximum length of the display_name column */
+    public const DISPLAY_NAME_MAX_LENGTH = 50;
 
     /** @var Mailer $mailer */
     protected $mailer;
@@ -19,15 +24,19 @@ class UserTable extends SionTable implements UserMapperInterface
     protected $flashMessenger;
 
     /**
-     * @param $email
-     * @return \ZfcUser\Entity\UserInterface
+     * Look up a user by email address.
+     *
+     * NOTE: this is a pure lookup. It deliberately doesn't send any mail;
+     * the passwordless login flow (@see \JUser\Service\LoginTokenService) owns
+     * all sign-in messaging so that a lookup can never double-send.
+     *
+     * @param string $email
+     * @return User|null
      */
     public function findByEmail($email)
     {
-        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
         if ($this->logger) {
-            $this->logger->debug("JUser: Looking up user by email", ['email' => $email, 'caller' => $caller]);
+            $this->logger->debug("JUser: Looking up user by email", ['email' => $email]);
         }
         $results = $this->queryObjects('user', ['email' => $email]);
         if (! isset($results) || empty($results)) {
@@ -40,25 +49,20 @@ class UserTable extends SionTable implements UserMapperInterface
             $userObject = new User($userArray);
         }
 
-        //if we've got an inactive user, notify the user to look for a verification email
-        if ('authenticate' === $caller && ! $userArray['active'] && ! $userArray['emailVerified']) {
-            $this->getMailer()->onInactiveUser($userObject, $this);
-        }
-
         //@todo trigger find event
         return $userObject;
     }
 
     /**
+     * Look up a user by username. @see self::findByEmail() about messaging.
+     *
      * @param string $username
-     * @return \ZfcUser\Entity\UserInterface
+     * @return User|null
      */
     public function findByUsername($username)
     {
-        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
         if ($this->logger) {
-            $this->logger->debug("JUser: Looking up user by username", ['username' => $username, 'caller' => $caller]);
+            $this->logger->debug("JUser: Looking up user by username", ['username' => $username]);
         }
         $results = $this->queryObjects('user', ['username' => $username]);
         if (! isset($results) || empty($results)) {
@@ -71,18 +75,13 @@ class UserTable extends SionTable implements UserMapperInterface
             $userObject = new User($userArray);
         }
 
-        //notify the user to look for a verification email
-        if ('authenticate' === $caller && ! $userArray['active'] && ! $userArray['emailVerified']) {
-            $this->getMailer()->onInactiveUser($userObject, $this);
-        }
-
         //@todo trigger find event
         return $userObject;
     }
 
     /**
      * @param string|int $id
-     * @return \ZfcUser\Entity\UserInterface
+     * @return User|null
      */
     public function findById($id)
     {
@@ -99,9 +98,9 @@ class UserTable extends SionTable implements UserMapperInterface
     }
 
     /**
-     * @param \ZfcUser\Entity\UserInterface $user
+     * @param User $user
      */
-    public function insertUser(\ZfcUser\Entity\UserInterface $user)
+    public function insertUser(User $user)
     {
         //figure out what the calling function is. If a user is registering, trigger the email here
         $data = $user->getArrayCopy();
@@ -148,9 +147,9 @@ class UserTable extends SionTable implements UserMapperInterface
     }
 
     /**
-     * @param \ZfcUser\Entity\UserInterface $user
+     * @param User $user
      */
-    public function updateUser(\ZfcUser\Entity\UserInterface $user)
+    public function updateUser(User $user)
     {
         $data = $user->getArrayCopy();
         if (isset($this->logger)) {
@@ -346,12 +345,41 @@ class UserTable extends SionTable implements UserMapperInterface
     }
 
     /**
-     * Get user from token, including roles
-     * @param int|string $id
+     * Hash a plaintext login/verification token for storage and lookup.
+     * Only the hash ever touches the database.
+     *
+     * @param string $plaintextToken
+     * @return string 64-character lowercase hex
+     */
+    public static function hashToken($plaintextToken)
+    {
+        return hash('sha256', (string) $plaintextToken);
+    }
+
+    /**
+     * Get user from a plaintext token, including roles
+     * @param string $token
+     * @return array|null
      */
     public function getUserFromToken($token)
     {
-        $results = $this->queryObjects('user', ['verificationToken' => $token]);
+        if (! is_string($token) || '' === $token) {
+            return null;
+        }
+        return $this->getUserFromHashedToken(self::hashToken($token));
+    }
+
+    /**
+     * Get user from an already hashed token, including roles
+     * @param string $hashedToken
+     * @return array|null
+     */
+    public function getUserFromHashedToken($hashedToken)
+    {
+        if (! is_string($hashedToken) || '' === $hashedToken) {
+            return null;
+        }
+        $results = $this->queryObjects('user', ['verificationToken' => $hashedToken]);
         //it should be exactly 1. If there are duplicate tokens floating, we err on the safe side
         if (1 === count($results)) {
             $this->linkUsers($results);
@@ -359,6 +387,119 @@ class UserTable extends SionTable implements UserMapperInterface
             return $user;
         }
         return null;
+    }
+
+    /**
+     * Store a hashed verification token along with its expiration
+     * @param int $userId
+     * @param string $hashedToken
+     * @param \DateTime $expiration
+     * @return mixed
+     */
+    public function setVerificationToken($userId, $hashedToken, \DateTime $expiration)
+    {
+        return $this->updateEntity('user', $userId, [
+            'verificationToken' => $hashedToken,
+            'verificationExpiration' => $expiration,
+        ]);
+    }
+
+    /**
+     * Invalidate the user's outstanding verification token (single use)
+     * @param int $userId
+     * @return mixed
+     */
+    public function clearVerificationToken($userId)
+    {
+        return $this->updateEntity('user', $userId, [
+            'verificationToken' => null,
+            'verificationExpiration' => null,
+        ]);
+    }
+
+    /**
+     * Mark a user as active and their email address as verified
+     * @param int $userId
+     * @return mixed
+     */
+    public function activateUser($userId)
+    {
+        return $this->updateEntity('user', $userId, [
+            'active' => 1,
+            'emailVerified' => 1,
+        ]);
+    }
+
+    /**
+     * Register a brand new account from nothing but an email address.
+     * The account starts out inactive and unverified; redeeming the emailed
+     * login link is what activates it.
+     *
+     * @param string $email
+     * @return array|null the new user row, or null on failure
+     */
+    public function createUserFromEmail($email)
+    {
+        $email = trim((string) $email);
+        $localPart = strstr($email, '@', true);
+        if (false === $localPart || '' === $localPart) {
+            $localPart = $email;
+        }
+        $username = $this->makeUniqueUsername($localPart);
+        $displayName = substr($localPart, 0, self::DISPLAY_NAME_MAX_LENGTH);
+        if ('' === $displayName) {
+            $displayName = $username;
+        }
+
+        $defaultRoles = $this->getDefaultRoles();
+        $data = [
+            'username'      => $username,
+            'email'         => $email,
+            'displayName'   => $displayName,
+            //the password column is NOT NULL; passwords are no longer used at all
+            'password'      => '',
+            'active'        => 0,
+            'emailVerified' => 0,
+            'roles'         => $defaultRoles,
+            'rolesList'     => array_keys($defaultRoles),
+        ];
+        if (isset($this->logger)) {
+            $this->logger->info("JUser: Registering a new account.", ['email' => $email, 'username' => $username]);
+        }
+        $newId = $this->createEntity('user', $data);
+        if (! $newId) {
+            if (isset($this->logger)) {
+                $this->logger->err("JUser: Failed registering a new account.", ['email' => $email]);
+            }
+            return null;
+        }
+        return $this->getUser($newId);
+    }
+
+    /**
+     * Build a username from an email local part, suffixing digits until it's free
+     * @param string $base
+     * @return string
+     */
+    public function makeUniqueUsername($base)
+    {
+        $base = preg_replace('/[^0-9A-Za-z\-_.]/', '', (string) $base);
+        if ('' === $base) {
+            $base = 'user';
+        }
+        $base = substr($base, 0, self::USERNAME_MAX_LENGTH - 6);
+        $candidate = $base;
+        $suffix = 1;
+        while (null !== $this->findByUsername($candidate)) {
+            $candidate = $base . $suffix;
+            $suffix++;
+            if ($suffix > 99999) {
+                //ludicrously unlikely; fall back to something certainly unique
+                $candidate = $base . bin2hex(random_bytes(3));
+                break;
+            }
+        }
+        return $candidate;
     }
 
     /**
@@ -582,20 +723,6 @@ class UserTable extends SionTable implements UserMapperInterface
         $this->removeDependentCacheItems('user');
 
         return count($return);
-    }
-
-    /**
-     * no validation of id
-     * @todo report errors
-     * @param int|string $id
-     * @param string $newPass
-     */
-    public function updateUserPassword($id, $newPass)
-    {
-        $result = $this->getTableGateway(self::USER_TABLE_NAME)
-            ->update(['password' => $newPass], ['user_id' => $id]);
-        $this->removeDependentCacheItems('user');
-        return $result;
     }
 
     protected function getSelectPrototype($entity)

@@ -2,6 +2,7 @@
 
 namespace JUser;
 
+use Laminas\Db\Adapter\Adapter;
 use Laminas\Mvc\MvcEvent;
 use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
 use Laminas\Session\ManagerInterface;
@@ -25,15 +26,14 @@ class Module
 
         //The static adapter is needed for the EditUserForm
         $config = $sm->get('Config');
-        if (
-            isset($config['zfcuser']['zend_db_adapter']) &&
-            $sm->has($config['zfcuser']['zend_db_adapter'])
-        ) {
-            $adapter = $sm->get($config['zfcuser']['zend_db_adapter']);
-            GlobalAdapterFeature::setStaticAdapter($adapter);
+        $adapterService = isset($config['juser']['db_adapter'])
+            ? $config['juser']['db_adapter']
+            : Adapter::class;
+        if ($sm->has($adapterService)) {
+            GlobalAdapterFeature::setStaticAdapter($sm->get($adapterService));
         } else {
             throw new \Exception(
-                'Please set the [\'zfcuser\'][\'zend_db_adapter\'] config key for use with the JUser module.'
+                'Please set the [\'juser\'][\'db_adapter\'] config key for use with the JUser module.'
             );
         }
     }

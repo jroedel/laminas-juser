@@ -3,7 +3,6 @@
 namespace JUser;
 
 use Laminas\Db\Adapter\Adapter;
-use ZfcUser\Authentication\Adapter\Db;
 use Laminas\Router\Http\Literal;
 use Laminas\Router\Http\Segment;
 use Laminas\ServiceManager\Proxy\LazyServiceFactory;
@@ -15,59 +14,20 @@ use JUser\Provider\Role\UserIdRoles;
 use JUser\Service\UserIdRolesFactory;
 
 return [
-    'zfcuser' => [
-        'zend_db_adapter' => Adapter::class,
-        // telling ZfcUser to use our own class
-        'user_entity_class'       => Model\User::class,
-
-        'auth_adapters' => [
-            100 => Db::class,
-        ],
-
-        'enable_default_entities' => false,
-
-        'enable_registration' => true,
-
-        'use_registration_form_captcha' => true,
-
-        'form_captcha_options' => [
-                'class'   => 'figlet',
-                'options' => [
-                        'wordLen'    => 5,
-                        'expiration' => 300,
-                        'timeout'    => 300,
-                ],
-        ],
-        'enable_display_name' => true,
-
-        'enable_username' => true,
-
-        'auth_identity_fields' => [ 'username', 'email' ],
-
-        'login_redirect_route' => 'home',
-
-        'logout_redirect_route' => 'home',
-
-        'use_redirect_parameter_if_present' => true,
-
-        'enable_user_state' => true,
-        //the user state will stay at 0 until the user has been validated
-        'default_user_state' => 0,
-
-        'allowed_login_states' => [1],
-
-        'user_login_widget_view_template' => 'zfc-user/user/login',
-    ],
-    
     'juser' => [
-        'verification_email_message' => [
-            'sender' => 'juser@example.com',
-            'subject' => 'Sign in verification',
-            'body' => 'Thanks for signing up!, Please enter the following code into the app where you are '
-            .'signing in:%s'.PHP_EOL.'If you did not request a login, please ignore this message. Thanks!',
-        ],
+        //service name of the Laminas\Db adapter this module works against
+        'db_adapter' => Adapter::class,
+
+        //where to land after signing in / after signing out
+        'login_redirect_route' => 'welcome',
+        'logout_redirect_route' => 'zfcuser/login',
+
+        //how long an emailed magic link stays valid (ISO 8601 duration)
+        'web_verification_token_expiration_interval' => 'PT15M',
+
+        //the short code emailed to API clients
         'api_verification_token_length' => 6,
-        'api_verification_token_expiration_interval' => 'P1D',
+        'api_verification_token_expiration_interval' => 'PT15M',
     ],
     'bjyauthorize' => [
         'unauthorized_strategy' => View\RedirectionStrategy::class,
@@ -127,9 +87,86 @@ return [
                 'parent_role_field'     => 'parent_id',
             ],
         ],
+        'guards' => [
+            /*
+             * The sign-in routes have to be reachable by definition. Anything
+             * else this module exposes is guarded in the application config.
+             */
+            \BjyAuthorize\Guard\Route::class => [
+                ['route' => 'zfcuser', 'roles' => ['guest', 'user']],
+                ['route' => 'zfcuser/login', 'roles' => ['guest', 'user']],
+                ['route' => 'zfcuser/register', 'roles' => ['guest', 'user']],
+                ['route' => 'zfcuser/verify', 'roles' => ['guest', 'user']],
+                ['route' => 'zfcuser/logout', 'roles' => ['guest', 'user']],
+                //the API sign-in endpoints are anonymous by definition
+                ['route' => 'api-v1-login', 'roles' => ['guest', 'user']],
+                ['route' => 'api-v1-request-verification-token', 'roles' => ['guest', 'user']],
+                ['route' => 'api-v1-login-with-verification-token', 'roles' => ['guest', 'user']],
+            ],
+        ],
     ],
     'router' => [
         'routes' => [
+            /*
+             * The 'zfcuser*' route names are historical: they used to come from
+             * the ZfcUser module. They're kept so that every existing url(),
+             * guard and redirect keeps pointing at the right place.
+             */
+            'zfcuser' => [
+                'type' => Literal::class,
+                'priority' => 1000,
+                'options' => [
+                    'route' => '/user',
+                    'defaults' => [
+                        'controller' => Controller\LoginController::class,
+                        'action'     => 'index',
+                    ],
+                ],
+                'may_terminate' => true,
+                'child_routes' => [
+                    'login' => [
+                        'type' => Literal::class,
+                        'options' => [
+                            'route' => '/login',
+                            'defaults' => [
+                                'controller' => Controller\LoginController::class,
+                                'action'     => 'login',
+                            ],
+                        ],
+                    ],
+                    'logout' => [
+                        'type' => Literal::class,
+                        'options' => [
+                            'route' => '/logout',
+                            'defaults' => [
+                                'controller' => Controller\LoginController::class,
+                                'action'     => 'logout',
+                            ],
+                        ],
+                    ],
+                    'register' => [
+                        'type' => Literal::class,
+                        'options' => [
+                            'route' => '/register',
+                            'defaults' => [
+                                'controller' => Controller\LoginController::class,
+                                'action'     => 'register',
+                            ],
+                        ],
+                    ],
+                    //where the emailed magic link lands: /user/verify?token=...
+                    'verify' => [
+                        'type' => Literal::class,
+                        'options' => [
+                            'route' => '/verify',
+                            'defaults' => [
+                                'controller' => Controller\LoginController::class,
+                                'action'     => 'verify',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
             'api-v1-login' => [
                 'type'    => Literal::class,
                 'options' => [
@@ -220,15 +257,6 @@ return [
                                     ],
                                 ],
                             ],
-                            'change-password' => [
-                                'type'    => Literal::class,
-                                'options' => [
-                                    'route'    => '/change-password',
-                                    'defaults' => [
-                                        'action'     => 'change-password',
-                                    ],
-                                ],
-                            ],
                             'show' => [
                                 'type'    => Literal::class,
                                 'options' => [
@@ -267,7 +295,16 @@ return [
     'controllers' => [
         'factories' => [
             Controller\UsersController::class => Service\UsersControllerFactory::class,
+            Controller\LoginController::class => Service\LoginControllerFactory::class,
             Controller\LoginV1ApiController::class => Service\LoginV1ApiControllerFactory::class,
+        ],
+    ],
+    'controller_plugins' => [
+        'factories' => [
+            Controller\Plugin\ZfcUserAuthentication::class => Service\ZfcUserAuthenticationPluginFactory::class,
+        ],
+        'aliases' => [
+            'zfcUserAuthentication' => Controller\Plugin\ZfcUserAuthentication::class,
         ],
     ],
     'view_manager' => [
@@ -280,6 +317,15 @@ return [
         'invokables' => [
             'ipPlace'               => View\Helper\IpPlace::class,
             'userWithIp'            => View\Helper\UserWithIp::class,
+        ],
+        'factories' => [
+            View\Helper\ZfcUserDisplayName::class => Service\ZfcUserViewHelperFactory::class,
+            View\Helper\ZfcUserIdentity::class    => Service\ZfcUserViewHelperFactory::class,
+        ],
+        'aliases' => [
+            //historical names, kept so existing templates keep working
+            'zfcUserDisplayName' => View\Helper\ZfcUserDisplayName::class,
+            'zfcUserIdentity'    => View\Helper\ZfcUserIdentity::class,
         ],
     ],
     'service_manager' => [
@@ -297,10 +343,9 @@ return [
             \Swift_Mailer::class            => Service\SwiftMailerFactory::class,
             ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
             UserIdRoles::class              => UserIdRolesFactory::class,
-            Authentication\Adapter\CredentialOrTokenQueryParams::class =>
-                Service\CredentialOrTokenQueryParamsFactory::class,
-            //use this to override zfcuser's register form
-//             'zfcuser_register_form' => RegisterForm::class,
+            'JUser\AuthService'             => Service\AuthenticationServiceFactory::class,
+            Service\UserService::class      => Service\UserServiceFactory::class,
+            Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,
         ],
         'invokables'  => [
             View\RedirectionStrategy::class => View\RedirectionStrategy::class,
@@ -327,7 +372,12 @@ return [
         ],
         'aliases' => [
             \Laminas\Session\SessionManager::class => Session\ManagerInterface::class,
+            //historical service names, kept so existing consumers keep working
             'zfcuser_user_mapper'           => Model\UserTable::class,
+            'zfcuser_auth_service'          => 'JUser\AuthService',
+            'zfcuser_user_service'          => Service\UserService::class,
+            'zfcuser_zend_db_adapter'       => Adapter::class,
+            \Laminas\Authentication\AuthenticationService::class => 'JUser\AuthService',
         ],
 
     ],
@@ -365,7 +415,6 @@ return [
                     'username',
                     'email',
                     'displayName',
-                    'password',
                 ],
                 'index_route'                           => 'juser',
 //                 'index_template'                        => 'project/events/index',
@@ -440,7 +489,6 @@ return [
                     'username',
                     'email',
                     'displayName',
-                    'password',
                 ],
                 'index_route'                           => 'juser',
 //                 'index_template'                        => 'project/events/index',

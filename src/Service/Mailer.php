@@ -98,6 +98,108 @@ class Mailer implements TranslatorAwareInterface
     }
 
     /**
+     * Email the user a magic link that signs them in.
+     *
+     * @param User $user
+     * @param string $plaintextToken the token as it must appear in the link; only its hash is stored
+     * @param int $expirationMinutes how long the link stays valid, for the copy
+     * @return number
+     */
+    public function sendLoginLinkEmail(User $user, string $plaintextToken, int $expirationMinutes = 15)
+    {
+        if (isset($this->logger)) {
+            $this->logger->info("JUser: Sending a sign-in link.", ['email' => $user->getEmail()]);
+        }
+        $start = microtime(true);
+
+        $link = $this->router->assemble([], [
+            'name' => 'zfcuser/verify',
+            'force_canonical' => true,
+            'query' => ['token' => $plaintextToken],
+        ]);
+
+        $body = <<<EOT
+Hello %s,
+
+Click the link below to sign in to Schoenstatt Link:
+
+%s
+
+The link is good for %s minutes and can only be used once.
+If you didn't ask to sign in, you can safely ignore this message.
+EOT;
+        $subject = 'Your sign-in link for schoenstatt.link';
+        if ($this->isTranslatorEnabled() && $this->hasTranslator()) {
+            $translator = $this->getTranslator();
+            $body = $translator->translate($body);
+            $subject = $translator->translate($subject);
+        }
+        $displayName = $user->getDisplayName();
+        if (null === $displayName || '' === $displayName) {
+            $displayName = $user->getUsername();
+        }
+        $body = sprintf($body, $displayName, $link, $expirationMinutes);
+
+        $message = (new \Swift_Message())
+            ->setSubject($subject)
+            ->setFrom(['webmaster@schoenstatt.link' => 'Schoenstatt Link'])
+            ->setTo([$user->getEmail() => $displayName])
+            ->setBody($body);
+
+        $result = $this->getMailer()->send($message);
+        if (isset($this->logger)) {
+            $this->logger->debug("JUser: Finished sending sign-in link.", [
+                'email' => $user->getEmail(),
+                'result' => $result,
+                'elapsedSeconds' => microtime(true) - $start,
+            ]);
+        }
+        return $result;
+    }
+
+    /**
+     * Email the user a short code to type into an app (API sign-in flow).
+     *
+     * @param User $user
+     * @param string $code
+     * @param int $expirationMinutes
+     * @return number
+     */
+    public function sendLoginCodeEmail(User $user, string $code, int $expirationMinutes = 15)
+    {
+        if (isset($this->logger)) {
+            $this->logger->info("JUser: Sending a sign-in code.", ['email' => $user->getEmail()]);
+        }
+
+        $body = <<<EOT
+Your login code: %s
+
+It is good for %s minutes and can only be used once.
+If you didn't ask to sign in, you can safely ignore this message.
+EOT;
+        $subject = 'Your login code for schoenstatt.link';
+        if ($this->isTranslatorEnabled() && $this->hasTranslator()) {
+            $translator = $this->getTranslator();
+            $body = $translator->translate($body);
+            $subject = $translator->translate($subject);
+        }
+        $body = sprintf($body, $code, $expirationMinutes);
+
+        $displayName = $user->getDisplayName();
+        if (null === $displayName || '' === $displayName) {
+            $displayName = $user->getUsername();
+        }
+
+        $message = (new \Swift_Message())
+            ->setSubject($subject)
+            ->setFrom(['webmaster@schoenstatt.link' => 'Schoenstatt Link'])
+            ->setTo([$user->getEmail() => $displayName])
+            ->setBody($body);
+
+        return $this->getMailer()->send($message);
+    }
+
+    /**
      * Send an email to the user to verify their account
      * @todo add a beautified HTML version of the email. Add mailing address as required
      * @param mixed $user

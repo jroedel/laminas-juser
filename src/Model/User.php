@@ -2,10 +2,9 @@
 
 namespace JUser\Model;
 
-use ZfcUser\Entity\UserInterface;
 use Laminas\Math\Rand;
 
-class User implements UserInterface
+class User
 {
     //@todo make length configurable
     public const VERIFICATION_TOKEN_LENGTH = 32;
@@ -97,7 +96,8 @@ class User implements UserInterface
         $this->mustChangePassword = isset($data['mustChangePassword']) ? $data['mustChangePassword'] : null;
         $this->multiPersonUser = isset($data['isMultiPersonUser']) ? $data['isMultiPersonUser'] : null;
         $this->verificationToken = isset($data['verificationToken']) ? $data['verificationToken'] : null;
-        $this->verificationExpiration = $data['verificationExpiration'];
+        $this->verificationExpiration = isset($data['verificationExpiration'])
+            ? $data['verificationExpiration'] : null;
         $this->createDatetime = isset($data['createdOn'])
             ? $data['createdOn']->format('Y-m-d H:i:s') : null;
         $this->updateDatetime = isset($data['updatedOn'])
@@ -153,7 +153,7 @@ class User implements UserInterface
      * Set id.
      *
      * @param int $id
-     * @return UserInterface
+     * @return self
      */
     public function setId($id)
     {
@@ -175,7 +175,7 @@ class User implements UserInterface
      * Set username.
      *
      * @param string $username
-     * @return UserInterface
+     * @return self
      */
     public function setUsername($username)
     {
@@ -197,7 +197,7 @@ class User implements UserInterface
      * Set email.
      *
      * @param string $email
-     * @return UserInterface
+     * @return self
      */
     public function setEmail($email)
     {
@@ -219,7 +219,7 @@ class User implements UserInterface
      * Set displayName.
      *
      * @param string $displayName
-     * @return UserInterface
+     * @return self
      */
     public function setDisplayName($displayName)
     {
@@ -241,7 +241,7 @@ class User implements UserInterface
      * Set password.
      *
      * @param string $password
-     * @return UserInterface
+     * @return self
      */
     public function setPassword($password)
     {
@@ -263,7 +263,7 @@ class User implements UserInterface
      * Set state.
      *
      * @param int $state
-     * @return UserInterface
+     * @return self
      */
     public function setState($state)
     {
@@ -285,7 +285,7 @@ class User implements UserInterface
      * Set mustChangePassword.
      *
      * @param bool $mustChangePassword
-     * @return UserInterface
+     * @return self
      */
     public function setMustChangePassword($mustChangePassword)
     {
@@ -307,7 +307,7 @@ class User implements UserInterface
      * Set multiPersonUser.
      *
      * @param bool $multiPersonUser
-     * @return UserInterface
+     * @return self
      */
     public function setMultiPersonUser($multiPersonUser)
     {

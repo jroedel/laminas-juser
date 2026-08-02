@@ -55,26 +55,6 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         ]);
 
         $this->add([
-            'name' => 'password',
-            'type' => 'Password',
-            'attributes' => [
-                'required' => true,
-            ],
-            'options' => [
-                'label' => 'Password',
-            ],
-        ]);
-        $this->add([
-            'name' => 'passwordVerify',
-            'type' => 'Password',
-            'attributes' => [
-                'required' => true,
-            ],
-            'options' => [
-                'label' => 'Verify Password',
-            ],
-        ]);
-        $this->add([
             'name' => 'emailVerified',
             'type' => 'Checkbox',
             'options' => [
@@ -179,15 +159,9 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         return $this;
     }
 
-    /**
-     * Don't update password while on edit form
-     */
     public function prepareForEdit()
     {
-        $fields = $this->getElements();
-        unset($fields['password']);
-        unset($fields['passwordVerify']);
-        $this->setValidationGroup(array_keys($fields));
+        $this->setValidationGroup(array_keys($this->getElements()));
     }
 
     public function setInputFilterSpecification($spec)
@@ -277,40 +251,6 @@ class EditUserForm extends Form implements InputFilterProviderInterface
                     ['name' => 'Boolean'],
                 ],
             ],
-            'password' => [
-                'required'   => false,
-                'validators' => [
-                    [
-                        'name'    => 'StringLength',
-                        'options' => [
-                            'min' => 4,
-                        ],
-                    ],
-                ],
-                'filters'   => [
-                    ['name' => 'StringTrim'],
-                ],
-            ],
-            'passwordVerify' => [
-                'required'   => false,
-                'validators' => [
-                    [
-                        'name'    => 'StringLength',
-                        'options' => [
-                            'min' => 4,
-                        ],
-                    ],
-                    [
-                        'name' => 'identical',
-                        'options' => [
-                            'token' => 'password'
-                        ],
-                    ],
-                ],
-                'filters'   => [
-                    ['name' => 'StringTrim'],
-                ],
-            ]
         ];
         return $this->filterSpec;
     }

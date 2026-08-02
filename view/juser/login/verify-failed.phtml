@@ -1,0 +1,14 @@
+<?php
+/** @var \Laminas\View\Renderer\PhpRenderer $this */
+$title = $this->translate('This sign-in link didn\'t work');
+$this->headTitle($title);
+?>
+<h1><?php echo $this->escapeHtml($title); ?></h1>
+
+<p><?php echo $this->escapeHtml($this->translate(
+    'Sign-in links expire and can only be used once. Ask for a new one and it will be waiting in your inbox.'
+)); ?></p>
+
+<p><a class="btn btn-primary" href="<?php echo $this->url('zfcuser/login'); ?>"><?php echo $this->escapeHtml(
+    $this->translate('Send me a new link')
+); ?></a></p>
