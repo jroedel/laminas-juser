@@ -695,8 +695,9 @@ class UserTable extends SionTable
             if ($oldNew['new'] && ! $oldNew['old']) { //insert a role
                 $result = 0;
                 $data['create_datetime'] = $this->formatDbDate(new \DateTime(null, new \DateTimeZone('UTC')));
-                if (isset($this->actingUserId)) {
-                    $data['create_by'] = $this->actingUserId;
+                $actingUserId = $this->getActingUserId();
+                if (null !== $actingUserId) {
+                    $data['create_by'] = $actingUserId;
                 }
                 $result = $tableGateway->insert($data);
                 $return[] = [

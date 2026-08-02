@@ -6,6 +6,7 @@ use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use Laminas\Db\Adapter\Adapter;
+use SionModel\Service\ActingUserProviderInterface;
 
 class UserTableFactory implements FactoryInterface
 {
@@ -16,16 +17,9 @@ class UserTableFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        //@todo how can we get an identity if the process requires this very UserTable?
-//         $authService = $container->get('zfcuser_auth_service');
-//         if ($user = $authService->getIdentity()) {
-//             $userId = $user->getId();
-//         } else {
-//             $userId = null;
-//         }
-
         $dbAdapter = $container->get(Adapter::class);
-        $table = new UserTable($dbAdapter, $container, null);
+        $actingUserProvider = $container->get(ActingUserProviderInterface::class);
+        $table = new UserTable($dbAdapter, $container, $actingUserProvider);
 
         $cache = $container->get('JUser\Cache');
         $em = $container->get('Application')->getEventManager();

@@ -11,6 +11,7 @@ use JUser\Provider\Identity\ZfcUserZendDbPlusSelfAsRole;
 use JUser\Service\ZfcUserZendDbPlusSelfAsRoleFactory;
 use JUser\Provider\Role\UserIdRoles;
 use JUser\Service\UserIdRolesFactory;
+use SionModel\Service\ActingUserProviderInterface;
 
 return [
     'juser' => [
@@ -345,6 +346,7 @@ return [
             'JUser\AuthService'             => Service\AuthenticationServiceFactory::class,
             Service\UserService::class      => Service\UserServiceFactory::class,
             Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,
+            ActingUserProviderInterface::class => Service\AuthServiceActingUserProviderFactory::class,
         ],
         'invokables'  => [
             View\RedirectionStrategy::class => View\RedirectionStrategy::class,
