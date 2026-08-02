@@ -106,13 +106,22 @@ class RedirectionStrategy extends UnauthorizedStrategy implements ListenerAggreg
             $url = $router->assemble([], ['name' => $this->redirectRoute]);
         }
 
-        // Work out where were we trying to get to
-        $options = ['name' => $routeMatch->getMatchedRouteName()];
-        $redirect = $router->assemble($routeMatch->getParams(), $options);
+        // Work out where were we trying to get to. The name is cast because a
+        // numeric route key (e.g. '404') reaches us as an int, which the
+        // router's explode() rejects with a TypeError — turning a mere denial
+        // into a fatal. If the return trip can't be assembled, send the
+        // visitor to the sign-in page without one rather than crash.
+        try {
+            $options = ['name' => (string) $routeMatch->getMatchedRouteName()];
+            $redirect = $router->assemble($routeMatch->getParams(), $options);
+        } catch (\Throwable $e) {
+            $redirect = null;
+        }
 
         $response = $response ?: new Response();
 
-        $response->getHeaders()->addHeaderLine('Location', $url . '?redirect=' . $redirect);
+        $location = null !== $redirect ? $url . '?redirect=' . $redirect : $url;
+        $response->getHeaders()->addHeaderLine('Location', $location);
         $response->setStatusCode(302);
 
         $event->setResponse($response);
