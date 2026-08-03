@@ -2,14 +2,13 @@
 
 namespace JUser\Service;
 
-use Laminas\Cache\StorageFactory;
+use Laminas\Cache\Service\StorageAdapterFactoryInterface;
 use Laminas\ServiceManager\Factory\FactoryInterface;
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
+use SionModel\Cache\LegacyCacheConfig;
 
 /**
  * Factory for building the cache storage
- *
- * @author Christian Bergau <cbergau86@gmail.com>
  */
 class CacheFactory implements FactoryInterface
 {
@@ -25,6 +24,7 @@ class CacheFactory implements FactoryInterface
             throw new \Exception('Missing JUser cache configuration');
         }
 
-        return StorageFactory::factory($config['juser']['cache_options']);
+        return $container->get(StorageAdapterFactoryInterface::class)
+            ->createFromArrayConfiguration(LegacyCacheConfig::translate($config['juser']['cache_options']));
     }
 }

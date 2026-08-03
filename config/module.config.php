@@ -80,7 +80,7 @@ return [
             //        ]],
             //],
             UserIdRoles::class => [],
-            \BjyAuthorize\Provider\Role\ZendDb::class => [
+            \BjyAuthorize\Provider\Role\LaminasDb::class => [
                 'table'                 => 'user_role',
                 'identifier_field_name' => 'id',
                 'role_id_field'         => 'role_id',

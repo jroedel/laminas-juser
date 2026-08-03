@@ -59,8 +59,8 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             'type' => 'Checkbox',
             'options' => [
                 'label' => 'Email verified',
-                'checked_value' => 1,
-                'unchecked_value' => 0,
+                'checked_value' => '1',
+                'unchecked_value' => '0',
                 'use_hidden_element' => false,
             ],
             'attributes' => [
@@ -98,8 +98,8 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             'type' => 'Checkbox',
             'options' => [
                 'label' => 'Active',
-                'checked_value' => 1,
-                'unchecked_value' => 0,
+                'checked_value' => '1',
+                'unchecked_value' => '0',
                 'use_hidden_element' => false,
             ],
             'attributes' => [
