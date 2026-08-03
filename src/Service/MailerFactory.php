@@ -23,7 +23,9 @@ class MailerFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        $swift = $container->get(\Swift_Mailer::class);
+        //the shared application transport, built from `smtp_options` by
+        //SionModel\Service\MailTransportFactory
+        $transport = $container->get('SionModel\MailTransport');
         $translator = $container->get(TranslatorInterface::class);
         /** @var \Laminas\Router\Http\TreeRouteStack $router */
         $router = $container->get(RouteStackInterface::class);
@@ -51,7 +53,7 @@ class MailerFactory implements FactoryInterface
 
         $mailer = (new Mailer())
         ->setTranslator($translator)
-        ->setMailer($swift)
+        ->setTransport($transport)
         ->setFlashMessenger($flashMessenger)
         ->setRouter($router);
         if (isset($logger)) {

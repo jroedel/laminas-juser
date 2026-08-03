@@ -340,7 +340,6 @@ return [
             // Provides session configuration to SessionManagerFactory
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
             Service\Mailer::class           => Service\MailerFactory::class,
-            \Swift_Mailer::class            => Service\SwiftMailerFactory::class,
             ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
             UserIdRoles::class              => UserIdRolesFactory::class,
             'JUser\AuthService'             => Service\AuthenticationServiceFactory::class,

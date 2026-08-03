@@ -8,11 +8,14 @@ use JUser\Model\UserTable;
 use Laminas\Router\RouteStackInterface;
 use Laminas\Log\LoggerInterface;
 use JUser\Model\User;
+use Symfony\Component\Mailer\Transport\TransportInterface;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 
 class Mailer implements TranslatorAwareInterface
 {
-    /** @var \Swift_Mailer $mailer */
-    protected $mailer;
+    /** @var TransportInterface $transport */
+    protected $transport;
 
     /** @var TranslatorInterface $translator */
     protected $translator;
@@ -103,7 +106,7 @@ class Mailer implements TranslatorAwareInterface
      * @param User $user
      * @param string $plaintextToken the token as it must appear in the link; only its hash is stored
      * @param int $expirationMinutes how long the link stays valid, for the copy
-     * @return number
+     * @return \Symfony\Component\Mailer\SentMessage|null
      */
     public function sendLoginLinkEmail(User $user, string $plaintextToken, int $expirationMinutes = 15)
     {
@@ -140,17 +143,17 @@ EOT;
         }
         $body = sprintf($body, $displayName, $link, $expirationMinutes);
 
-        $message = (new \Swift_Message())
-            ->setSubject($subject)
-            ->setFrom(['webmaster@schoenstatt.link' => 'Schoenstatt Link'])
-            ->setTo([$user->getEmail() => $displayName])
-            ->setBody($body);
+        $message = (new Email())
+            ->subject($subject)
+            ->from(new Address('webmaster@schoenstatt.link', 'Schoenstatt Link'))
+            ->to(new Address($user->getEmail(), $displayName))
+            ->text($body);
 
-        $result = $this->getMailer()->send($message);
+        $result = $this->getTransport()->send($message);
         if (isset($this->logger)) {
             $this->logger->debug("JUser: Finished sending sign-in link.", [
                 'email' => $user->getEmail(),
-                'result' => $result,
+                'messageId' => isset($result) ? $result->getMessageId() : null,
                 'elapsedSeconds' => microtime(true) - $start,
             ]);
         }
@@ -163,7 +166,7 @@ EOT;
      * @param User $user
      * @param string $code
      * @param int $expirationMinutes
-     * @return number
+     * @return \Symfony\Component\Mailer\SentMessage|null
      */
     public function sendLoginCodeEmail(User $user, string $code, int $expirationMinutes = 15)
     {
@@ -190,20 +193,20 @@ EOT;
             $displayName = $user->getUsername();
         }
 
-        $message = (new \Swift_Message())
-            ->setSubject($subject)
-            ->setFrom(['webmaster@schoenstatt.link' => 'Schoenstatt Link'])
-            ->setTo([$user->getEmail() => $displayName])
-            ->setBody($body);
+        $message = (new Email())
+            ->subject($subject)
+            ->from(new Address('webmaster@schoenstatt.link', 'Schoenstatt Link'))
+            ->to(new Address($user->getEmail(), $displayName))
+            ->text($body);
 
-        return $this->getMailer()->send($message);
+        return $this->getTransport()->send($message);
     }
 
     /**
      * Send an email to the user to verify their account
      * @todo add a beautified HTML version of the email. Add mailing address as required
      * @param mixed $user
-     * @return number
+     * @return \Symfony\Component\Mailer\SentMessage|null
      */
     public function sendVerificationEmail($user)
     {
@@ -236,38 +239,20 @@ EOT;
         }
         $body = sprintf($body, $user['displayName'], $link);
 
-        // Create the Transport
-        /** @var \Swift_Mailer $mailer */
-        $mailer = $this->getMailer();
+        $message = (new Email())
+            ->subject($subject)
+            ->from(new Address('webmaster@schoenstatt.link', 'Schoenstatt Link'))
+            ->to(new Address($user['email'], (string) $user['displayName']))
+            ->bcc('webmaster@schoenstatt.link')
+            ->text($body);
 
-        // Create the message
-        $message = (new \Swift_Message())
-
-        // Give the message a subject
-        ->setSubject($subject)
-
-        // Set the From address with an associative array
-        ->setFrom(['webmaster@schoenstatt.link' => 'Schoenstatt Link'])
-
-        // Set the To addresses with an associative array (setTo/setCc/setBcc)
-        ->setTo([$user['email'] => $user['displayName']])
-        ->setBcc('webmaster@schoenstatt.link')
-
-        // Give it a body
-        ->setBody($body);
-        // And optionally an alternative body
-        //->addPart('<q>Here is the message itself</q>', 'text/html')
-
-        // Optionally add any attachments
-        //->attach(Swift_Attachment::fromPath('my-document.pdf'))
-
-        $result = $mailer->send($message);
+        $result = $this->getTransport()->send($message);
         $timeElapsedSecs = microtime(true) - $start;
         if (isset($this->logger)) {
             $this->logger->debug("JUser: Finished sending verification email.", [
                 'email' => $user['email'],
                 'verificationToken' => substr($user['verificationToken'], 0, 4) . '...',
-                'result' => $result,
+                'messageId' => isset($result) ? $result->getMessageId() : null,
                 'elapsedSeconds' => $timeElapsedSecs,
             ]);
         }
@@ -353,25 +338,25 @@ EOT;
     }
 
     /**
-     * Get the mailer value
-     * @return \Swift_Mailer
+     * Get the mail transport
+     * @return TransportInterface
      */
-    public function getMailer()
+    public function getTransport()
     {
-        if (! isset($this->mailer)) {
-            throw new \Exception('Something went wrong, no mailer available');
+        if (! isset($this->transport)) {
+            throw new \Exception('Something went wrong, no mail transport available');
         }
-        return $this->mailer;
+        return $this->transport;
     }
 
     /**
-     * Set the mailer value
-     * @param \Swift_Mailer $mailer
+     * Set the mail transport
+     * @param TransportInterface $transport
      * @return self
      */
-    public function setMailer(?\Swift_Mailer $mailer)
+    public function setTransport(?TransportInterface $transport)
     {
-        $this->mailer = $mailer;
+        $this->transport = $transport;
         return $this;
     }
 
