@@ -2,29 +2,19 @@
 return [
     'juser' => [
         'person_provider' => MyModule\Model\PersonTable::class,
-        'mail_transport' => [
-            'class'   => Laminas\Mail\Transport\Smtp::class,
-            'options' => [
-                'host'             => 'smtp.gmail.com',
-                'port'             => 587,
-                'connectionClass'  => 'login',
-                'connectionConfig' => [
-                    'ssl'      => 'tls',
-                    'username' => 'abc@gmail.com',
-                    'password' => 'abc123',
-                ],
-            ],
-        ],
-        'message' => [
-            // These can be either a string, or an array of email => name pairs
-            'to'     => 'abc@gmail.com',
-            'from'   => 'abc@gmail.com',
-            // This should be an array with minimally an "address" element, and
-            // can also contain a "name" element
-            'sender' => [
-                'address' => 'abc@gmail.com'
-            ],
-        ],
+        /**
+         * Mail is sent through the 'SionModel\MailTransport' service, which
+         * builds a symfony/mailer transport from the top-level `smtp_options`
+         * block of your local.php:
+         *
+         * 'smtp_options' => [
+         *     'server'   => 'smtp.example.com',
+         *     'port'     => 587,
+         *     'ssl'      => 'tls',
+         *     'username' => 'abc@example.com',
+         *     'password' => 'abc123',
+         * ],
+         */
     ],
     'zfcuser' => [
         'zend_db_adapter' => Laminas\Db\Adapter\Adapter::class,
