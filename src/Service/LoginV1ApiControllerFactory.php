@@ -14,7 +14,7 @@ class LoginV1ApiControllerFactory implements FactoryInterface
      *
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         $controller = new LoginV1ApiController(
             $container->get(UserTable::class),
