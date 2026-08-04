@@ -2,6 +2,7 @@
 
 namespace JUser;
 
+use JUser\Session\SessionPruner;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Mvc\MvcEvent;
 use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
@@ -28,6 +29,10 @@ class Module
         $sessionManager = $sm->get(ManagerInterface::class);
         try {
             $sessionManager->start();
+            //a validated session can still carry values whose class no longer
+            //exists (written before a class-renaming migration); they fatal at
+            //first container access, not here — prune them instead
+            SessionPruner::pruneIncompleteClassValues($_SESSION);
         } catch (\Exception $e) {
             session_unset();
         }
