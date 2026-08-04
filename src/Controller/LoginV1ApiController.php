@@ -7,7 +7,7 @@ use JUser\Model\User;
 use JUser\Model\UserTable;
 use JUser\Service\LoginTokenService;
 use JUser\Service\Mailer;
-use Laminas\Log\LoggerInterface;
+use Psr\Log\LoggerInterface;
 use Laminas\Math\Rand;
 use Laminas\Validator\EmailAddress;
 use RestApi\Controller\ApiController;
@@ -87,7 +87,7 @@ class LoginV1ApiController extends ApiController
             } catch (\Exception $e) {
                 //deliberately swallowed: the caller learns nothing either way
                 if (isset($this->logger)) {
-                    $this->logger->err("JUser: Failed to issue an API login code.", ['exception' => $e]);
+                    $this->logger->error("JUser: Failed to issue an API login code.", ['exception' => $e]);
                 }
             }
         }
