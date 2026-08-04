@@ -16,29 +16,28 @@ class UsersControllerFactory implements FactoryInterface
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
-        $serviceLocator = $container->getServiceLocator();
-        $userTable      = $serviceLocator->get(UserTable::class);
+        $userTable      = $container->get(UserTable::class);
 
         $controller = new UsersController();
         $controller->setUserTable($userTable);
 
-        $config = $serviceLocator->get('JUser\Config');
+        $config = $container->get('JUser\Config');
 
         $services = [];
         $services['JUser\Config'] = $config;
         if (key_exists('person_provider', $config)) {
             $personProvider = $config['person_provider'];
-            if ($serviceLocator->has($personProvider)) {
-                $services[$personProvider] = $serviceLocator->get($personProvider);
+            if ($container->has($personProvider)) {
+                $services[$personProvider] = $container->get($personProvider);
             }
         }
 
-        $services[\JUser\Form\EditUserForm::class] = $serviceLocator->get(\JUser\Form\EditUserForm::class);
-        $services[\JUser\Form\CreateRoleForm::class] = $serviceLocator->get(\JUser\Form\CreateRoleForm::class);
+        $services[\JUser\Form\EditUserForm::class] = $container->get(\JUser\Form\EditUserForm::class);
+        $services[\JUser\Form\CreateRoleForm::class] = $container->get(\JUser\Form\CreateRoleForm::class);
         $services[UserTable::class] = $userTable;
-        $services[Mailer::class] = $serviceLocator->get(Mailer::class);
-        if ($serviceLocator->has('JUser\Logger')) {
-            $logger = $serviceLocator->get('JUser\Logger');
+        $services[Mailer::class] = $container->get(Mailer::class);
+        if ($container->has('JUser\Logger')) {
+            $logger = $container->get('JUser\Logger');
             $controller->setLogger($logger);
         }
 
