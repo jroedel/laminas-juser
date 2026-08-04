@@ -9,7 +9,7 @@ use JUser\Service\LoginTokenService;
 use JUser\Service\Mailer;
 use Laminas\Authentication\AuthenticationService;
 use Laminas\Http\Request as HttpRequest;
-use Laminas\Log\LoggerInterface;
+use Psr\Log\LoggerInterface;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\Router\Exception\RuntimeException as RouterRuntimeException;
 use Laminas\Router\RouteMatch;
@@ -237,7 +237,7 @@ class LoginController extends AbstractActionController
             );
         } catch (\Exception $e) {
             if (isset($this->logger)) {
-                $this->logger->err("JUser: Failed to issue a sign-in link.", ['exception' => $e]);
+                $this->logger->error("JUser: Failed to issue a sign-in link.", ['exception' => $e]);
             }
         }
     }

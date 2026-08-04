@@ -7,7 +7,7 @@ use Interop\Container\ContainerInterface;
 use Laminas\I18n\Translator\TranslatorInterface;
 use Laminas\Router\RouteStackInterface;
 use Laminas\Mvc\Controller\PluginManager;
-use Laminas\Log\LoggerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Factory responsible of priming the Mailer service

@@ -17,6 +17,7 @@
         "kokspflanze/bjy-authorize": "dev-master",
         "jroedel/locale": "dev-master@dev",
         "symfony/mailer": "^7.0",
+        "psr/log": "^3.0",
         "jroedel/zf2-sion-model": "dev-master"
     },
 	"autoload": {

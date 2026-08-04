@@ -4,7 +4,7 @@ namespace JUser\Service;
 
 use JUser\Model\User;
 use JUser\Model\UserTable;
-use Laminas\Log\LoggerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Issues and redeems the single-use tokens that are the only way to sign in.

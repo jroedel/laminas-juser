@@ -10,7 +10,7 @@ use JUser\Form\DeleteUserForm;
 use Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger;
 use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
-use Laminas\Log\LoggerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  *

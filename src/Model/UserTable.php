@@ -121,7 +121,7 @@ class UserTable extends SionTable
         $result = $this->createEntity('user', $data);
         if (false === $result) {
             if (isset($this->logger)) {
-                $this->logger->err("JUser: Failed inserting a new user.", ['result' => $result, 'user' => $user]);
+                $this->logger->error("JUser: Failed inserting a new user.", ['result' => $result, 'user' => $user]);
             }
             throw new \Exception('Error inserting a new user.');
         } else {
@@ -135,7 +135,7 @@ class UserTable extends SionTable
                     $this->getMailer()->onRegister($user);
                 } catch (\Exception $e) {
                     if (isset($this->logger)) {
-                        $this->logger->err(
+                        $this->logger->error(
                             "JUser: Exception thrown while triggering verification email.",
                             ['exception' => $e]
                         );
@@ -160,7 +160,7 @@ class UserTable extends SionTable
         $result = $this->updateEntity('user', $data['userId'], $data);
         if (false === $result) {
             if (isset($this->logger)) {
-                $this->logger->err("Failed updating a user.", ['result' => $result, 'user' => $user]);
+                $this->logger->error("Failed updating a user.", ['result' => $result, 'user' => $user]);
             }
             throw new \Exception('Error inserting a new user.');
         } else {
@@ -472,7 +472,7 @@ class UserTable extends SionTable
         $newId = $this->createEntity('user', $data);
         if (! $newId) {
             if (isset($this->logger)) {
-                $this->logger->err("JUser: Failed registering a new account.", ['email' => $email]);
+                $this->logger->error("JUser: Failed registering a new account.", ['email' => $email]);
             }
             return null;
         }

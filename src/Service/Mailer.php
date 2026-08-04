@@ -6,7 +6,7 @@ use Laminas\I18n\Translator\TranslatorInterface;
 use Laminas\I18n\Translator\TranslatorAwareInterface;
 use JUser\Model\UserTable;
 use Laminas\Router\RouteStackInterface;
-use Laminas\Log\LoggerInterface;
+use Psr\Log\LoggerInterface;
 use JUser\Model\User;
 use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address;
