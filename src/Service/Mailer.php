@@ -276,7 +276,7 @@ EOT;
      * @param TranslatorInterface $translator
      * @return self
      */
-    public function setTranslator(TranslatorInterface $translator = null, $textDomain = null)
+    public function setTranslator(?TranslatorInterface $translator = null, $textDomain = null)
     {
         $this->translator = $translator;
         return $this;

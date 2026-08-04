@@ -11,7 +11,7 @@ class LoginTokenServiceFactory implements FactoryInterface
     /**
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         $config = $container->get('Config');
         $juserConfig = isset($config['juser']) ? $config['juser'] : [];

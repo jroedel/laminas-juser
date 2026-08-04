@@ -20,7 +20,7 @@ class AuthenticationServiceFactory implements FactoryInterface
     /**
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         /** @var UserTable $userTable */
         $userTable = $container->get(UserTable::class);

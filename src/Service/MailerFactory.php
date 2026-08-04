@@ -21,7 +21,7 @@ class MailerFactory implements FactoryInterface
      *
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         //the shared application transport, built from `smtp_options` by
         //SionModel\Service\MailTransportFactory

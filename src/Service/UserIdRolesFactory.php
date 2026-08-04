@@ -20,7 +20,7 @@ class UserIdRolesFactory implements FactoryInterface
     /**
      * @inheritdoc
      */
-    public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
+    public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
         $config = $container->get('Config');
         $adapterService = isset($config['juser']['db_adapter'])
