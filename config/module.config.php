@@ -316,7 +316,6 @@ return [
     'view_helpers' => [
         'invokables' => [
             'ipPlace'               => View\Helper\IpPlace::class,
-            'userWithIp'            => View\Helper\UserWithIp::class,
         ],
         'factories' => [
             View\Helper\ZfcUserDisplayName::class => Service\ZfcUserViewHelperFactory::class,
