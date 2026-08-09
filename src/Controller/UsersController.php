@@ -62,6 +62,39 @@ class UsersController extends AbstractActionController
     }
 
     /**
+     * Record a write that did not happen, and say so in one sentence.
+     *
+     * These actions used to answer every failure — a validator complaining, a
+     * NOT NULL column rejecting a checkbox that posted nothing, a table that had
+     * not been migrated — with the same "Error in form submission, please
+     * review." and nothing in the log. Reviewing the form could not help,
+     * because the form was fine; the only way to find out what happened was to
+     * put a debugger in the catch block. So: the log gets the exception, the
+     * admin gets told plainly that nothing was saved, and the two are
+     * distinguishable from a form the user really can fix.
+     *
+     * The message deliberately carries no exception text. An admin cannot act on
+     * an SQLSTATE, and a stack trace on a page is how internals leak.
+     *
+     * @param string $what gerund phrase, e.g. 'creating a user'
+     * @param \Throwable|null $e null when the call reported failure by return value
+     * @param array $context extra fields for the log line
+     * @return string the message to show
+     */
+    protected function writeFailureMessage($what, ?\Throwable $e = null, array $context = [])
+    {
+        if (isset($this->logger)) {
+            $this->logger->error(sprintf('JUser: Failed %s.', $what), array_merge($context, [
+                'exceptionClass' => null === $e ? null : get_class($e),
+                'exception'      => null === $e ? null : $e->getMessage(),
+                'trace'          => null === $e ? null : $e->getTraceAsString(),
+            ]));
+        }
+
+        return sprintf('%s failed — nothing was saved. The error has been logged.', ucfirst($what));
+    }
+
+    /**
      * Legacy email-verification endpoint.
      *
      * Email verification and sign-in are now the same act: redeeming a single-use
@@ -188,16 +221,22 @@ class UsersController extends AbstractActionController
                 $data['password'] = '';
                 try {
                     if (! ($table->createEntity('user', $data))) {
-                        $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                            ->addMessage('Error in form submission, please review.');
+                        $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage(
+                            $this->writeFailureMessage('creating a user', null, [
+                                'username' => $data['username'] ?? null,
+                            ])
+                        );
                     } else {
                         $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                             ->addMessage('User successfully created.');
                         return $this->redirect()->toRoute('juser');
                     }
-                } catch (\Exception $e) {
-                    $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                        ->addMessage('Error in form submission, please review.');
+                } catch (\Throwable $e) {
+                    $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage(
+                        $this->writeFailureMessage('creating a user', $e, [
+                            'username' => $data['username'] ?? null,
+                        ])
+                    );
                 }
             } else {
                 $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
@@ -231,9 +270,12 @@ class UsersController extends AbstractActionController
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
                         ->addMessage('Role successfully created.');
                     return $this->redirect()->toRoute('juser');
-                } catch (\Exception $e) {
-                    $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                        ->addMessage('Error in form submission, please review.');
+                } catch (\Throwable $e) {
+                    $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage(
+                        $this->writeFailureMessage('creating a role', $e, [
+                            'roleId' => $data['roleId'] ?? null,
+                        ])
+                    );
                 }
             } else {
                 $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
@@ -260,18 +302,25 @@ class UsersController extends AbstractActionController
         if ($request->isPost()) {
             $data = $request->getPost();
             $form->setData($data);
-            if ($form->isValid() && $form->getData()['userId'] == $id) {
-                if (1 != ($result = $table->deleteUser($id))) {
-                    $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                        ->addMessage('Database error deleting user. ' . $result);
-                }
-            } else {
+            //Exactly one of these three outcomes gets reported. The old code ran
+            //the error branch and then added 'User deleted.' unconditionally, so
+            //a failed delete and a refused CSRF token both ended on a green
+            //success message contradicting the red one above it.
+            if (! $form->isValid() || $form->getData()['userId'] != $id) {
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
                     ->addMessage('User not found.');
+            } elseif (1 != ($result = $table->deleteUser($id))) {
+                $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage(
+                    $this->writeFailureMessage('deleting a user', null, [
+                        'userId' => $id,
+                        'result' => $result,
+                    ])
+                );
+            } else {
+                $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
+                    ->addMessage('User deleted.');
             }
             // Redirect to list of users
-            $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
-                ->addMessage('User deleted.');
             return $this->redirect()->toRoute('juser');
         } else {
             $userIdData = ['userId' => $id];

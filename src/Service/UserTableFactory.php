@@ -21,10 +21,16 @@ class UserTableFactory implements FactoryInterface
         $actingUserProvider = $container->get(ActingUserProviderInterface::class);
         $table = new UserTable($dbAdapter, $container, $actingUserProvider);
 
-        $cache = $container->get('JUser\Cache');
-        $em = $container->get('Application')->getEventManager();
-        $table->setPersistentCache($cache);
-        $table->wireOnFinishTrigger($em);
+        //JUser keeps its own APCu namespace and TTL (juser.cache_options), so it
+        //replaces the application-wide SionModel\PersistentCache that SionTable's
+        //constructor injected. Replacing the storage discards the dependency map
+        //that came with it — see SionCacheTrait::setPersistentCache().
+        //
+        //No wireOnFinishTrigger() here: the constructor already attached it, and
+        //attaching a second time is what made every JUser key appear twice in the
+        //application log. The trait now refuses the duplicate, but asking for it
+        //at all was the mistake.
+        $table->setPersistentCache($container->get('JUser\Cache'));
 
         $mailer = $container->get(Mailer::class);
         $table->setMailer($mailer);

@@ -11,6 +11,15 @@ class EditUserForm extends Form implements InputFilterProviderInterface
     protected $filterSpec;
     protected $hasPersonData = false;
 
+    /**
+     * Filter specification turning an absent checkbox into the unchecked value.
+     * Declared once because all four checkboxes need exactly the same thing.
+     */
+    private const UNCHECKED_WHEN_ABSENT = [
+        'name' => 'Callback',
+        'options' => ['callback' => [self::class, 'uncheckedWhenAbsent']],
+    ];
+
     public function __construct($name = null)
     {
         // we want to ignore the name passed
@@ -142,6 +151,17 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         ]);
     }
 
+    /**
+     * An absent checkbox is an unchecked checkbox, not a missing value.
+     *
+     * @param mixed $value
+     * @return mixed the unchecked value when nothing was posted, else $value
+     */
+    public static function uncheckedWhenAbsent($value)
+    {
+        return null === $value ? '0' : $value;
+    }
+
     public function getHasPersonData()
     {
         return $this->hasPersonData;
@@ -233,23 +253,44 @@ class EditUserForm extends Form implements InputFilterProviderInterface
                     ['name' => 'ToNull'],
                 ],
             ],
+            /**
+             * All four checkboxes map to NOT NULL columns, and an unticked
+             * checkbox is simply absent from the POST — so without something
+             * here the table is handed a null and MySQL rejects the insert.
+             *
+             * A one-line filter rather than `fallback_value`, which looks like
+             * the right tool and silently is not:
+             * Laminas\Form\Form::attachInputFilterDefaults() rebuilds the input
+             * for every element that provides its own specification (every
+             * Checkbox does, for its InArray validator) and merges this
+             * specification into it — and Laminas\InputFilter\Input::merge()
+             * copies `required`, `allowEmpty`, the filters and the validators,
+             * but *not* the fallback. Declaring one therefore leaves the field
+             * required with nothing to fall back to, and the form rejects a
+             * submission with no message against any field the view renders.
+             * Filters survive the merge, which is why this works and is how
+             * emailVerified and active were already being saved.
+             *
+             * Only null is rewritten. A value that really was posted is left
+             * for the element's own InArray validator to judge, so this closes
+             * the absent case without turning the checkbox into a field that
+             * accepts anything.
+             */
             'emailVerified' => [
                 'required' => false,
-                'filters' => [
-                    ['name' => 'Boolean'],
-                ],
+                'filters' => [self::UNCHECKED_WHEN_ABSENT],
             ],
             'mustChangePassword' => [
                 'required' => false,
+                'filters' => [self::UNCHECKED_WHEN_ABSENT],
             ],
             'isMultiPersonUser' => [
                 'required' => false,
+                'filters' => [self::UNCHECKED_WHEN_ABSENT],
             ],
             'active' => [
                 'required' => false,
-                'filters' => [
-                    ['name' => 'Boolean'],
-                ],
+                'filters' => [self::UNCHECKED_WHEN_ABSENT],
             ],
         ];
         return $this->filterSpec;
