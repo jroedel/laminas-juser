@@ -9,3 +9,10 @@
 phploy.ini
 phploy.log
 .phploy
+
+# Compiled translation catalogs. JTranslate writes these from the phrase table
+# (TranslationsTable::writePhpTranslationArrays), so they are build output, not
+# source: `jtranslate:export-catalogs` rebuilds them and a hand edit is discarded
+# on the next write. Committing them means every translation edit in any
+# application that installs this module shows up as a diff here.
+/language/
