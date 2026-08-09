@@ -28,6 +28,20 @@ return [
         //the short code emailed to API clients
         'api_verification_token_length' => 6,
         'api_verification_token_expiration_interval' => 'PT15M',
+
+        //how long an issued JWT lasts (ISO 8601 duration). Six months, which is
+        //what LoginV1ApiController hardcoded for years behind a //@todo. Long
+        //because the clients are unattended agents: nothing can re-authenticate
+        //on their behalf, so a short lifetime does not buy security, it buys
+        //outages. Revocation, not expiry, is the control that matters here.
+        'api_jwt_lifetime' => 'P6M',
+
+        //roles whose holders an administrator may mint a token for from the users
+        //screen. EMPTY BY DEFAULT, which switches the issue button off entirely.
+        //Naming a role here is what turns the feature on, and it should never be
+        //a role ordinary registration grants — see the application's
+        //config/autoload/juser.global.php for the reasoning at this site.
+        'api_token_roles' => [],
     ],
     'bjyauthorize' => [
         'unauthorized_strategy' => View\RedirectionStrategy::class,
@@ -266,6 +280,38 @@ return [
                                     ],
                                 ],
                             ],
+                            /*
+                             * API token management. A page of its own rather than a
+                             * panel on /edit, for two reasons: /edit is one big form
+                             * and the issue/revoke controls are forms too, which
+                             * cannot legally nest; and issuing a credential should
+                             * not share a submit button with renaming somebody.
+                             *
+                             * Both are guarded to administrators in the application's
+                             * config/autoload/juser.global.php — JUser's own guards
+                             * cover only the sign-in routes.
+                             */
+                            'api-tokens' => [
+                                'type'    => Literal::class,
+                                'options' => [
+                                    'route'    => '/api-tokens',
+                                    'defaults' => [
+                                        'action'     => 'apiTokens',
+                                    ],
+                                ],
+                            ],
+                            'api-token-revoke' => [
+                                'type'    => Segment::class,
+                                'options' => [
+                                    'route'    => '/api-tokens/:token_id/revoke',
+                                    'constraints' => [
+                                        'token_id' => '[0-9]+',
+                                    ],
+                                    'defaults' => [
+                                        'action'     => 'revokeApiToken',
+                                    ],
+                                ],
+                            ],
                         ],
                     ],
                     'create' => [
@@ -343,6 +389,8 @@ return [
             'JUser\AuthService'             => Service\AuthenticationServiceFactory::class,
             Service\UserService::class      => Service\UserServiceFactory::class,
             Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,
+            Model\ApiTokenTable::class      => Service\ApiTokenTableFactory::class,
+            Service\ApiTokenService::class  => Service\ApiTokenServiceFactory::class,
             ActingUserProviderInterface::class => Service\AuthServiceActingUserProviderFactory::class,
         ],
         'invokables'  => [

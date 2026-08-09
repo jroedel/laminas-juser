@@ -5,12 +5,17 @@ namespace JUser\Controller;
 use JUser\Form\EditUserForm;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
+use JUser\Model\User;
 use JUser\Model\UserTable;
 use JUser\Form\DeleteUserForm;
+use JUser\Form\IssueApiTokenForm;
+use JUser\Form\RevokeApiTokenForm;
+use JUser\Service\ApiTokenService;
 use Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger;
 use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Form\CreateRoleForm;
 use Psr\Log\LoggerInterface;
+use SionModel\Service\ActingUserProviderInterface;
 
 /**
  *
@@ -279,6 +284,142 @@ class UsersController extends AbstractActionController
             'user' => $user,
             'form' => $form,
         ]);
+    }
+
+    /**
+     * List an account's API tokens, and issue a new one.
+     *
+     * The freshly minted JWT is shown **once**, in the flash message that
+     * follows the redirect, and is never stored anywhere we could show it again:
+     * only the jti is recorded. An admin who loses it issues another and revokes
+     * this one, which costs nothing — that is the point of making issuance cheap.
+     */
+    public function apiTokensAction()
+    {
+        $id = (int) $this->params('user_id');
+        $user = $id ? $this->userTable->getUser($id) : null;
+        if (! is_array($user)) {
+            $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
+                ->addMessage('User not found.');
+            return $this->redirect()->toRoute('juser');
+        }
+
+        /** @var ApiTokenService $tokenService */
+        $tokenService = $this->getService(ApiTokenService::class);
+        $mayIssue = $tokenService->mayIssueForUser($id);
+
+        $form = new IssueApiTokenForm();
+        $request = $this->getRequest();
+        if ($request->isPost()) {
+            //Re-checked on POST, not merely hidden in the view. The GET decided
+            //whether to *draw* a button; this decides whether to mint a
+            //credential, and a hand-crafted POST never saw the view at all.
+            if (! $mayIssue) {
+                $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
+                    ->addMessage('This account may not be issued an API token.');
+                return $this->redirect()->toRoute('juser/user/api-tokens', ['user_id' => $id]);
+            }
+
+            $form->setData($request->getPost());
+            if ($form->isValid()) {
+                try {
+                    $issued = $tokenService->issue(
+                        new User($user),
+                        $form->getData()['label'] ?? null,
+                        $this->actingUserId()
+                    );
+                    //NAMESPACE_SUCCESS and not the log: the token is the one
+                    //thing that must never be written down by us.
+                    $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
+                        ->addMessage(
+                            'Token issued. Copy it now — it is not shown again and we do not store it: '
+                            . $issued['jwt']
+                        );
+                } catch (\Exception $e) {
+                    if (isset($this->logger)) {
+                        $this->logger->error("JUser: Failed to issue an API token.", [
+                            'userId' => $id,
+                            'exception' => $e,
+                        ]);
+                    }
+                    $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
+                        ->addMessage('Could not issue a token: ' . $e->getMessage());
+                }
+            } else {
+                $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
+                    ->addMessage('Error in form submission, please review.');
+            }
+
+            return $this->redirect()->toRoute('juser/user/api-tokens', ['user_id' => $id]);
+        }
+
+        return new ViewModel([
+            'userId'        => $id,
+            'user'          => $user,
+            'tokens'        => $tokenService->getTokensForUser($id),
+            'form'          => $form,
+            'revokeForm'    => new RevokeApiTokenForm(),
+            'mayIssue'      => $mayIssue,
+            'issuableRoles' => $tokenService->getIssuableRoles(),
+            'lifetimeDays'  => $tokenService->getLifetimeDays(),
+        ]);
+    }
+
+    /**
+     * Revoke one token. POST only.
+     */
+    public function revokeApiTokenAction()
+    {
+        $id = (int) $this->params('user_id');
+        $tokenId = (int) $this->params('token_id');
+        $request = $this->getRequest();
+
+        if (! $request->isPost()) {
+            return $this->redirect()->toRoute('juser/user/api-tokens', ['user_id' => $id]);
+        }
+
+        $form = new RevokeApiTokenForm();
+        $form->setData($request->getPost());
+        if (! $form->isValid()) {
+            $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
+                ->addMessage('That request expired, please try again.');
+            return $this->redirect()->toRoute('juser/user/api-tokens', ['user_id' => $id]);
+        }
+
+        /** @var ApiTokenService $tokenService */
+        $tokenService = $this->getService(ApiTokenService::class);
+
+        //Scoped by user id as well as token id, so a token id belonging to
+        //another account cannot be revoked from this account's page. Also why the
+        //"already revoked" case is a plain message rather than an error: the
+        //honest reading of a second submit is a double-click.
+        if ($tokenService->revoke($tokenId, $id, $this->actingUserId())) {
+            $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
+                ->addMessage('Token revoked. It stops working on its next request.');
+        } else {
+            $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_INFO)
+                ->addMessage('That token was already revoked, or does not belong to this account.');
+        }
+
+        return $this->redirect()->toRoute('juser/user/api-tokens', ['user_id' => $id]);
+    }
+
+    /**
+     * The administrator performing this request, for the provenance columns.
+     *
+     * Resolved at call time through SionModel's provider rather than captured in
+     * the factory — see ActingUserProviderInterface on why identity must never be
+     * read while the container is still building.
+     *
+     * @return int|null
+     */
+    protected function actingUserId()
+    {
+        if (! $this->hasService(ActingUserProviderInterface::class)) {
+            return null;
+        }
+
+        return $this->getService(ActingUserProviderInterface::class)->getActingUserId();
     }
 
     public function setLogger(LoggerInterface $logger)

@@ -20,7 +20,8 @@ class LoginV1ApiControllerFactory implements FactoryInterface
             $container->get(UserTable::class),
             $container->get(LoginTokenService::class),
             $container->get(Mailer::class),
-            $container->get('Config')
+            $container->get('Config'),
+            $container->get(ApiTokenService::class)
         );
 
         if ($container->has('JUser\Logger')) {
