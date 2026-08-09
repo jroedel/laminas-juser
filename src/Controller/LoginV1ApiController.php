@@ -2,13 +2,12 @@
 
 namespace JUser\Controller;
 
-use Carbon\Carbon;
 use JUser\Model\User;
 use JUser\Model\UserTable;
+use JUser\Service\ApiTokenService;
 use JUser\Service\LoginTokenService;
 use JUser\Service\Mailer;
 use Psr\Log\LoggerInterface;
-use Laminas\Math\Rand;
 use Laminas\Validator\EmailAddress;
 use RestApi\Controller\ApiController;
 
@@ -26,11 +25,14 @@ class LoginV1ApiController extends ApiController
     /** @var UserTable $table */
     protected $table;
 
-    /** @var LoginTokenService $tokenService */
-    protected $tokenService;
+    /** @var LoginTokenService $loginTokenService */
+    protected $loginTokenService;
 
     /** @var Mailer $mailer */
     protected $mailer;
+
+    /** @var ApiTokenService $tokenService */
+    protected $tokenService;
 
     /**
      * Application config
@@ -43,14 +45,16 @@ class LoginV1ApiController extends ApiController
 
     public function __construct(
         UserTable $table,
-        LoginTokenService $tokenService,
+        LoginTokenService $loginTokenService,
         Mailer $mailer,
-        array $config
+        array $config,
+        ApiTokenService $tokenService
     ) {
         $this->table = $table;
-        $this->tokenService = $tokenService;
+        $this->loginTokenService = $loginTokenService;
         $this->mailer = $mailer;
         $this->config = $config;
+        $this->tokenService = $tokenService;
     }
 
     /**
@@ -76,12 +80,12 @@ class LoginV1ApiController extends ApiController
         if (null !== $identityParam) {
             try {
                 $userObject = $this->lookupUserObject($identityParam);
-                if ($userObject instanceof User && $this->tokenService->mayIssueToken($userObject)) {
-                    $code = $this->tokenService->issueApiCode($userObject);
+                if ($userObject instanceof User && $this->loginTokenService->mayIssueToken($userObject)) {
+                    $code = $this->loginTokenService->issueApiCode($userObject);
                     $this->mailer->sendLoginCodeEmail(
                         $userObject,
                         $code,
-                        $this->tokenService->getApiCodeExpirationMinutes()
+                        $this->loginTokenService->getApiCodeExpirationMinutes()
                     );
                 }
             } catch (\Exception $e) {
@@ -119,7 +123,7 @@ class LoginV1ApiController extends ApiController
             return $this->createResponse();
         }
 
-        if (! $this->tokenService->redeemTokenForUser($userObject, $token)) {
+        if (! $this->loginTokenService->redeemTokenForUser($userObject, $token)) {
             $this->apiResponse['message'] = 'Invalid or expired token.';
             $this->httpStatusCode = 401;
             return $this->createResponse();
@@ -130,7 +134,7 @@ class LoginV1ApiController extends ApiController
             $this->table->activateUser($userObject->getId());
         }
 
-        $this->apiResponse = $this->getNewJwtTokenResponse($userObject->getId());
+        $this->apiResponse = $this->getNewJwtTokenResponse($userObject);
         $this->httpStatusCode = 200;
         return $this->createResponse();
     }
@@ -163,18 +167,29 @@ class LoginV1ApiController extends ApiController
         return $this->table->findByUsername($identityParam);
     }
 
-    protected function getNewJwtTokenResponse($userId)
+    /**
+     * Mint the JWT this sign-in earned.
+     *
+     * Delegated to ApiTokenService rather than built here, and that is the whole
+     * point of the refactor: this method used to generate a `jti`, sign a payload
+     * and drop the identifier on the floor, so nothing anywhere recorded that a
+     * credential had been handed out. Now the same call that signs also registers,
+     * which is what lets a token be revoked before its six months are up.
+     *
+     * The response shape is unchanged — {jwt, expiration} — because the mobile
+     * apps read it.
+     *
+     * @param User $userObject
+     * @return array
+     */
+    protected function getNewJwtTokenResponse(User $userObject)
     {
-        $jwtId = Rand::getString(10);
-        $expiration = Carbon::now()
-        ->addMonths(6); //@todo make configurable
-        $payload = [
-            'sub' => $userId,
-            'exp' => $expiration->format('U'), //'Y-m-d\TH:i:s\Z'),
-            'jti' => $jwtId,
+        $issued = $this->tokenService->issue($userObject);
+
+        return [
+            'jwt' => $issued['jwt'],
+            'expiration' => $issued['expiration']->format('Y-m-d\TH:i:s\Z'),
         ];
-        $jwt = $this->generateJwtToken($payload);
-        return ['jwt' => $jwt, 'expiration' => $expiration->format('Y-m-d\TH:i:s\Z')];
     }
 
     /**
