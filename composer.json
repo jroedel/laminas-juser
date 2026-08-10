@@ -19,7 +19,8 @@
         "jroedel/locale": "dev-master@dev",
         "symfony/mailer": "^7.0",
         "psr/log": "^3.0",
-        "jroedel/zf2-sion-model": "dev-master"
+        "jroedel/zf2-sion-model": "dev-master",
+        "jroedel/laminas-jtranslate": "dev-modernization"
     },
 	"autoload": {
     	"psr-4": {
