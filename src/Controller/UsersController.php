@@ -2,6 +2,7 @@
 
 namespace JUser\Controller;
 
+use JTranslate\I18n\TranslatableMessage;
 use JUser\Form\EditUserForm;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
@@ -379,11 +380,20 @@ class UsersController extends AbstractActionController
                     );
                     //NAMESPACE_SUCCESS and not the log: the token is the one
                     //thing that must never be written down by us.
+                    //
+                    //TranslatableMessage and not concatenation, for the same reason.
+                    //The messengers translate the *finished* message at render time,
+                    //and a translator miss is exactly what writes a phrase row — so
+                    //appending the JWT here filed four real tokens in a table any
+                    //`sch_api_translator` account can read, and copied them again
+                    //into the English translation and the exported catalog on disk.
+                    //On this screen, of all screens, whose own copy says we do not
+                    //store it. Only the template below reaches translate().
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
-                        ->addMessage(
-                            'Token issued. Copy it now — it is not shown again and we do not store it: '
-                            . $issued['jwt']
-                        );
+                        ->addMessage(new TranslatableMessage(
+                            'Token issued. Copy it now — it is not shown again and we do not store it: %s',
+                            [$issued['jwt']]
+                        ));
                 } catch (\Exception $e) {
                     if (isset($this->logger)) {
                         $this->logger->error("JUser: Failed to issue an API token.", [
@@ -391,8 +401,13 @@ class UsersController extends AbstractActionController
                             'exception' => $e,
                         ]);
                     }
+                    //Same shape: an exception message is unbounded text, and one row
+                    //per distinct failure is neither translatable nor useful.
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)
-                        ->addMessage('Could not issue a token: ' . $e->getMessage());
+                        ->addMessage(new TranslatableMessage(
+                            'Could not issue a token: %s',
+                            [$e->getMessage()]
+                        ));
                 }
             } else {
                 $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)

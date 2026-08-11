@@ -4,7 +4,10 @@
 $form = $this->form;
 $isRegistration = (bool) $this->isRegistration;
 $title = $isRegistration ? $this->translate('Register') : $this->translate('Sign in');
-$this->headTitle($title);
+//The raw string, not $title: headTitle translates what it holds when it renders, so
+//passing the translated one made the page translate its own output and register the
+//result as a phrase — "Registrati" and "Registrar" became keys in their own right.
+$this->headTitle($isRegistration ? 'Register' : 'Sign in');
 ?>
 <h1><?php echo $this->escapeHtml($title); ?></h1>
 
