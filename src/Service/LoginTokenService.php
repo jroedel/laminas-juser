@@ -9,20 +9,22 @@ use Psr\Log\LoggerInterface;
 /**
  * Issues and redeems the single-use tokens that are the only way to sign in.
  *
- * Two flavours, both stored the same way (sha256 hex in user.verification_token
- * plus an absolute UTC expiration in user.verification_expiration):
- *  - a long web token, emailed as a magic link
- *  - a short human-typable code, emailed for the API flow
+ * One flavour: a long web token, emailed as a magic link, stored as sha256 hex in
+ * user.verification_token plus an absolute UTC expiration in
+ * user.verification_expiration. Only the hash is ever persisted, so a database leak
+ * doesn't hand out sessions.
  *
- * Only the hash is ever persisted, so a database leak doesn't hand out sessions.
+ * There used to be a second flavour — a short human-typable code emailed for the v1
+ * API sign-in flow (issueApiCode/redeemTokenForUser/getApiCodeExpirationMinutes, plus
+ * an API_CODE_ALPHABET and two config keys). All of it went with LoginV1ApiController
+ * when /api/v1 was retired; the access log showed no client had used that flow since
+ * 2022. A v3 agent does not sign in at all — it presents a JWT minted from the users
+ * screen, so nothing here is on its path. See ApiTokenService.
  */
 class LoginTokenService
 {
     /** Number of random bytes behind a web (magic link) token */
     public const WEB_TOKEN_BYTES = 32;
-
-    /** Characters used for the API code: uppercase alphanumeric, no ambiguous glyphs */
-    public const API_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
     /** Refuse to issue another token if the last one is newer than this many seconds */
     public const RESEND_THROTTLE_SECONDS = 60;
@@ -33,12 +35,6 @@ class LoginTokenService
     /** @var string $webTokenExpirationInterval ISO 8601 duration */
     protected $webTokenExpirationInterval = 'PT15M';
 
-    /** @var string $apiCodeExpirationInterval ISO 8601 duration */
-    protected $apiCodeExpirationInterval = 'PT15M';
-
-    /** @var int $apiCodeLength */
-    protected $apiCodeLength = 6;
-
     /** @var LoggerInterface|null $logger */
     protected $logger;
 
@@ -47,12 +43,6 @@ class LoginTokenService
         $this->userTable = $userTable;
         if (isset($config['web_verification_token_expiration_interval'])) {
             $this->webTokenExpirationInterval = (string) $config['web_verification_token_expiration_interval'];
-        }
-        if (isset($config['api_verification_token_expiration_interval'])) {
-            $this->apiCodeExpirationInterval = (string) $config['api_verification_token_expiration_interval'];
-        }
-        if (isset($config['api_verification_token_length'])) {
-            $this->apiCodeLength = (int) $config['api_verification_token_length'];
         }
     }
 
@@ -67,23 +57,6 @@ class LoginTokenService
         $token = bin2hex(random_bytes(self::WEB_TOKEN_BYTES));
         $this->storeToken($user, $token, $this->webTokenExpirationInterval);
         return $token;
-    }
-
-    /**
-     * Generate, store and return a short plaintext code for the API flow.
-     *
-     * @param User $user
-     * @return string
-     */
-    public function issueApiCode(User $user)
-    {
-        $code = '';
-        $alphabetLength = strlen(self::API_CODE_ALPHABET);
-        for ($i = 0; $i < $this->apiCodeLength; $i++) {
-            $code .= self::API_CODE_ALPHABET[random_int(0, $alphabetLength - 1)];
-        }
-        $this->storeToken($user, $code, $this->apiCodeExpirationInterval);
-        return $code;
     }
 
     /**
@@ -122,54 +95,6 @@ class LoginTokenService
         $userArray['verificationExpiration'] = null;
 
         return new User($userArray);
-    }
-
-    /**
-     * Verify and consume a token that must belong to one specific user.
-     *
-     * Preferable to redeemToken() whenever the caller already knows who is
-     * signing in (the API flow): a wrong guess then can't burn somebody
-     * else's outstanding token.
-     *
-     * @param User $user
-     * @param string $token
-     * @return bool
-     */
-    public function redeemTokenForUser(User $user, string $token): bool
-    {
-        $token = trim($token);
-        if ('' === $token) {
-            return false;
-        }
-        $userArray = $this->userTable->getUser($user->getId());
-        if (! is_array($userArray) || empty($userArray['verificationToken'])) {
-            return false;
-        }
-        if (! hash_equals((string) $userArray['verificationToken'], UserTable::hashToken($token))) {
-            return false;
-        }
-        if (
-            ! isset($userArray['verificationExpiration'])
-            || ! $userArray['verificationExpiration'] instanceof \DateTime
-            || $userArray['verificationExpiration'] < $this->now()
-        ) {
-            return false;
-        }
-
-        $this->userTable->clearVerificationToken($user->getId());
-        $user->setVerificationToken(null);
-        $user->setVerificationExpiration(null);
-
-        return true;
-    }
-
-    /**
-     * Number of minutes an API code stays valid, for display purposes
-     * @return int
-     */
-    public function getApiCodeExpirationMinutes()
-    {
-        return $this->intervalToMinutes($this->apiCodeExpirationInterval);
     }
 
     /**

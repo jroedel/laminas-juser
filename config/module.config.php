@@ -25,12 +25,9 @@ return [
         //how long an emailed magic link stays valid (ISO 8601 duration)
         'web_verification_token_expiration_interval' => 'PT15M',
 
-        //the short code emailed to API clients
-        'api_verification_token_length' => 6,
-        'api_verification_token_expiration_interval' => 'PT15M',
-
         //how long an issued JWT lasts (ISO 8601 duration). Six months, which is
-        //what LoginV1ApiController hardcoded for years behind a //@todo. Long
+        //what the retired LoginV1ApiController hardcoded for years behind a
+        ////@todo, and the value this kept when that controller went away. Long
         //because the clients are unattended agents: nothing can re-authenticate
         //on their behalf, so a short lifetime does not buy security, it buys
         //outages. Revocation, not expiry, is the control that matters here.
@@ -112,10 +109,6 @@ return [
                 ['route' => 'zfcuser/register', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/verify', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/logout', 'roles' => ['guest', 'user']],
-                //the API sign-in endpoints are anonymous by definition
-                ['route' => 'api-v1-login', 'roles' => ['guest', 'user']],
-                ['route' => 'api-v1-request-verification-token', 'roles' => ['guest', 'user']],
-                ['route' => 'api-v1-login-with-verification-token', 'roles' => ['guest', 'user']],
             ],
         ],
     ],
@@ -178,36 +171,6 @@ return [
                                 'action'     => 'verify',
                             ],
                         ],
-                    ],
-                ],
-            ],
-            'api-v1-login' => [
-                'type'    => Literal::class,
-                'options' => [
-                    'route'    => '/api/v1/users/login',
-                    'defaults' => [
-                        'action' => 'login',
-                        'controller' => Controller\LoginV1ApiController::class,
-                    ],
-                ],
-            ],
-            'api-v1-login-with-verification-token' => [
-                'type'    => Literal::class,
-                'options' => [
-                    'route'    => '/api/v1/users/login-with-verification-token',
-                    'defaults' => [
-                        'action' => 'loginWithVerificationToken',
-                        'controller' => Controller\LoginV1ApiController::class,
-                    ],
-                ],
-            ],
-            'api-v1-request-verification-token' => [
-                'type'    => Literal::class,
-                'options' => [
-                    'route'    => '/api/v1/users/request-verification-token',
-                    'defaults' => [
-                        'action' => 'requestVerificationToken',
-                        'controller' => Controller\LoginV1ApiController::class,
                     ],
                 ],
             ],
@@ -342,7 +305,6 @@ return [
         'factories' => [
             Controller\UsersController::class => Service\UsersControllerFactory::class,
             Controller\LoginController::class => Service\LoginControllerFactory::class,
-            Controller\LoginV1ApiController::class => Service\LoginV1ApiControllerFactory::class,
         ],
     ],
     'controller_plugins' => [
