@@ -24,7 +24,7 @@ class EditUserFormFactory implements FactoryInterface
     {
         /** @var UserTable $userTable **/
         $userTable = $container->get(UserTable::class);
-        $form = new EditUserForm();
+        $form = new EditUserForm(DbAdapterResolver::fromContainer($container));
         $config = $container->get('JUser\Config');
         $personProvider = $config['person_provider'];
         if ($container->has($personProvider)) {

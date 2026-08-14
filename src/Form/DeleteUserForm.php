@@ -2,12 +2,23 @@
 
 namespace JUser\Form;
 
+use Laminas\Db\Adapter\Adapter;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 
 class DeleteUserForm extends Form implements InputFilterProviderInterface
 {
-    public function __construct($name = null)
+    /**
+     * The adapter the `RecordExists` validator below needs.
+     *
+     * Required, and passed in rather than read from
+     * `GlobalAdapterFeature::getStaticAdapter()` as it was until 2026-08-14. That
+     * registry was populated only by `JUser\Module::onBootstrap()`, so this form
+     * threw `RuntimeException: No database adapter was found in the static registry`
+     * for every input — benign included — in any process that had not booted
+     * laminas-mvc: the Symfony kernel, a console command, a test harness.
+     */
+    public function __construct(private readonly Adapter $adapter, $name = null)
     {
         // we want to ignore the name passed
         parent::__construct('delete_user');
@@ -51,7 +62,7 @@ class DeleteUserForm extends Form implements InputFilterProviderInterface
                         'options' => [
                             'table' => 'user',
                             'field' => 'user_id',
-                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                            'adapter' => $this->adapter,
                             'messages' => [
                                 \Laminas\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND =>
                                     'Assignment not found in database'

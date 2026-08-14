@@ -3,9 +3,7 @@
 namespace JUser;
 
 use JUser\Session\SessionPruner;
-use Laminas\Db\Adapter\Adapter;
 use Laminas\Mvc\MvcEvent;
-use Laminas\Db\TableGateway\Feature\GlobalAdapterFeature;
 use Laminas\Session\ManagerInterface;
 
 class Module
@@ -37,17 +35,13 @@ class Module
             session_unset();
         }
 
-        //The static adapter is needed for the EditUserForm
-        $config = $sm->get('Config');
-        $adapterService = isset($config['juser']['db_adapter'])
-            ? $config['juser']['db_adapter']
-            : Adapter::class;
-        if ($sm->has($adapterService)) {
-            GlobalAdapterFeature::setStaticAdapter($sm->get($adapterService));
-        } else {
-            throw new \Exception(
-                'Please set the [\'juser\'][\'db_adapter\'] config key for use with the JUser module.'
-            );
-        }
+        //This used to also publish the db adapter into
+        //Laminas\Db\TableGateway\Feature\GlobalAdapterFeature's static registry,
+        //"needed for the EditUserForm". Nothing else in the module ever read that
+        //registry — no TableGateway here uses the feature — so its only effect was to
+        //make three forms' getInputFilterSpecification() work inside a booted
+        //laminas-mvc request and nowhere else. The forms take the adapter as a
+        //constructor argument now (JUser\Service\DbAdapterResolver), so this listener
+        //is back to being about the session and JUser has no process-global state.
     }
 }

@@ -3,6 +3,7 @@
 namespace JUser\Service;
 
 use JUser\Controller\UsersController;
+use Laminas\Db\Adapter\Adapter;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
@@ -36,6 +37,11 @@ class UsersControllerFactory implements FactoryInterface
         $services[\JUser\Form\EditUserForm::class] = $container->get(\JUser\Form\EditUserForm::class);
         $services[\JUser\Form\CreateRoleForm::class] = $container->get(\JUser\Form\CreateRoleForm::class);
         $services[UserTable::class] = $userTable;
+        //DeleteUserForm is built per call rather than fetched as a service — a form
+        //holds the data and the messages of whatever was last validated through it,
+        //and the ServiceManager shares by default — so the controller needs the
+        //adapter the form's RecordExists validator wants.
+        $services[Adapter::class] = DbAdapterResolver::fromContainer($container);
         $services[Mailer::class] = $container->get(Mailer::class);
         //Both are cheap to build — config plus the db adapter, no request, no
         //identity — which is what makes eager construction safe here. A

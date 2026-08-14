@@ -2,6 +2,7 @@
 
 namespace JUser\Form;
 
+use Laminas\Db\Adapter\Adapter;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
@@ -10,7 +11,14 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
 {
     protected $filterSpec;
 
-    public function __construct($name = null)
+    /**
+     * The adapter the `NoRecordExists` validator below needs.
+     *
+     * Required, and passed in rather than read from
+     * `GlobalAdapterFeature::getStaticAdapter()`. See DeleteUserForm for what the
+     * static registry cost.
+     */
+    public function __construct(private readonly Adapter $adapter, $name = null)
     {
         // we want to ignore the name passed
         parent::__construct('role_create');
@@ -90,7 +98,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
                         'options' => [
                             'table' => 'user_role',
                             'field' => 'role_id',
-                            'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
+                            'adapter' => $this->adapter,
                             'messages' => [
                                 \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
                                     => 'Role id already exists in database'

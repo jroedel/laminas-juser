@@ -2,6 +2,7 @@
 
 namespace JUser\Form;
 
+use Laminas\Db\Adapter\Adapter;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
@@ -20,7 +21,19 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         'options' => ['callback' => [self::class, 'uncheckedWhenAbsent']],
     ];
 
-    public function __construct($name = null)
+    /**
+     * The adapter the two `NoRecordExists` validators in setValidatorsForCreate()
+     * need.
+     *
+     * Required, and passed in rather than read from
+     * `GlobalAdapterFeature::getStaticAdapter()`. This form failed differently from
+     * its siblings and worse: its static reads sat inside a
+     * `try { … } catch (\Exception $e) {}`, so an empty registry did not throw — it
+     * silently dropped both uniqueness checks, and a create-user POST carrying an
+     * existing username or display name validated clean. With the adapter injected
+     * that state is unreachable rather than unlikely.
+     */
+    public function __construct(private readonly Adapter $adapter, $name = null)
     {
         // we want to ignore the name passed
         parent::__construct('user_edit');
@@ -302,36 +315,37 @@ class EditUserForm extends Form implements InputFilterProviderInterface
         if ($spec && isset($spec['userId']) && $spec['userId']) {
             $spec['userId']['required'] = false;
         }
-        try { //use try block in case there is no StaticAdapter
-            if ($spec && isset($spec['displayName']) && $spec['displayName']) {
-                $spec['displayName']['validators'][] = [
-                    'name'    => 'Laminas\Validator\Db\NoRecordExists',
-                    'options' => [
-                        'table' => 'user',
-                        'field' => 'display_name',
-                        'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
-                        'messages' => [
-                            \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
-                                => 'Display name already exists in database'
-                        ],
+        //No try block: the adapter is a constructor dependency now, so there is
+        //nothing here that can fail. The one this replaced swallowed every
+        //exception, which meant the only way to lose these two validators was
+        //also the only way to lose them silently.
+        if ($spec && isset($spec['displayName']) && $spec['displayName']) {
+            $spec['displayName']['validators'][] = [
+                'name'    => 'Laminas\Validator\Db\NoRecordExists',
+                'options' => [
+                    'table' => 'user',
+                    'field' => 'display_name',
+                    'adapter' => $this->adapter,
+                    'messages' => [
+                        \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
+                            => 'Display name already exists in database'
                     ],
-                ];
-            }
-            if ($spec && isset($spec['username']) && $spec['username']) {
-                $spec['username']['validators'][] = [
-                    'name'    => 'Laminas\Validator\Db\NoRecordExists',
-                    'options' => [
-                        'table' => 'user',
-                        'field' => 'username',
-                        'adapter' => \Laminas\Db\TableGateway\Feature\GlobalAdapterFeature::getStaticAdapter(),
-                        'messages' => [
-                            \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
-                                => 'Username already exists in database'
-                        ],
+                ],
+            ];
+        }
+        if ($spec && isset($spec['username']) && $spec['username']) {
+            $spec['username']['validators'][] = [
+                'name'    => 'Laminas\Validator\Db\NoRecordExists',
+                'options' => [
+                    'table' => 'user',
+                    'field' => 'username',
+                    'adapter' => $this->adapter,
+                    'messages' => [
+                        \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
+                            => 'Username already exists in database'
                     ],
-                ];
-            }
-        } catch (\Exception $e) {
+                ],
+            ];
         }
         $this->setInputFilterSpecification($spec);
     }
