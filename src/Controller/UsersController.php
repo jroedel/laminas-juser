@@ -4,6 +4,7 @@ namespace JUser\Controller;
 
 use JTranslate\I18n\TranslatableMessage;
 use JUser\Form\EditUserForm;
+use Laminas\Db\Adapter\Adapter;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 use JUser\Model\User;
@@ -190,7 +191,7 @@ class UsersController extends AbstractActionController
             }
         }
         $userIdData = ['userId' => $id];
-        $deleteUserForm = new DeleteUserForm();
+        $deleteUserForm = new DeleteUserForm($this->getService(Adapter::class));
         $deleteUserForm->setData($userIdData);
 
         return new ViewModel([
@@ -298,7 +299,7 @@ class UsersController extends AbstractActionController
         }
 
         $table = $this->userTable;
-        $form = new DeleteUserForm();
+        $form = new DeleteUserForm($this->getService(Adapter::class));
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data = $request->getPost();

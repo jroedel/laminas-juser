@@ -23,7 +23,7 @@ class CreateRoleFormFactory implements FactoryInterface
     {
         /** @var UserTable $userTable **/
         $userTable = $container->get(UserTable::class);
-        $form = new CreateRoleForm();
+        $form = new CreateRoleForm(DbAdapterResolver::fromContainer($container));
         $roles = $userTable->getRolesValueOptions();
         $form->get('parentId')->setValueOptions($roles);
 
