@@ -14,12 +14,14 @@ use RuntimeException;
  * The one place a JWT is minted, and the one place issuance is recorded.
  *
  * Before this class there were two halves of a credential system that did not
- * know about each other: LoginV1ApiController built a payload and called
- * RestApi\Controller\ApiController::generateJwtToken(), a *protected controller
- * method* — so signing was only reachable from inside a controller that happened
- * to extend the right base class. That is why the admin screen could not issue a
- * token without this refactor, and it is also why nothing recorded the jti: the
- * code that knew how to sign was not the code that knew what had been signed.
+ * know about each other: the since-retired LoginV1ApiController built a payload and
+ * called RestApi\Controller\ApiController::generateJwtToken(), a *protected
+ * controller method* — so signing was only reachable from inside a controller that
+ * happened to extend the right base class. That is why the admin screen could not
+ * issue a token without this refactor, and it is also why nothing recorded the jti:
+ * the code that knew how to sign was not the code that knew what had been signed.
+ * Both of those classes went away with /api/v1; this one is now the only signer,
+ * which is what the refactor was for.
  *
  * Minting and recording are one operation here. They cannot be performed
  * separately, which is the property the registry depends on — an unrecorded
@@ -129,8 +131,8 @@ class ApiTokenService
         $jwt = JWT::encode(
             [
                 'sub' => $userId,
-                //Kept as a string of the unix timestamp, matching what
-                //LoginV1ApiController has always emitted; php-jwt is content with
+                //Kept as a string of the unix timestamp, matching what the retired
+                //LoginV1ApiController always emitted; php-jwt is content with
                 //either and changing it would invalidate nothing but would be a
                 //gratuitous difference between tokens issued before and after this.
                 'exp' => $expiration->format('U'),
