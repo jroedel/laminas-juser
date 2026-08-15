@@ -6,6 +6,7 @@ use Laminas\Db\Adapter\Adapter;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
+use SionModel\Form\ChoiceDomain;
 
 class EditUserForm extends Form implements InputFilterProviderInterface
 {
@@ -259,12 +260,19 @@ class EditUserForm extends Form implements InputFilterProviderInterface
                     ],
                 ],
             ],
+            //`disable_inarray_validator` is set on the element, so this entry is
+            //the only domain check the field has ever had a chance of carrying -
+            //see SionModel\Form\ChoiceDomain. The haystack is whatever
+            //setPersonValueOptions() supplied; before an admin screen calls that,
+            //the element has no options and ChoiceDomain answers no validator
+            //rather than refusing every submission.
             'personId' => [
                 'required' => false,
                 'filters' => [
                     ['name' => 'ToInt'],
                     ['name' => 'ToNull'],
                 ],
+                'validators' => ChoiceDomain::validators($this->get('personId')),
             ],
             /**
              * All four checkboxes map to NOT NULL columns, and an unticked

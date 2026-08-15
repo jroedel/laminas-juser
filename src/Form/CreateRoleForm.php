@@ -6,6 +6,7 @@ use Laminas\Db\Adapter\Adapter;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
+use SionModel\Form\ChoiceDomain;
 
 class CreateRoleForm extends Form implements InputFilterProviderInterface
 {
@@ -110,11 +111,16 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
             'isDefault' => [
                 'required' => false,
             ],
+            //The InArray this select's own options imply, which naming it here
+            //would otherwise discard - see SionModel\Form\ChoiceDomain. The
+            //haystack is every role in user_role, which is what the factory sets
+            //on the element before this specification is ever built.
             'parentId' => [
-                'required' => false,
-                'filters'  => [
+                'required'   => false,
+                'filters'    => [
                     ['name' => 'ToNull'],
                 ],
+                'validators' => ChoiceDomain::validators($this->get('parentId')),
             ],
         ];
     }
