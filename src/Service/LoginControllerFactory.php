@@ -2,6 +2,7 @@
 
 namespace JUser\Service;
 
+use BjyAuthorize\Service\Authorize;
 use Interop\Container\ContainerInterface;
 use JUser\Controller\LoginController;
 use JUser\Model\UserTable;
@@ -26,6 +27,9 @@ class LoginControllerFactory implements FactoryInterface
             $container->get(Mailer::class),
             $container->get(RouteStackInterface::class),
             $container->get(SessionManagerInterface::class),
+            //the same service BjyAuthorize\Guard\Route uses, so the destination check
+            //after a link is redeemed cannot disagree with the guard that follows it
+            $container->get(Authorize::class),
             $juserConfig
         );
 

@@ -18,7 +18,6 @@ if (! empty($form->get('personId')->getValueOptions())) {
 }
 echo $this->formRow($form->get('isMultiPersonUser'));
 echo $this->formRow($form->get('emailVerified'));
-echo $this->formRow($form->get('mustChangePassword'));
 echo $this->formRow($form->get('active'));
 echo $this->formRow($form->get('security'));
 echo $this->formSubmit($form->get('submit')); ?>

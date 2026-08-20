@@ -30,21 +30,9 @@ class User
     public $displayName;
 
     /**
-     * @var string $password
-     */
-    public $password;
-
-    /**
-     * One state must mean change password
      * @var int $state
      */
     public $state = 0;
-
-    /**
-     * Force user to change password if this bit is set
-     * @var bool $mustChangePassword
-     */
-    public $mustChangePassword = false;
 
     /**
      * 32-character random alphanumeric nonce for verifying email addresses
@@ -59,7 +47,7 @@ class User
     public $verificationExpiration;
 
     /**
-     * denotes a user used by multiple people, these shouldn't be able to change the password
+     * denotes a user used by multiple people
      * @var bool $multiPersonUser
      */
     public $multiPersonUser = false;
@@ -91,9 +79,7 @@ class User
         $this->username = isset($data['username']) ? $data['username'] : null;
         $this->email = isset($data['email']) ? $data['email'] : null;
         $this->displayName = isset($data['displayName']) ? $data['displayName'] : null;
-        $this->password = isset($data['password']) ? $data['password'] : null;
         $this->state = isset($data['active']) ? $data['active'] : null;
-        $this->mustChangePassword = isset($data['mustChangePassword']) ? $data['mustChangePassword'] : null;
         $this->multiPersonUser = isset($data['isMultiPersonUser']) ? $data['isMultiPersonUser'] : null;
         $this->verificationToken = isset($data['verificationToken']) ? $data['verificationToken'] : null;
         $this->verificationExpiration = isset($data['verificationExpiration'])
@@ -120,13 +106,11 @@ class User
             'username'          => $this->username,
             'email'             => $this->email,
             'displayName'       => $this->displayName,
-            'password'          => $this->password,
             'createdOn'         => $this->createDatetime,
 //             'createdBy'         => $this->filterDbInt($row['create_by']),
             'updatedOn'         => $this->updateDatetime,
 //             'updatedBy'         => $this->filterDbInt($row['update_by']),
 //             'emailVerified'     => $this->filterDbBool($row['email_verified']),
-            'mustChangePassword' => $this->mustChangePassword,
             'isMultiPersonUser' => $this->multiPersonUser,
             'verificationToken' => $this->verificationToken,
             'verificationExpiration' => $this->verificationExpiration,
@@ -228,28 +212,6 @@ class User
     }
 
     /**
-     * Get password.
-     *
-     * @return string
-     */
-    public function getPassword()
-    {
-        return $this->password;
-    }
-
-    /**
-     * Set password.
-     *
-     * @param string $password
-     * @return self
-     */
-    public function setPassword($password)
-    {
-        $this->password = $password;
-        return $this;
-    }
-
-    /**
      * Get state.
      *
      * @return int
@@ -268,28 +230,6 @@ class User
     public function setState($state)
     {
         $this->state = $state;
-        return $this;
-    }
-
-    /**
-     * Get must change password status.
-     *
-     * @return bool
-     */
-    public function getMustChangePassword()
-    {
-        return $this->mustChangePassword;
-    }
-
-    /**
-     * Set mustChangePassword.
-     *
-     * @param bool $mustChangePassword
-     * @return self
-     */
-    public function setMustChangePassword($mustChangePassword)
-    {
-        $this->mustChangePassword = (bool)$mustChangePassword;
         return $this;
     }
 
