@@ -106,7 +106,6 @@ return [
             \BjyAuthorize\Guard\Route::class => [
                 ['route' => 'zfcuser', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/login', 'roles' => ['guest', 'user']],
-                ['route' => 'zfcuser/register', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/verify', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/logout', 'roles' => ['guest', 'user']],
             ],
@@ -151,16 +150,6 @@ return [
                             ],
                         ],
                     ],
-                    'register' => [
-                        'type' => Literal::class,
-                        'options' => [
-                            'route' => '/register',
-                            'defaults' => [
-                                'controller' => Controller\LoginController::class,
-                                'action'     => 'register',
-                            ],
-                        ],
-                    ],
                     //where the emailed magic link lands: /user/verify?token=...
                     'verify' => [
                         'type' => Literal::class,
@@ -185,24 +174,6 @@ return [
                 ],
                 'may_terminate' => true,
                 'child_routes' => [
-                    'verify-email' => [
-                        'type'    => Literal::class,
-                        'options' => [
-                            'route'    => '/verify-email',
-                            'defaults' => [
-                                'action'     => 'verifyEmail',
-                            ],
-                        ],
-                    ],
-                    'thanks' => [
-                        'type'    => Literal::class,
-                        'options' => [
-                            'route'    => '/thanks',
-                            'defaults' => [
-                                'action'     => 'thanks',
-                            ],
-                        ],
-                    ],
                     'user' => [
                         'type'    => Segment::class,
                         'options' => [
@@ -231,15 +202,6 @@ return [
                                     'route'    => '/delete',
                                     'defaults' => [
                                         'action'     => 'delete',
-                                    ],
-                                ],
-                            ],
-                            'show' => [
-                                'type'    => Literal::class,
-                                'options' => [
-                                    'route'    => '/show',
-                                    'defaults' => [
-                                        'action'     => 'show',
                                     ],
                                 ],
                             ],
@@ -437,13 +399,11 @@ return [
                     'username'          => 'username',
                     'email'             => 'email',
                     'displayName'       => 'display_name',
-                    'password'          => 'password',
                     'createdOn'         => 'create_datetime',
                     'createdBy'         => 'create_by',
                     'updatedOn'         => 'update_datetime',
                     'updatedBy'         => 'update_by',
                     'emailVerified'     => 'email_verified',
-                    'mustChangePassword' => 'must_change_password',
                     'isMultiPersonUser' => 'multi_person_user',
                     'verificationToken' => 'verification_token',
                     'verificationExpiration' => 'verification_expiration',

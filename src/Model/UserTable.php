@@ -100,55 +100,6 @@ class UserTable extends SionTable
     /**
      * @param User $user
      */
-    public function insertUser(User $user)
-    {
-        //figure out what the calling function is. If a user is registering, trigger the email here
-        $data = $user->getArrayCopy();
-        unset($data['userId']); //we don't have a userId yet
-        $dbt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = isset($dbt[1]['function']) ? $dbt[1]['function'] : null;
-        if (isset($this->logger)) {
-            $this->logger->info(
-                "JUser: About to insert a new user.",
-                ['caller' => $caller, 'email' => $user->getEmail()]
-            );
-        }
-        if ('register' === $caller && ! isset($data['roles']) || empty($data['roles'])) {
-            $defaultRoles = $this->getDefaultRoles();
-            $data['roles'] = $defaultRoles;
-            $data['rolesList'] = array_keys($defaultRoles);
-        }
-        $result = $this->createEntity('user', $data);
-        if (false === $result) {
-            if (isset($this->logger)) {
-                $this->logger->error("JUser: Failed inserting a new user.", ['result' => $result, 'user' => $user]);
-            }
-            throw new \Exception('Error inserting a new user.');
-        } else {
-            if (isset($this->logger)) {
-                $this->logger->info("JUser: Finished inserting a new user.", ['result' => $result]);
-            }
-            if ('register' === $caller) {
-                //we need to send the registration email
-                try {
-                    //@todo this could be better to schedule with cron, to avoid making the user wait for the send
-                    $this->getMailer()->onRegister($user);
-                } catch (\Exception $e) {
-                    if (isset($this->logger)) {
-                        $this->logger->error(
-                            "JUser: Exception thrown while triggering verification email.",
-                            ['exception' => $e]
-                        );
-                    }
-                }
-            }
-        }
-        return $result;
-    }
-
-    /**
-     * @param User $user
-     */
     public function updateUser(User $user)
     {
         $data = $user->getArrayCopy();
@@ -279,13 +230,11 @@ class UserTable extends SionTable
             'username'          => $row['username'],
             'email'             => $row['email'],
             'displayName'       => $row['display_name'],
-            'password'          => $row['password'],
             'createdOn'         => $this->filterDbDate($row['create_datetime']),
             'createdBy'         => $this->filterDbInt($row['create_by']),
             'updatedOn'         => $this->filterDbDate($row['update_datetime']),
             'updatedBy'         => $this->filterDbInt($row['update_by']),
             'emailVerified'     => $this->filterDbBool($row['email_verified']),
-            'mustChangePassword' => $this->filterDbBool($row['must_change_password']),
             'isMultiPersonUser' => $this->filterDbBool($row['multi_person_user']),
             'verificationToken' => $row['verification_token'],
             'verificationExpiration' => $this->filterDbDate($row['verification_expiration']),
@@ -459,8 +408,6 @@ class UserTable extends SionTable
             'username'      => $username,
             'email'         => $email,
             'displayName'   => $displayName,
-            //the password column is NOT NULL; passwords are no longer used at all
-            'password'      => '',
             'active'        => 0,
             'emailVerified' => 0,
             'roles'         => $defaultRoles,

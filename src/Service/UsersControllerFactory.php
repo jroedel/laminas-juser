@@ -7,6 +7,7 @@ use Laminas\Db\Adapter\Adapter;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use JUser\Model\UserTable;
+use Laminas\Session\ManagerInterface as SessionManagerInterface;
 use SionModel\Service\ActingUserProviderInterface;
 
 class UsersControllerFactory implements FactoryInterface
@@ -48,6 +49,10 @@ class UsersControllerFactory implements FactoryInterface
         //request-dependent service in this list would 500 every action of this
         //controller, not just the one that needs it.
         $services[ApiTokenService::class] = $container->get(ApiTokenService::class);
+        //A freshly issued JWT is handed to the view through a one-shot session container
+        //rather than a flash message: see UsersController::apiTokensAction. Built from
+        //config, no request and no identity, so it belongs in this list.
+        $services[SessionManagerInterface::class] = $container->get(SessionManagerInterface::class);
         if ($container->has(ActingUserProviderInterface::class)) {
             $services[ActingUserProviderInterface::class] = $container->get(ActingUserProviderInterface::class);
         }

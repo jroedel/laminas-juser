@@ -2,20 +2,24 @@
 /** @var \Laminas\View\Renderer\PhpRenderer $this */
 /** @var \JUser\Form\LoginForm $form */
 $form = $this->form;
-$isRegistration = (bool) $this->isRegistration;
-$title = $isRegistration ? $this->translate('Register') : $this->translate('Sign in');
-//The raw string, not $title: headTitle translates what it holds when it renders, so
-//passing the translated one made the page translate its own output and register the
-//result as a phrase — "Registrati" and "Registrar" became keys in their own right.
-$this->headTitle($isRegistration ? 'Register' : 'Sign in');
+//This page was two pages until 2026-08-20: /user/login and /user/register, differing
+//only in wording, because under the old password model registering and signing in were
+//genuinely different acts. Under magic links they are the same request — an unknown
+//address simply becomes an account (UserTable::createUserFromEmail) — so the second
+//route was retired and the copy below has to serve both readers at once.
+//
+//The raw string, not a translated one: headTitle translates what it holds when it
+//renders, so passing an already-translated value made the page translate its own output
+//and register the result as a phrase — "Registrati" and "Registrar" became keys in their
+//own right.
+$this->headTitle('Sign in');
 ?>
-<h1><?php echo $this->escapeHtml($title); ?></h1>
+<h1><?php echo $this->escapeHtml($this->translate('Sign in')); ?></h1>
 
-<p><?php echo $this->escapeHtml($isRegistration
-    ? $this->translate('Enter your email address and we\'ll send you a link to get started. '
-        . 'There\'s no password to choose or remember.')
-    : $this->translate('Enter your email address and we\'ll send you a link to sign in. '
-        . 'There\'s no password to remember.')); ?></p>
+<p><?php echo $this->escapeHtml($this->translate(
+    'Enter your email address and we\'ll send you a link to sign in. There\'s no password '
+    . 'to choose or remember. If you don\'t have an account yet, this creates one.'
+)); ?></p>
 
 <?php
 $form->prepare();

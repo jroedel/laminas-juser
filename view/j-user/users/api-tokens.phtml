@@ -12,6 +12,75 @@ $displayName = $user['displayName'] ?: ($user['username'] ?: $user['email']);
     <a href="<?php echo $this->url('juser'); ?>"><?php echo $this->translate("Back to user management"); ?></a>
 </p>
 
+<?php
+/*
+ * The freshly issued token, shown on exactly this one render.
+ *
+ * Deliberately not a flash message. A JWT is several hundred characters, which an alert
+ * box renders as a wall the reader then has to select by hand — and the flash pipeline
+ * translates its messages, which is how a token once became a row in the phrase table
+ * (see JUser\Controller\UsersController::apiTokensAction). It arrives here in a one-shot
+ * session container instead, and the value below is written into an input attribute and
+ * never into JavaScript, so nothing has to escape a credential into a script context.
+ */
+if (null !== $justIssued) : ?>
+<div class="well" id="juser-issued-token">
+    <h4><?php echo $this->escapeHtml($this->translate("Your new token")); ?></h4>
+    <?php if (! empty($justIssued['label'])) : ?>
+    <p class="text-muted"><?php echo $this->escapeHtml($justIssued['label']); ?></p>
+    <?php endif; ?>
+    <div class="input-group">
+        <input type="text" class="form-control" readonly
+               id="juser-issued-token-value"
+               aria-label="<?php echo $this->escapeHtmlAttr($this->translate("API token")); ?>"
+               value="<?php echo $this->escapeHtmlAttr($justIssued['jwt']); ?>">
+        <span class="input-group-btn">
+            <button class="btn btn-primary" type="button" id="juser-copy-token"
+                    data-copied="<?php echo $this->escapeHtmlAttr($this->translate("Copied")); ?>">
+                <?php echo $this->escapeHtml($this->translate("Copy")); ?>
+            </button>
+        </span>
+    </div>
+    <p class="help-block"><strong><?php echo $this->escapeHtml($this->translate(
+        "Copy it now. This is the only time it is shown — we store only its identifier, "
+        . "so it can be revoked but never recovered."
+    )); ?></strong></p>
+</div>
+<?php
+$this->inlineScript()->captureStart();
+echo <<<JS
+(function () {
+    var button = document.getElementById('juser-copy-token');
+    var field = document.getElementById('juser-issued-token-value');
+    if (!button || !field) {
+        return;
+    }
+    button.addEventListener('click', function () {
+        var done = function () {
+            button.textContent = button.getAttribute('data-copied');
+            button.classList.remove('btn-primary');
+            button.classList.add('btn-success');
+        };
+        // navigator.clipboard needs a secure context; execCommand is the fallback for
+        // anything that is neither https nor localhost.
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(field.value).then(done, function () {
+                field.select();
+                document.execCommand('copy');
+                done();
+            });
+            return;
+        }
+        field.select();
+        document.execCommand('copy');
+        done();
+    });
+})();
+JS;
+$this->inlineScript()->captureEnd();
+endif;
+?>
+
 <?php if ($mayIssue) : ?>
 <div class="panel panel-default">
     <div class="panel-heading"><?php echo $this->translate("Issue a new token"); ?></div>

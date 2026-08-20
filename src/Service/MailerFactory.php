@@ -6,7 +6,6 @@ use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use Laminas\I18n\Translator\TranslatorInterface;
 use Laminas\Router\RouteStackInterface;
-use Laminas\Mvc\Controller\PluginManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -36,10 +35,6 @@ class MailerFactory implements FactoryInterface
             $router->setRequestUri($request->getUri());
         }
 
-        $plugins = $container->get(PluginManager::class);
-        /** @var \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger */
-        $flashMessenger = $plugins->get('flashmessenger');
-
         $config = $container->get('Config');
         if (
             isset($config['juser'])
@@ -54,7 +49,6 @@ class MailerFactory implements FactoryInterface
         $mailer = (new Mailer())
         ->setTranslator($translator)
         ->setTransport($transport)
-        ->setFlashMessenger($flashMessenger)
         ->setRouter($router);
         if (isset($logger)) {
             $mailer->setLogger($logger);

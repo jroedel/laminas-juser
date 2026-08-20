@@ -6,6 +6,8 @@ use JTranslate\I18n\TranslatableMessage;
 use JUser\Form\EditUserForm;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Mvc\Controller\AbstractActionController;
+use Laminas\Session\Container as SessionContainer;
+use Laminas\Session\ManagerInterface as SessionManagerInterface;
 use Laminas\View\Model\ViewModel;
 use JUser\Model\User;
 use JUser\Model\UserTable;
@@ -59,10 +61,6 @@ class UsersController extends AbstractActionController
         return $this->services[$identifier];
     }
 
-    public function thanksAction()
-    {
-    }
-
     /**
      * Record a write that did not happen, and say so in one sentence.
      *
@@ -94,22 +92,6 @@ class UsersController extends AbstractActionController
         }
 
         return sprintf('%s failed — nothing was saved. The error has been logged.', ucfirst($what));
-    }
-
-    /**
-     * Legacy email-verification endpoint.
-     *
-     * Email verification and sign-in are now the same act: redeeming a single-use
-     * token. Everything is handled by JUser\Controller\LoginController::verifyAction,
-     * so this route only forwards the token there and stays alive for old links.
-     */
-    public function verifyEmailAction()
-    {
-        $token = $this->params()->fromQuery('token');
-        if (! isset($token) || '' === $token) {
-            return $this->redirect()->toRoute('welcome');
-        }
-        return $this->redirect()->toRoute('zfcuser/verify', [], ['query' => ['token' => $token]]);
     }
 
     public function indexAction()
@@ -219,8 +201,6 @@ class UsersController extends AbstractActionController
             $form->setData($data);
             if ($form->isValid()) {
                 $data = $form->getData();
-                //passwords are gone; the column is NOT NULL so it gets an empty string
-                $data['password'] = '';
                 try {
                     if (! ($table->createEntity('user', $data))) {
                         $this->nowMessenger()->setNamespace(FlashMessenger::NAMESPACE_ERROR)->addMessage(
@@ -379,22 +359,30 @@ class UsersController extends AbstractActionController
                         $form->getData()['label'] ?? null,
                         $this->actingUserId()
                     );
-                    //NAMESPACE_SUCCESS and not the log: the token is the one
-                    //thing that must never be written down by us.
+                    //The token goes in a one-shot session container, NOT in a flash
+                    //message, and both halves of that matter.
                     //
-                    //TranslatableMessage and not concatenation, for the same reason.
-                    //The messengers translate the *finished* message at render time,
-                    //and a translator miss is exactly what writes a phrase row — so
-                    //appending the JWT here filed four real tokens in a table any
-                    //`sch_api_translator` account can read, and copied them again
-                    //into the English translation and the exported catalog on disk.
-                    //On this screen, of all screens, whose own copy says we do not
-                    //store it. Only the template below reaches translate().
+                    //Presentation is the visible reason: a JWT is several hundred
+                    //characters and an alert box is the wrong shape for something whose
+                    //entire purpose is to be copied exactly once. The template renders
+                    //it in a well with a copy button instead.
+                    //
+                    //The other reason is why this is not merely cosmetic. The messengers
+                    //translate the *finished* message at render time, and a translator
+                    //miss is exactly what writes a phrase row — so an earlier version
+                    //that appended the JWT to the message filed four real tokens into a
+                    //table any `sch_api_translator` account can read, and copied them
+                    //again into the English translation and the exported catalog on disk.
+                    //On this screen, of all screens, whose own copy says we do not store
+                    //it. A TranslatableMessage parameter fixed that by keeping the token
+                    //out of the key; keeping it out of the message pipeline altogether
+                    //removes the class of mistake rather than the instance.
+                    $this->issuedTokenContainer()->issued = [
+                        'jwt'   => $issued['jwt'],
+                        'label' => $form->getData()['label'] ?? null,
+                    ];
                     $this->flashMessenger()->setNamespace(FlashMessenger::NAMESPACE_SUCCESS)
-                        ->addMessage(new TranslatableMessage(
-                            'Token issued. Copy it now — it is not shown again and we do not store it: %s',
-                            [$issued['jwt']]
-                        ));
+                        ->addMessage('Token issued.');
                 } catch (\Exception $e) {
                     if (isset($this->logger)) {
                         $this->logger->error("JUser: Failed to issue an API token.", [
@@ -418,6 +406,14 @@ class UsersController extends AbstractActionController
             return $this->redirect()->toRoute('juser/user/api-tokens', ['user_id' => $id]);
         }
 
+        //Read and cleared in one act: the token is shown on exactly the render that
+        //follows its issuance, and a refresh of that page must not show it again.
+        $container = $this->issuedTokenContainer();
+        $justIssued = isset($container->issued) && is_array($container->issued)
+            ? $container->issued
+            : null;
+        unset($container->issued);
+
         return new ViewModel([
             'userId'        => $id,
             'user'          => $user,
@@ -427,7 +423,28 @@ class UsersController extends AbstractActionController
             'mayIssue'      => $mayIssue,
             'issuableRoles' => $tokenService->getIssuableRoles(),
             'lifetimeDays'  => $tokenService->getLifetimeDays(),
+            'justIssued'    => $justIssued,
         ]);
+    }
+
+    /**
+     * The one-shot session slot a freshly minted JWT travels in, between the POST that
+     * issued it and the GET that displays it.
+     *
+     * A session container rather than the flash messenger because the flash pipeline
+     * translates its messages at render time, which is how a token can end up as a
+     * phrase-table row — see the comment at the issue site. Its own namespace rather
+     * than JUser\Controller\LoginController's so that nothing which walks that
+     * container for a post-login redirect ever sees a credential.
+     *
+     * @return SessionContainer
+     */
+    protected function issuedTokenContainer()
+    {
+        return new SessionContainer(
+            'JUser\\ApiToken',
+            $this->getService(SessionManagerInterface::class)
+        );
     }
 
     /**

@@ -10,7 +10,6 @@ echo $this->form()->openTag($form);
 echo $this->formRow($form->get('username'));
 echo $this->formRow($form->get('email'));
 echo $this->formRow($form->get('displayName'));
-echo $this->formRow($form->get('mustChangePassword'));
 $this->formSelect()->setTranslatorEnabled(false);
 echo $this->formRow($form->get('rolesList')); ?>
 <p><a href="<?php echo $this->url('juser/create-role');?>"><?php

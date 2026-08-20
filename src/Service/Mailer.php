@@ -38,67 +38,9 @@ class Mailer implements TranslatorAwareInterface
     protected $router;
 
     /**
-     * @var \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
-     */
-    protected $flashMessenger;
-
-    /**
-     * @var LoggerInterface $logger
+     * @var LoggerInterface|null $logger
      */
     protected $logger;
-
-    public function onRegister(User $user)
-    {
-        if ($this->logger) {
-            $this->logger->debug("JUser: Recieved a trigger for register.post");
-        }
-        $userArray = [];
-        $userArray['verificationToken'] = $user->getVerificationToken();
-        $userArray['displayName'] = $user->getDisplayName();
-        $userArray['email'] = $user->getEmail();
-        $this->sendVerificationEmail($userArray);
-
-        //Let the user know that they should look for an email
-        $flashMessenger = $this->getFlashMessenger();
-        if (isset($flashMessenger)) {
-            $flashMessenger->addInfoMessage('Thanks so much for registering! '
-                . 'Please check your email for a verification link. '
-                . 'Make sure to check the spam folder if you don\'t see it.');
-        }
-    }
-
-    /**
-     * Send a flash message to the user to look for a verification email
-     * @param User $user
-     * @param UserTable $callback A reference to the calling UserTable to be able to update User
-     */
-    public function onInactiveUser(User $user, UserTable $callback)
-    {
-        if (isset($this->logger)) {
-            $this->logger->notice(
-                "JUser: An inactive user is trying to logon, we'll ask them to check their email.",
-                ['email' => $user->getEmail()]
-            );
-        }
-        //if someone's trying to login to an account with expired token, give them a new one
-        if (! $user->isVerificationTokenValid()) {
-            $this->logger->info(
-                "JUser: An inactive user's token is expired, giving them a new one.",
-                ['email' => $user->getEmail()]
-            );
-            $user->setNewVerificationToken();
-            $callback->updateUser($user);
-            $this->sendVerificationEmail($user->getArrayCopy());
-        }
-        //Let the user know that they should look for an email
-        $flashMessenger = $this->getFlashMessenger();
-        if (isset($flashMessenger)) {
-            $flashMessenger->addInfoMessage(
-                'Please check your email for a verification link. '
-                . 'Make sure to check the spam folder if you don\'t see it.'
-            );
-        }
-    }
 
     /**
      * Email the user a magic link that signs them in.
@@ -106,19 +48,34 @@ class Mailer implements TranslatorAwareInterface
      * @param User $user
      * @param string $plaintextToken the token as it must appear in the link; only its hash is stored
      * @param int $expirationMinutes how long the link stays valid, for the copy
+     * @param string|null $redirect a path on this site to land on after redeeming, carried
+     *        in the link rather than only in the session because the link is very often
+     *        opened on a different device than the one that asked for it. It is
+     *        re-validated on arrival (JUser\Controller\LoginController::validRedirect),
+     *        so what travels here is a hint, not a grant: the worst a tampered value can
+     *        do is send its own owner to another page of this site, which the ACL then
+     *        checks anyway.
      * @return \Symfony\Component\Mailer\SentMessage|null
      */
-    public function sendLoginLinkEmail(User $user, string $plaintextToken, int $expirationMinutes = 15)
-    {
+    public function sendLoginLinkEmail(
+        User $user,
+        string $plaintextToken,
+        int $expirationMinutes = 15,
+        ?string $redirect = null
+    ) {
         if (isset($this->logger)) {
             $this->logger->info("JUser: Sending a sign-in link.", ['email' => $user->getEmail()]);
         }
         $start = microtime(true);
 
+        $query = ['token' => $plaintextToken];
+        if (null !== $redirect && '' !== $redirect) {
+            $query['redirect'] = $redirect;
+        }
         $link = $this->router->assemble([], [
             'name' => 'zfcuser/verify',
             'force_canonical' => true,
-            'query' => ['token' => $plaintextToken],
+            'query' => $query,
         ]);
 
         $body = <<<EOT
@@ -200,63 +157,6 @@ EOT;
             ->text($body);
 
         return $this->getTransport()->send($message);
-    }
-
-    /**
-     * Send an email to the user to verify their account
-     * @todo add a beautified HTML version of the email. Add mailing address as required
-     * @param mixed $user
-     * @return \Symfony\Component\Mailer\SentMessage|null
-     */
-    public function sendVerificationEmail($user)
-    {
-        if (isset($this->logger)) {
-            $this->logger->info("JUser: Sending a verification email.", ['email' => $user['email']]);
-        }
-        $start = microtime(true);
-
-        $link = $this->router->assemble([], [
-            'name' => 'juser/verify-email',
-            'force_canonical' => true,
-            'query' => ['token' => $user['verificationToken']]
-        ]);
-        $body = <<<EOT
-Dear %s,
-
-Welcome to Schoenstatt Link! Before we get started, please confirm
-your e-mail address by clicking on this link:
-
-%s
-
-If you haven't registered with Schoenstatt Link, please ignore this message.
-If you have any questions or comments, please contact support at support@schoenstatt.link.
-EOT;
-        $subject = 'Please confirm your email address';
-        if ($this->isTranslatorEnabled()) {
-            $translator = $this->getTranslator();
-            $body = $translator->translate($body);
-            $subject = $translator->translate($subject);
-        }
-        $body = sprintf($body, $user['displayName'], $link);
-
-        $message = (new Email())
-            ->subject($subject)
-            ->from(new Address('webmaster@schoenstatt.link', 'Schoenstatt Link'))
-            ->to(new Address($user['email'], (string) $user['displayName']))
-            ->bcc('webmaster@schoenstatt.link')
-            ->text($body);
-
-        $result = $this->getTransport()->send($message);
-        $timeElapsedSecs = microtime(true) - $start;
-        if (isset($this->logger)) {
-            $this->logger->debug("JUser: Finished sending verification email.", [
-                'email' => $user['email'],
-                'verificationToken' => substr($user['verificationToken'], 0, 4) . '...',
-                'messageId' => isset($result) ? $result->getMessageId() : null,
-                'elapsedSeconds' => $timeElapsedSecs,
-            ]);
-        }
-        return $result;
     }
 
     /**
@@ -406,25 +306,6 @@ EOT;
         return $this;
     }
 
-    /**
-     * Get the flashMessenger object
-     * @return \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger
-     */
-    public function getFlashMessenger()
-    {
-        return $this->flashMessenger;
-    }
-
-    /**
-     * Set the flashMessenger object
-     * @param \Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger
-     * @return self
-     */
-    public function setFlashMessenger(\Laminas\Mvc\Plugin\FlashMessenger\FlashMessenger $flashMessenger)
-    {
-        $this->flashMessenger = $flashMessenger;
-        return $this;
-    }
 
     /**
      * Get the logger object
@@ -437,7 +318,7 @@ EOT;
 
     /**
      * Set the logger object
-     * @param LoggerInterface $flashMessenger
+     * @param LoggerInterface $logger
      * @return self
      */
     public function setLogger(LoggerInterface $logger)
