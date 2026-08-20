@@ -68,3 +68,25 @@ like the tags were lost.
 3.0.0 cannot land while this module still serves the sign-in routes, because those are
 what require the MVC layer. The `require` block in `composer.json` names the components
 honestly for that reason: the five listed above are exactly what 3.0.0 has to remove.
+
+### Where the 3.0.0 work stands
+
+2026-08-21: **the user-administration surface is gone from this module.**
+`JUser\Controller\UsersController`, its factory and its six view scripts were deleted, and
+the seven `juser/*` routes are now served by the consuming application's Symfony kernel.
+The routes themselves stay declared here — a name is what `laminas_path()` and a
+BjyAuthorize guard address — but nothing in this module dispatches them.
+
+What that leaves between here and 3.0.0 is **one class**: `JUser\Controller\LoginController`,
+the four `zfcuser/*` sign-in routes and the three view scripts under `view/juser/login/`.
+It is the only remaining consumer of `AbstractActionController`, of `laminas-router`'s
+route stack, of `laminas-view`'s renderer and of the flash-messenger plugin — so retiring
+it removes five dependencies at once rather than one at a time. Nothing else has to move
+first; the blocker is that the sign-in flow is the one surface where getting it wrong locks
+everybody out, so it wants its own release rather than a corner of this one.
+
+**Worth being precise about what 3.0.0 does *not* need.** `bjy-authorize` appears in the
+list above and is not this module's to remove: the guards that use it are the consuming
+application's, and this module declares only the four that keep the sign-in routes
+reachable. Dropping the dependency means the *application* moving to Symfony Security
+voters, which is a separate decision on a separate schedule.
