@@ -1,0 +1,31 @@
+{#
+  view/j-user/users/delete.phtml — the delete confirmation.
+
+  **This page names the account now, and the .phtml did not.** It filled its `%s` from
+  `$this->user->username` — property access on the array `UserTable::getUser()` returns — so
+  every render since it was written has asked whether to permanently delete `''`, with a PHP
+  warning where the name should be (visible in the capsule, swallowed in production by
+  `display_errors = Off`). That is the one difference in this batch taken deliberately: a
+  destructive confirmation that names nobody is a safety defect and it is the whole content
+  of the page.
+
+  No `headTitle()` in the .phtml, so the browser tab shows the site name alone — hence the
+  empty `page_title` from the controller. Empty and not absent: this layout reads
+  `page_title` with no `is defined` guard and Twig runs with strict_variables, so omitting
+  it renders a 200 with an empty body and no error anywhere.
+
+  The form carries an `action` because the same route serves both verbs and the .phtml sets
+  one explicitly.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>Warning...</h1>
+<p>{{ translate("This change is permanent, are you sure you want to delete '%s'?")|format(username) }}</p>
+{{ form_open(form, self_url) }}
+{{ form_row(form.get('userId')) }}
+{{ form_row(form.get('security')) }}
+{{ form_submit(form.get('delete')) }}&nbsp;
+<a class="btn btn-default" href="{{ juser_path('juser') }}">{{ translate('Cancel') }}</a>
+{{ form_close() }}
+{% endblock %}

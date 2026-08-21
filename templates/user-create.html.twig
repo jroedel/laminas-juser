@@ -1,0 +1,46 @@
+{#
+  view/j-user/users/create.phtml — a new account.
+
+  Same form object as the edit page, primed differently: `setValidatorsForCreate()` adds the
+  two uniqueness validators, `setName('create_user')` is what changes the `<form>`'s name and
+  id, and a GET pre-selects the four `is_default = 1` roles. See
+  JUser\Controller\UserCreateController.
+
+  Three differences from the edit template, all of them the .phtml's:
+
+  - **no `userId` row** — there is no account yet;
+  - **`personId` is rendered unconditionally**, where the edit view guards it on the select
+    having options at all;
+  - **a link to the role form sits between the roles select and the person select**, so an
+    administrator who needs a role that does not exist yet can go and make one.
+
+  The `<h1>` translates since 2026-08-21 — see the note in user-edit.html.twig for what it
+  used to do and why.
+
+  **These two pages close their `<form>` and the .phtml did not.** Neither `create.phtml`
+  nor `create-role.phtml` calls `closeTag()` — they end at `formSubmit()` — so laminas
+  serves an unclosed `<form>` that a browser has to close for it at `</body>`, taking the
+  footer into the form on the way. Emitting `</form>` is the only other deliberate
+  difference in this batch besides the delete page's missing name: every field and the
+  submit button are already above it, nothing after it is an input, and an unclosed form
+  element is invalid HTML rather than a style choice.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate(page_title) }}</h1>
+
+{{ form_open(form, '') }}
+{{ form_row(form.get('username')) }}
+{{ form_row(form.get('email')) }}
+{{ form_row(form.get('displayName')) }}
+{{ form_row(form.get('rolesList'), false) }}
+<p><a href="{{ juser_path('juser/create-role') }}">{{ translate('Create new role') }}</a></p>
+{{ form_row(form.get('personId'), false) }}
+{{ form_row(form.get('isMultiPersonUser')) }}
+{{ form_row(form.get('emailVerified')) }}
+{{ form_row(form.get('active')) }}
+{{ form_row(form.get('security')) }}
+{{ form_submit(form.get('submit')) }}
+{{ form_close() }}
+{% endblock %}

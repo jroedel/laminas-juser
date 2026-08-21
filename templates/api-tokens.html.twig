@@ -1,0 +1,145 @@
+{#
+  view/j-user/users/api-tokens.phtml — one account's API tokens.
+
+  The one page in the application that shows a credential, and the shape of it is load
+  bearing rather than decorative:
+
+  - **the token is rendered into an input attribute and never into JavaScript**, so nothing
+    has to escape a credential into a script context. The copy button reads it out of the
+    DOM;
+  - **it is not a flash message.** A JWT is several hundred characters, which an alert box
+    renders as a wall the reader then has to select by hand — and the flash pipeline
+    translates its messages, which is how a token once became a row in the phrase table.
+    See JUser\Page\UserAdmin::takeIssuedToken() for the incident;
+  - **the well renders on exactly one request.** The controller reads the one-shot session
+    container and clears it in the same act, so a refresh does not show the token again.
+
+  `token.jti` is truncated to eight characters on purpose: enough to match a row here
+  against a log line, useless as a credential. And a NULL `issuedBy` is the account signing
+  itself in by email — a different provenance from an administrator pressing the button, not
+  missing data.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate('API Tokens') }}</h1>
+<p>
+    {{ translate('Account') }}:
+    <strong>{{ display_name }}</strong>
+    ({{ user.email }})
+    &nbsp;|&nbsp;
+    <a href="{{ juser_path('juser') }}">{{ translate('Back to user management') }}</a>
+</p>
+
+{% if just_issued %}
+<div class="well" id="juser-issued-token">
+    <h4>{{ translate('Your new token') }}</h4>
+    {% if just_issued.label %}
+    <p class="text-muted">{{ just_issued.label }}</p>
+    {% endif %}
+    <div class="input-group">
+        <input type="text" class="form-control" readonly
+               id="juser-issued-token-value"
+               aria-label="{{ translate('API token') }}"
+               value="{{ just_issued.jwt }}">
+        <span class="input-group-btn">
+            <button class="btn btn-primary" type="button" id="juser-copy-token"
+                    data-copied="{{ translate('Copied') }}">
+                {{ translate('Copy') }}
+            </button>
+        </span>
+    </div>
+    <p class="help-block"><strong>{{ translate('Copy it now. This is the only time it is shown — we store only its identifier, so it can be revoked but never recovered.') }}</strong></p>
+</div>
+{% endif %}
+
+{% if may_issue %}
+<div class="panel panel-default">
+    <div class="panel-heading">{{ translate('Issue a new token') }}</div>
+    <div class="panel-body">
+        <p class="text-muted">
+            {{ translate('A new token lasts %d days. It is shown once and never stored — we keep only its identifier, so it can be revoked but never recovered.')|format(lifetime_days) }}
+        </p>
+        {{ form_open(form, self_url) }}
+        {{ form_row(form.get('label')) }}
+        {{ form_row(form.get('security')) }}
+        {{ form_submit(form.get('issue')) }}
+        {{ form_close() }}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    {% if issuable_roles is empty %}
+        {{ translate('No role is configured as eligible for API tokens, so none can be issued here. Set juser.api_token_roles in the application config.') }}
+    {% else %}
+        {{ translate('This account holds none of the roles eligible for an API token (%s), so no token can be issued for it. Grant the role first if that is what you intend.')|format(issuable_roles|join(', ')) }}
+    {% endif %}
+</div>
+{% endif %}
+
+<h2>{{ translate('Tokens on record') }}</h2>
+{% if tokens is empty %}
+<p>{{ translate('None. Nothing has ever been issued for this account.') }}</p>
+{% else %}
+<table class="table">
+<tr>
+    <th>{{ translate('Label') }}</th>
+    <th>{{ translate('Status') }}</th>
+    <th>{{ translate('Issued') }}</th>
+    <th>{{ translate('Expires') }}</th>
+    <th>{{ translate('Identifier') }}</th>
+    <th></th>
+</tr>
+{% for token in tokens %}
+<tr{% if not token.isLive %} class="text-muted"{% endif %}>
+    <td>{{ token.label ?: '—' }}</td>
+    <td>{% if token.revokedOn is not null %}<span class="label label-danger">{{ translate('revoked') }}</span> {{ token.revokedOn|date('Y-m-d') }}{% elseif not token.isLive %}<span class="label label-default">{{ translate('expired') }}</span>{% else %}<span class="label label-success">{{ translate('live') }}</span>{% endif %}</td>
+    <td>{% if token.issuedOn is not null %}{{ token.issuedOn|date('Y-m-d H:i') }}{% endif %}{% if token.issuedBy is null %} <small class="text-muted">{{ translate('(self, by email)') }}</small>{% else %} <small class="text-muted">{{ translate('(by user %d)')|format(token.issuedBy) }}</small>{% endif %}</td>
+    <td>{% if token.expiresOn is not null %}{{ token.expiresOn|date('Y-m-d') }}{% endif %}</td>
+    <td><code>{{ token.jti|slice(0, 8) }}…</code></td>
+    <td>{% if token.isLive %}
+        {{ form_open(revoke_form, juser_path('juser/user/api-token-revoke', {'user_id': user_id, 'token_id': token.tokenId})) }}
+        {{ form_row(revoke_form.get('security')) }}
+        {{ form_submit(revoke_form.get('revoke')) }}
+        {{ form_close() }}
+    {% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+<p class="text-muted"><small>{{ translate("Revoking takes effect on the token's next request. Expired tokens are cleared from this list a day after they lapse; revoked ones are kept as a record.") }}</small></p>
+{% endif %}
+{% endblock %}
+
+{% block inline_scripts %}
+{% if just_issued %}
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var button = document.getElementById('juser-copy-token');
+    var field = document.getElementById('juser-issued-token-value');
+    if (!button || !field) {
+        return;
+    }
+    button.addEventListener('click', function () {
+        var done = function () {
+            button.textContent = button.getAttribute('data-copied');
+            button.classList.remove('btn-primary');
+            button.classList.add('btn-success');
+        };
+        // navigator.clipboard needs a secure context; execCommand is the fallback for
+        // anything that is neither https nor localhost.
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(field.value).then(done, function () {
+                field.select();
+                document.execCommand('copy');
+                done();
+            });
+            return;
+        }
+        field.select();
+        document.execCommand('copy');
+        done();
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

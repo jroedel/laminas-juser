@@ -37,4 +37,19 @@ final class Routes
 
     /** `/user/logout` */
     public const LOGOUT = 'zfcuser/logout';
+
+    /**
+     * The user-administration surface.
+     *
+     * These names have no ZfcUser history and are the module's own, which is why they read
+     * `juser/…`. The paths are `/users…`, plural, and the difference between the two
+     * prefixes is worth holding on to: `/user` is *your* account, `/users` is everyone's.
+     */
+    public const USERS            = 'juser';
+    public const USER_CREATE      = 'juser/create';
+    public const ROLE_CREATE      = 'juser/create-role';
+    public const USER_EDIT        = 'juser/user/edit';
+    public const USER_DELETE      = 'juser/user/delete';
+    public const API_TOKENS       = 'juser/user/api-tokens';
+    public const API_TOKEN_REVOKE = 'juser/user/api-token-revoke';
 }
