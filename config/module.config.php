@@ -285,33 +285,24 @@ return [
             ],
         ],
     ],
-    'controllers' => [
-        'factories' => [
-            /*
-             * **`LoginController` is the last laminas-mvc controller in this module.**
-             * `UsersController` was deleted on 2026-08-21 with the `juser/*` admin surface,
-             * which the host application now serves from Symfony — see the router section
-             * below on why its seven routes are still declared here. Retiring this one is
-             * what JUser 3.0.0 is: it is the only thing left that needs
-             * `Laminas\Mvc\Controller\AbstractActionController`.
-             */
-            Controller\LoginController::class => Service\LoginControllerFactory::class,
-        ],
-    ],
-    'controller_plugins' => [
-        'factories' => [
-            Controller\Plugin\ZfcUserAuthentication::class => Service\ZfcUserAuthenticationPluginFactory::class,
-        ],
-        'aliases' => [
-            'zfcUserAuthentication' => Controller\Plugin\ZfcUserAuthentication::class,
-        ],
-    ],
-    'view_manager' => [
-        'template_map' => include __DIR__ . '/template_map.config.php',
-        'template_path_stack' => [
-            'users' => __DIR__ . '/../view',
-        ],
-    ],
+    /*
+     * **No `controllers`, no `controller_plugins`, no `view_manager`, as of 2026-08-21.**
+     * This module registers nothing with laminas-mvc any more: `LoginController` was the
+     * last `AbstractActionController` here and it is gone, with its factory and its four
+     * view scripts. `view/` no longer exists, so neither does the template map.
+     *
+     * The `zfcUserAuthentication` controller plugin went with it. It only ever wrapped the
+     * same AuthenticationService, and with no laminas-mvc controllers left in this module
+     * there was nothing to register it for; its two consumers in the host application use
+     * `identity()` from laminas-mvc-plugin-identity, whose factory resolves
+     * `Laminas\Authentication\AuthenticationService` — which the aliases below point at
+     * this module's own service, so the answer is identical.
+     *
+     * What is still declared: the routes (a name is what `url()` and a BjyAuthorize guard
+     * entry address, and both still name these), the view helpers (a host layout that has
+     * not been ported still calls `zfcUserDisplayName`), the services, and the session
+     * configuration.
+     */
     'view_helpers' => [
         'invokables' => [
         ],

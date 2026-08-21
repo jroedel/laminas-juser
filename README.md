@@ -45,10 +45,17 @@ refused).
 Requirements
 ------------
 
-Laminas MVC, `BjyAuthorize` for authorization, `SionModel` for the table layer and
-`JTranslate` for translation. `SlmLocale` is *not* a dependency — the locale
-configuration in `config/juser.global.php.dist` is there for the consuming application's
-convenience and this module reads none of it.
+`SionModel` for the table layer and `JTranslate` for translation, plus Twig and
+symfony/http-foundation for the controllers and templates. `SlmLocale` is *not* a dependency
+— the locale configuration in `config/juser.global.php.dist` is there for the consuming
+application's convenience and this module reads none of it.
+
+**This module registers nothing with laminas-mvc as of 2026-08-21.** No controllers, no
+controller plugins, no view manager, and `Module` has no `onBootstrap()`: the session is the
+host's to start (see that class). The laminas packages still in `require` are there for code
+a laminas host uses — the session storage, the two view helpers, the BjyAuthorize identity
+and role providers — and for the table and form layers, which are data concerns rather than
+framework ones. Trimming that list is the last piece of 3.0.0.
 
 What this module does **not** use, despite older versions of this file saying so:
 ZfcUser, ZfcBase and GoalioRememberMe. The `ZfcUser*` class names that survive — the
@@ -156,6 +163,15 @@ return [
 4. The admin surface is at `/users`. **Check the guard entries** in your
    `juser.global.php`: every `juser/*` route should name an administrator role, and the
    `.dist` file is the reference for which routes exist.
+5. **Start the session** — this module no longer does. On a laminas host, do it *above*
+   module priority: a hook that asks BjyAuthorize for an identity bakes the identity's roles
+   into the ACL for the whole request, and an unstarted session bakes `guest`. Prune it with
+   `JUser\Session\SessionPruner::pruneIncompleteClassValues($_SESSION)` and swallow a
+   validation failure. See `JUser\Module`.
+6. **Wire the host contract** if you are serving these pages from Symfony rather than
+   through laminas-mvc: six implementations, the Twig extension and the route fragment. See
+   "The host contract" and "Wiring it up" above. This is what 3.x exists for, and a host
+   doing it needs none of the laminas-mvc setup in step 3.
 
 Releases
 --------
@@ -171,11 +187,41 @@ like the tags were lost.
 | **2.0.0** | The passwordless line: magic-link sign-in, `symfony/mailer`, API tokens, monolog, DB adapters injected into forms rather than fetched from a static registry, and the password-era columns and routes retired. Still a Laminas MVC module — it owns laminas routes, controllers and view scripts. |
 | **3.0.0** | Symfony-oriented, and a **drop-in**: this module owns its own controllers, templates, forms, route fragment and Twig extension, and reaches the application only through the six interfaces in `JUser\Host\`. Thirteen of the eighteen `laminas/*` packages leave `require`; the five that stay are data concerns, not framework ones. |
 
-3.0.0 cannot land while this module still serves the sign-in routes, because those are
-what require the MVC layer. The `require` block in `composer.json` names the components
-honestly for that reason: the five listed above are exactly what 3.0.0 has to remove.
+It no longer serves any route through laminas-mvc, which was the blocker. What is left
+before the tag is mechanical: move the laminas-shaped code that a laminas host still uses
+into `JUser\Bridge\Laminas\`, and trim `require` to match — the block still names packages
+this module no longer needs, deliberately, so that it never claims to be freer of laminas
+than it is.
 
 ### Where the 3.0.0 work stands
+
+2026-08-21: **`LoginController` is gone, and with it the last thing here that needed
+laminas-mvc.** The controller, its factory, its four view scripts, the whole `view/` tree and
+the template map are deleted, and so are the `controllers`, `controller_plugins` and
+`view_manager` config sections. `Module::onBootstrap()` went too — starting a session is an
+application's job, and a module that hooks `MvcEvent` cannot be dropped into a host that has
+none.
+
+Two things a consuming application has to take over, and both bite silently if it does not:
+
+* **Start the session, and prune it.** A session that fails validation must be discarded
+  rather than fail the request, and one that *passes* can still hold a value whose class no
+  longer exists — which fatals at the first container access, not at `start()`, so nothing
+  wraps it. `JUser\Session\SessionPruner` is still here for exactly that.
+  **Where** it is started matters: on a laminas host it must run before any module hook that
+  asks BjyAuthorize for an identity, because `Authorize::load()` bakes the identity's roles
+  into the ACL for the whole request and an unstarted session bakes `guest`. On
+  schoenstatt.link that meant a listener attached above module priority rather than another
+  module's `onBootstrap()`.
+* **Replace the `zfcUserAuthentication` controller plugin.** It only ever wrapped the same
+  `AuthenticationService`. Its consumers use `identity()` from `laminas-mvc-plugin-identity`,
+  whose factory resolves `Laminas\Authentication\AuthenticationService` — which this
+  module's config aliases to its own service, so the answer is identical and `null` means
+  anonymous.
+
+What is still declared here: the routes (a name is what `url()` and a guard entry address),
+the view helpers (a host layout that has not been ported still calls `zfcUserDisplayName`),
+the services, and the session configuration.
 
 2026-08-21: **the user-administration surface has arrived too**, on the same terms —
 nothing dispatches it. `JUser\Controller\{UsersController, UserCreateController,
