@@ -62,10 +62,14 @@ final class JUserExtension extends AbstractExtension implements GlobalsInterface
     /**
      * @param string $layout the template `{% extends juser_layout %}` resolves to; must
      *        be resolvable by the same Twig environment this extension is registered on
+     * @param string|null $personTemplate a host template rendering one person record, for
+     *        the user index's Person column; null means the column stays empty. See
+     *        {@see getGlobals()}.
      */
     public function __construct(
         private readonly UrlBuilderInterface $urls,
-        private readonly string $layout = self::DEFAULT_LAYOUT
+        private readonly string $layout = self::DEFAULT_LAYOUT,
+        private readonly ?string $personTemplate = null
     ) {
     }
 
@@ -77,10 +81,28 @@ final class JUserExtension extends AbstractExtension implements GlobalsInterface
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * ## `juser_person_template`
+     *
+     * The user index has a Person column, and a person is the one thing on this surface
+     * that is entirely the host's: this module has no person model, only
+     * `JUser\Model\PersonValueOptionsProviderInterface` and whatever rows a host answers
+     * it with. So the cell is rendered by a host template, included with the row as
+     * `person`, and null — the default — renders the column empty for every account, which
+     * is already what happens on a host that configures no provider.
+     *
+     * A template rather than a Twig function because formatting a person is markup: on the
+     * application this came from it is a macro that draws a link and an edit pencil, and a
+     * function returning pre-escaped HTML would be the same thing with worse failure modes.
+     *
+     * @return array<string, mixed>
+     */
     public function getGlobals(): array
     {
-        return ['juser_layout' => $this->layout];
+        return [
+            'juser_layout'          => $this->layout,
+            'juser_person_template' => $this->personTemplate,
+        ];
     }
 
     /**

@@ -56,4 +56,23 @@ interface AccessInterface
      *        about, so a host is only ever asked about routes it declared itself.
      */
     public function userMayReachRoute(User $user, string $route): bool;
+
+    /**
+     * The ordinary question: may **whoever is making this request** reach that route?
+     *
+     * Asked to decide whether to draw a link, and only ever about a route this module
+     * declared. Two links on the user index are behind it, on a page whose own audience is
+     * already `Administrator` — which is not redundant, because a host's guard entries are
+     * independent of each other: tightening the API-token route to a narrower role is a
+     * supported thing to do, and the link has to disappear when it happens.
+     *
+     * Separate from {@see self::userMayReachRoute()} rather than folded into it, and the
+     * separation is the honest one. This is what a host's ordinary authorization check
+     * already answers — `isAllowed()`, a voter, a firewall — for the identity the request
+     * carries. The other method asks about an account that is *not* the request's identity
+     * yet, which is a question a host usually cannot answer without being handed the
+     * account. Collapsing them would mean passing the current user in from this module,
+     * and this module does not know how the host resolves roles for it.
+     */
+    public function visitorMayReachRoute(string $route): bool;
 }

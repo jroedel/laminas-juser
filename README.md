@@ -69,7 +69,7 @@ not on it, this module owns.
 | `SessionInterface` | a namespaced scratch space, plus regenerate and forget-me | `laminas-session` |
 | `FlashInterface` | a message for the next page, and one for this one | `laminas-mvc-plugin-flashmessenger` |
 | `RouteResolverInterface` | which route a path belongs to, if any | `laminas-http` |
-| `AccessInterface` | may *this account* reach that route | `bjy-authorize`, `laminas-permissions-acl` |
+| `AccessInterface` | may *this account* reach that route, and may *this visitor* | `bjy-authorize`, `laminas-permissions-acl` |
 
 Each interface's docblock is the specification, including the parts that are easy to
 implement wrongly and impossible to detect: one flash-messenger instance per request, a
@@ -115,7 +115,15 @@ The templates in this package are Twig and expect the environment to provide:
   `{% extends juser_layout %}`. The layout must define a `content` block and must render
   messages, or `FlashInterface` is silent with no other symptom.
 * `juser_path(route, params, query)` — the same extension, over `UrlBuilderInterface`.
-* `translate(...)` and `csp_nonce()` — the application's.
+* `translate(...)` and `csp_nonce()` — the application's. The nonce is needed by exactly one
+  page, the API-token screen, whose copy button is an inline script.
+* an `inline_scripts` block in the layout, for that same script, and a `content` block for
+  everything.
+* `juser_person_template` — optional, from the same extension. The user index has a Person
+  column and a person is the one thing on this surface that is entirely the host's: this
+  module has no person model, only `PersonValueOptionsProviderInterface` and whatever rows a
+  host answers it with. Unset leaves the column empty, which is already what a host with no
+  provider gets.
 * `form_open`, `form_close`, `form_row`, `form_hidden`, `form_submit`, `form_button` —
   `SionModel\Twig\FormExtension` over `SionModel\Form\BootstrapFormRenderer`, which is
   in that package precisely because it is not JUser-specific: any host rendering laminas
@@ -168,6 +176,32 @@ what require the MVC layer. The `require` block in `composer.json` names the com
 honestly for that reason: the five listed above are exactly what 3.0.0 has to remove.
 
 ### Where the 3.0.0 work stands
+
+2026-08-21: **the user-administration surface has arrived too**, on the same terms —
+nothing dispatches it. `JUser\Controller\{UsersController, UserCreateController,
+UserEditController, UserDeleteController, ApiTokensController}` over `JUser\Page\UserAdmin`,
+six templates, and seven more routes in the fragment. This half has **no laminas twin at
+all**: `JUser\Controller\UsersController` and its view scripts were deleted when the
+consuming application ported these pages, so there is nothing to roll back to and nothing to
+keep in step.
+
+Three things the interfaces changed, beyond replacing the container lookups:
+
+* **`AccessInterface` grew a second method.** The index draws a pencil and a crown behind a
+  permission check, and that question is about *the visitor*, not about a named account — so
+  `visitorMayReachRoute()` sits beside `userMayReachRoute()` rather than being folded into
+  it. Folding them would mean this module resolving the current user's roles, which is
+  exactly what it does not know how to do. The controller asks **once per page** where the
+  laminas view asked once per row; same answer, since the question does not mention the row.
+* **A misconfigured person provider is no longer representable.** The version this came from
+  resolved a service id out of config and threw when it named something of the wrong type. A
+  host injecting a typed `PersonValueOptionsProviderInterface|null` makes that a compile-time
+  matter, so the check went where the resolution went — into the host's wiring.
+* **The forms come from a PSR-11 locator, not the constructor.** `EditUserForm` is shared and
+  both `setValidatorsForCreate()` and `prepareForEdit()` mutate the instance they are called
+  on, so a form captured in a constructor would have the create page hand the edit page a
+  form still carrying the create-only uniqueness validators. `UserAdmin::form()` is the one
+  place that fetch happens.
 
 2026-08-21: **the sign-in surface has arrived, and nothing dispatches it yet.**
 `JUser\Controller\{SignInController, VerifyController, LogoutController}` over

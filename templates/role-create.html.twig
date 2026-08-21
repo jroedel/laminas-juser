@@ -1,0 +1,39 @@
+{#
+  view/j-user/users/create-role.phtml — a new role.
+
+  The smallest form on the surface: a name, a parent, and whether new accounts get it
+  automatically. `parentId`'s options are the role table itself, so they are data and are
+  rendered untranslated — the `false` argument, i.e.
+  `$this->formSelect()->setTranslatorEnabled(false)` in the .phtml.
+
+  `isDefault` deserves a second look before anyone ticks it: a default role is granted to
+  every account at registration, which is what makes `lib_user`, `pub_user`, `sch_user` and
+  `bib_user` mean "signed in" rather than "privileged", and therefore what makes every route
+  guard naming one of them toothless. Nothing here
+  warns about that, and reproducing the page faithfully means not adding a warning in the
+  same change that moves it.
+
+  The `<h1>` translates since 2026-08-21 — see the note in user-edit.html.twig for what it
+  used to do and why.
+
+  **These two pages close their `<form>` and the .phtml did not.** Neither `create.phtml`
+  nor `create-role.phtml` calls `closeTag()` — they end at `formSubmit()` — so laminas
+  serves an unclosed `<form>` that a browser has to close for it at `</body>`, taking the
+  footer into the form on the way. Emitting `</form>` is the only other deliberate
+  difference in this batch besides the delete page's missing name: every field and the
+  submit button are already above it, nothing after it is an input, and an unclosed form
+  element is invalid HTML rather than a style choice.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate(page_title) }}</h1>
+
+{{ form_open(form, '') }}
+{{ form_row(form.get('name')) }}
+{{ form_row(form.get('parentId'), false) }}
+{{ form_row(form.get('isDefault')) }}
+{{ form_row(form.get('security')) }}
+{{ form_submit(form.get('submit')) }}
+{{ form_close() }}
+{% endblock %}

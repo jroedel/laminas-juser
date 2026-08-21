@@ -1,0 +1,48 @@
+{#
+  view/j-user/users/index.phtml — every account, its roles, and the person
+  record it points at.
+
+  Two links per row, each behind a permission check, on a page whose own audience is already
+  `Administrator`. Kept rather than simplified: a host's guard entries are independent of one
+  another, so narrowing the API-token route to a tighter role is a supported change and the
+  crown has to vanish when it happens. The check is `may_edit`/`may_issue_tokens` from the
+  controller, asked once per page rather than once per row as the .phtml asked it — same
+  answer, since the question does not mention the row.
+
+  `&nbsp;` before each link, and `&times;` for an inactive account, are literal entities in
+  the .phtml — written literally here for the same reason.
+
+  **The Person cell is rendered by a host template**, `juser_person_template`, included with
+  the row as `person`. A person is the one thing on this surface that is entirely the host's:
+  this module has no person model, only PersonValueOptionsProviderInterface and whatever rows
+  a host answers it with. Unset — the default — leaves the column empty, which is already
+  what a host with no provider gets.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate('User Management') }}</h1>
+<p><a href="{{ juser_path('juser/create') }}">{{ translate('Add new user') }}</a> |
+  <a href="{{ juser_path('juser/create-role') }}">{{ translate('Add new role') }}</a></p>
+
+<table class="table">
+<tr>
+    <th>{{ translate('Username') }}</th>
+    <th>{{ translate('Email') }}</th>
+    <th>{{ translate('Display Name') }}</th>
+    <th>{{ translate('Active') }}</th>
+    <th>{{ translate('Roles') }}</th>
+    <th>{{ translate('Person') }}</th>
+</tr>
+{% for user in users %}
+<tr>
+    <td>{{ user.username }}{% if may_edit %}&nbsp;<a href="{{ juser_path('juser/user/edit', {'user_id': user.userId}) }}"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></a>{% endif %}{% if may_issue_tokens %}&nbsp;<a href="{{ juser_path('juser/user/api-tokens', {'user_id': user.userId}) }}" title="{{ translate('API tokens') }}"><span class="glyphicon glyphicon-king" aria-hidden="true"></span></a>{% endif %}</td>
+    <td>{{ user.email }}</td>
+    <td>{{ user.displayName }}</td>
+    <td>{% if user.active %}✓{% else %}&times;{% endif %}</td>
+    <td>{% for role in user.roles %}{% if not loop.first %}, {% endif %}{{ role.name }}{% endfor %}</td>
+    <td>{% if juser_person_template and persons and user.personId is not null and persons[user.personId] is defined %}{% include juser_person_template with {'person': persons[user.personId]} only %}{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
