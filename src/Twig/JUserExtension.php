@@ -9,6 +9,8 @@ use Twig\Extension\AbstractExtension;
 use Twig\Extension\GlobalsInterface;
 use Twig\TwigFunction;
 
+use function dirname;
+
 /**
  * What this module's templates are allowed to know about the application rendering them.
  *
@@ -48,6 +50,16 @@ final class JUserExtension extends AbstractExtension implements GlobalsInterface
     public const DEFAULT_LAYOUT = 'layout.html.twig';
 
     /**
+     * The Twig namespace this module's own templates are addressed under — `@juser/…`.
+     *
+     * A namespace rather than a bare directory on the loader's search path, because a
+     * host has templates of its own and `login.html.twig` is not a name anyone should
+     * have to avoid. Every reference inside this module is fully qualified with it, so a
+     * host registers the path once and nothing else can collide.
+     */
+    public const TEMPLATE_NAMESPACE = 'juser';
+
+    /**
      * @param string $layout the template `{% extends juser_layout %}` resolves to; must
      *        be resolvable by the same Twig environment this extension is registered on
      */
@@ -78,5 +90,31 @@ final class JUserExtension extends AbstractExtension implements GlobalsInterface
     public function path(string $route, array $params = [], array $query = []): string
     {
         return $this->urls->path($route, $params, $query);
+    }
+
+    /**
+     * Where this module's templates live on disk, for a host wiring the loader:
+     *
+     *     $loader->addPath(JUserExtension::templatePath(), JUserExtension::TEMPLATE_NAMESPACE);
+     *
+     * A method rather than documentation, because the answer depends on where composer
+     * put the package and a host should never have to spell that out.
+     */
+    public static function templatePath(): string
+    {
+        return dirname(__DIR__, 2) . '/templates';
+    }
+
+    /**
+     * One of this module's templates, fully qualified: `template('login')` is
+     * `@juser/login.html.twig`.
+     *
+     * Every reference in this module goes through here so that the namespace is named
+     * once. A bare `'login.html.twig'` would resolve against the *host's* loader paths and
+     * find whatever it found — which is a template that renders, not an error.
+     */
+    public static function template(string $name): string
+    {
+        return '@' . self::TEMPLATE_NAMESPACE . '/' . $name . '.html.twig';
     }
 }

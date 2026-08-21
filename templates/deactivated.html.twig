@@ -1,0 +1,18 @@
+{#
+  view/juser/login/deactivated.phtml — a valid link for a deactivated account.
+
+  Deliberately not verify-failed.html.twig. That one says "links expire and can only be used
+  once" and offers a new one, which for a deactivated account is an invitation to try
+  forever. This says what is true and names the only thing that fixes it — and there is no
+  "send me a new link" button for the same reason.
+
+  Saying so leaks nothing: reaching this page requires holding a live, unspent token for
+  that very account, so the reader already controls the address.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate('This account has been deactivated') }}</h1>
+
+<p>{{ translate('Your sign-in link was valid, but access to this account has been turned off, so we could not sign you in. If you think that is a mistake, please contact whoever administers the site.') }}</p>
+{% endblock %}

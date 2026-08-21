@@ -86,6 +86,27 @@ nothing and quietly sent every visitor to the home page after signing in. And
 the one caller is deciding where to send someone who is anonymous as the question is
 asked and signed in a few lines later.
 
+### Wiring it up
+
+A host provides the six implementations, registers the Twig extension and the template
+path, and includes the route fragment:
+
+```php
+$twig->addExtension(new JUserExtension($urls, 'my-layout.html.twig'));
+$loader->addPath(JUserExtension::templatePath(), JUserExtension::TEMPLATE_NAMESPACE);
+
+(require '.../module/JUser/config/symfony-routes.php')(
+    function (string $name, string $path, $controller, RouteAudience $audience,
+              array $defaults = [], array $requirements = []): void {
+        // register with your router, and map $audience onto your authorization layer
+    }
+);
+```
+
+The fragment is a **closure that calls back**, not a `RouteCollection`, because a host
+needs to attach its own defaults and its own authorization to each route — see
+`config/symfony-routes.php` and `JUser\Routing\RouteAudience`.
+
 ### The template contract
 
 The templates in this package are Twig and expect the environment to provide:
@@ -148,13 +169,42 @@ honestly for that reason: the five listed above are exactly what 3.0.0 has to re
 
 ### Where the 3.0.0 work stands
 
-2026-08-21: **the contract above exists, and nothing is wired to it yet.** The six
-interfaces and `JUser\Twig\JUserExtension` are declared; no class in this module
-implements or consumes one, no template calls `juser_path()`, and no dependency has been
-removed from `composer.json`. That is deliberate — the interfaces are what the ported
-controllers get rewritten against when they arrive here, and landing them first means
-that rewrite is reviewable as a rewrite rather than as a move plus a rewrite. The
-right-hand column of the table is a plan, not yet a fact.
+2026-08-21: **the sign-in surface has arrived, and nothing dispatches it yet.**
+`JUser\Controller\{SignInController, VerifyController, LogoutController}` over
+`JUser\Page\{SignIn, RedirectTarget, CookieExplainer}`, five Twig templates under
+`templates/`, and the route fragment. Ported from the consuming application, which served
+them from its own `src/` from 2026-08-21, and rewritten against the interfaces — so the
+laminas `LoginController` and the application's copies both still exist and both still
+answer. Nothing here is reachable until a host wires it.
+
+Two things changed shape in the port and are worth reading before the code:
+
+* **`RedirectTarget` lost two thirds of its size** (318 lines to 113). The laminas router,
+  the ACL, the locale-prefix stripping and the role resolution moved behind
+  `RouteResolverInterface` and `AccessInterface`. What stayed is the part that must hold in
+  *any* host: two string rules about what a redirect may look like. They are the entire
+  defence against an off-site destination — resolving a route is none, since a router
+  matches a URL's path and discards its host — so they live here rather than in an adapter,
+  and `test/Integration/JUserRedirectTargetTest` in the consuming application drives them
+  against a resolver that says yes to everything.
+* **The emailed link is assembled from the host's URL builder**, not from a router inside
+  `Mailer`. `Mailer::sendLoginLink()` is the new entry point and takes a finished absolute
+  URL; `sendLoginLinkEmail()` still assembles one for the laminas path and delegates. That
+  old arrangement is what sent links out with no locale prefix — the unprefixed twin of the
+  real route, which 302s, spending a single-use token on anything that would not follow the
+  hop.
+
+**Known blocker for actual reuse:** `Mailer` hardcodes this site's identity — the `From`
+address, the display name, and "Schoenstatt Link" inside the translated body and subject. A
+drop-in package cannot, and fixing it means new config keys plus new phrases, so it is
+listed here rather than folded into a port.
+
+2026-08-21: **the contract above was declared, empty.** The six interfaces and
+`JUser\Twig\JUserExtension`, with nothing implementing or consuming them — landed first so
+that the port above reviews as a rewrite rather than as a move plus a rewrite. It is
+consumed now, by the sign-in surface; the right-hand column of the table is still a plan
+rather than a fact, because no dependency comes out of `composer.json` until the laminas
+controller goes.
 
 2026-08-21: **the user-administration surface is gone from this module.**
 `JUser\Controller\UsersController`, its factory and its six view scripts were deleted, and

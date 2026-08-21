@@ -78,6 +78,40 @@ class Mailer implements TranslatorAwareInterface
             'query' => $query,
         ]);
 
+        return $this->sendLoginLink($user, $link, $expirationMinutes, $start);
+    }
+
+    /**
+     * Email a sign-in link that has **already been assembled**.
+     *
+     * The half of sendLoginLinkEmail() that is not routing, split out so that a caller
+     * holding a URL builder can hand over a finished link instead of handing over a
+     * router. JUser\Page\SignIn is that caller, and 3.0.0 makes it the only one:
+     * assembling the link is how this class came to need laminas-router, and it is the
+     * reason the emailed link once went out without a locale prefix, one 302 away from the
+     * page that redeems it. See JUser\Page\SignIn::sendLoginLink().
+     *
+     * @param User $user
+     * @param string $link the absolute URL to put in the email. Absolute, not relative:
+     *        a relative path in an email is not a link at all.
+     * @param int $expirationMinutes how long the link stays valid, for the copy
+     * @param float|null $start when the caller began, for the elapsed-time log line; null
+     *        means "now", i.e. measure only what happens here
+     * @return \Symfony\Component\Mailer\SentMessage|null
+     */
+    public function sendLoginLink(
+        User $user,
+        string $link,
+        int $expirationMinutes = 15,
+        ?float $start = null
+    ) {
+        if (null === $start) {
+            if (isset($this->logger)) {
+                $this->logger->info("JUser: Sending a sign-in link.", ['email' => $user->getEmail()]);
+            }
+            $start = microtime(true);
+        }
+
         $body = <<<EOT
 Hello %s,
 

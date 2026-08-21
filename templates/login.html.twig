@@ -1,0 +1,35 @@
+{#
+  view/juser/login/login.phtml — ask for a sign-in link.
+
+  This page was two pages until 2026-08-20: /user/login and /user/register, differing only
+  in wording, because under the old password model registering and signing in were genuinely
+  different acts. Under magic links they are the same request — an unknown address simply
+  becomes an account — so the second route was retired and the copy has to serve both
+  readers at once. That is why it says "If you don't have an account yet, this creates one"
+  rather than having a second page say so.
+
+  `form_hidden` on `redirect`, not `form_row`: the .phtml calls `formHidden()`, which emits
+  the input with no label, no wrapper and no error block. A `form_row` here would render an
+  empty Bootstrap form-group around a hidden input — visible as vertical space on a page
+  whose whole content is one field.
+
+  **No `action` attribute**, hence `form_open(form, '')`: the .phtml never calls
+  `setAttribute('action', …)`, so laminas emits none and the browser posts to the current
+  URL — which is what carries `?redirect=` through a submission that fails validation.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate('Sign in') }}</h1>
+
+<p>{{ translate("Enter your email address and we'll send you a link to sign in. There's no password to choose or remember. If you don't have an account yet, this creates one.") }}</p>
+
+{{ form_open(form, '') }}
+{{ form_row(form.get('email')) }}
+{{ form_hidden(form.get('redirect')) }}
+{{ form_row(form.get('security')) }}
+{{ form_submit(form.get('submit')) }}
+{{ form_close() }}
+
+<p class="help-block">{{ translate('The link works once and expires shortly after we send it.') }}</p>
+{% endblock %}

@@ -1,0 +1,19 @@
+{#
+  view/juser/login/verify-failed.phtml — an unknown, spent or expired link.
+
+  One page for all three, answered with a 400, and the sameness is deliberate: a token that
+  was never issued, one that has already been redeemed and one that has expired are refused
+  identically, so nothing here tells a caller which of the three a guessed token was.
+
+  Distinct from deactivated.html.twig, which is the one refusal that *does* say what
+  happened — see the note there.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate("This sign-in link didn't work") }}</h1>
+
+<p>{{ translate('Sign-in links expire and can only be used once. Ask for a new one and it will be waiting in your inbox.') }}</p>
+
+<p><a class="btn btn-primary" href="{{ juser_path('zfcuser/login') }}">{{ translate('Send me a new link') }}</a></p>
+{% endblock %}

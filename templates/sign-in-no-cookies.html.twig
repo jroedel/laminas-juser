@@ -1,0 +1,39 @@
+{#
+  Why signing in needs cookies.
+
+  **Rendered by no route.** It is what `/user/login` and `/user/verify` answer with when the
+  visitor has not consented, through JUser\Page\CookieExplainer — at the requested URL, with
+  a 200, rather than by redirecting. A redirect would rewrite the address bar of someone who
+  had just clicked an emailed link, and the point is that the link is still good once they
+  consent: the token is spent only on a successful redemption.
+
+  There is deliberately no route for this page and there should not be one. On
+  schoenstatt.link, where it came from, `/sign-in-no-cookies` existed for years with **no
+  guard entry** — so default deny made the URL unreachable from the day it was written, and
+  the only thing that ever showed the page was a laminas route-match swap running at
+  priority -5000, i.e. after the guard had already approved a *different* route. The page
+  rendered without ever being authorized. It was deleted from both front controllers on
+  2026-08-21 and cost nothing, because the swap built its match by hand and named no route.
+
+  Two faithful oddities, carried over rather than fixed, because the evidence that this port
+  changed nothing is a byte-for-byte diff of the rendered page:
+
+  - **the `<h1>` is "Sign In" and the sign-in page's is "Sign in".** Two separate phrases in
+    the translation table, and the consuming application's smoke tests use that difference
+    to tell which of the two pages they are looking at.
+  - **the paragraph is not translated.** The .phtml printed it as a raw English literal with
+    no `translate()` around it, so a visitor who has refused cookies reads English whatever
+    their locale. Left alone deliberately: fixing it puts a new phrase in the table, which
+    is a change to make on its own rather than inside a port.
+
+  The .phtml set no `headTitle()`, so the page title is passed **empty**. Absent would be a
+  fatal on a layout that reads `page_title` unguarded under `strict_variables` — and such a
+  fatal arrives as a 200 with an empty body rather than as a 500.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate('Sign In') }}</h1>
+
+<p class="text-danger">Warning, without consenting to using cookies on this website, there is no way to sign in. Please accept consent, and <strong>reload the page</strong>.</p>
+{% endblock %}
