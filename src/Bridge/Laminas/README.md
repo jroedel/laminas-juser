@@ -5,7 +5,11 @@ JUser\Bridge\Laminas
 schoenstatt.link — the application this module was extracted from — is a laminas-mvc
 application that has not finished moving to Symfony. A host built on anything else needs none
 of it, and JUser 3.0.0's `require` treats it accordingly: the packages these fifteen classes
-need are `require-dev` plus `suggest`, not hard dependencies.
+need are `require-dev` plus `suggest`, not hard dependencies — `laminas-authentication`,
+`laminas-eventmanager`, `laminas-http`, `laminas-mvc`, `laminas-permissions-acl`,
+`laminas-session`, `laminas-view` and `bjy-authorize`, eight of the twelve packages that left
+`require` for 3.0.0. Each `suggest` line names the class here that wants it, so a host
+reading the manifest can tell what it would lose by leaving one out.
 
 It is a **namespace, not a package**, and deliberately so. A fourth repository would need its
 own release cycle, its own CI and its own version constraint against this one, to hold code

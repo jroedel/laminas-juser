@@ -2,20 +2,18 @@
 
 namespace JUser\Service;
 
-use Laminas\ServiceManager\Factory\FactoryInterface;
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 
 /**
  * Factory responsible of retrieving an array containing the JUser configuration
  *
  * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
-class ConfigServiceFactory implements FactoryInterface
+class ConfigServiceFactory
 {
     /**
-     * Create an object
-     *
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

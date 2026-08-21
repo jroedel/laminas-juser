@@ -2,16 +2,16 @@
 
 namespace JUser\Bridge\Laminas;
 
-use Interop\Container\ContainerInterface;
-use Laminas\ServiceManager\Factory\FactoryInterface;
+use Psr\Container\ContainerInterface;
 
 /**
  * Builds any of the JUser view helpers that take only the AuthenticationService.
  */
-class ZfcUserViewHelperFactory implements FactoryInterface
+class ZfcUserViewHelperFactory
 {
     /**
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

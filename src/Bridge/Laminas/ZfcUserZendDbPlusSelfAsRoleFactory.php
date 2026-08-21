@@ -2,18 +2,18 @@
 
 namespace JUser\Bridge\Laminas;
 
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Db\TableGateway\TableGateway;
-use Laminas\ServiceManager\Factory\FactoryInterface;
 
 /**
  * Factory responsible of instantiating {@see ZfcUserZendDbPlusSelfAsRole}
  */
-class ZfcUserZendDbPlusSelfAsRoleFactory implements FactoryInterface
+class ZfcUserZendDbPlusSelfAsRoleFactory
 {
     /**
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

@@ -2,7 +2,7 @@
 
 namespace JUser\Bridge\Laminas;
 
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use Laminas\Authentication\AuthenticationServiceInterface;
 use SionModel\Service\ActingUserProviderInterface;
 use Throwable;

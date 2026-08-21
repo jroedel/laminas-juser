@@ -194,6 +194,38 @@ deliberately, so it never claims to be freer of laminas than it is.
 
 ### Where the 3.0.0 work stands
 
+2026-08-22: **the `require` trim — what every step before this was for.** Twelve packages
+leave `require`: eight move to `require-dev` plus `suggest`, and four go entirely.
+
+| | packages |
+|---|---|
+| **`require-dev` + `suggest`** — needed only by `JUser\Bridge\Laminas` | `laminas-authentication`, `laminas-eventmanager`, `laminas-http`, `laminas-mvc`, `laminas-permissions-acl`, `laminas-session`, `laminas-view`, `bjy-authorize` |
+| **gone entirely** | `laminas-servicemanager`, `laminas-mvc-plugin-flashmessenger`, and (2026-08-21) `laminas-math`, `laminas-router` |
+| **still required** — all of it data and forms | `laminas-cache`, `laminas-db`, `laminas-filter`, `laminas-form`, `laminas-i18n`, `laminas-inputfilter`, `laminas-validator` |
+
+Two of those are worth explaining, because neither is a package anybody removed on purpose.
+
+**`laminas-servicemanager` was being held by one interface.** All fifteen factories
+implemented `FactoryInterface` and nothing else from the package; the ServiceManager calls
+a factory through `__invoke()` and never asks whether it implements anything, so the
+interface was documentation. Dropping it took the package out with it.
+
+**`Interop\Container\ContainerInterface` does not exist.** There is no such file in any
+installed package — the name resolves only because
+`laminas/laminas-servicemanager/src/autoload.php` runs
+`class_alias(Psr\Container\ContainerInterface::class, ...)`. So every factory here was
+typed on a compatibility shim owned by the very package this release stops requiring, and
+the sixteen `use` statements are now PSR-11 directly. That makes `psr/container` a declared
+dependency for the first time, which it always was in fact.
+
+**What this does not claim.** `laminas-servicemanager` still arrives transitively —
+`laminas-cache`, `laminas-form` and `laminas-inputfilter` each require it — so this is a
+statement about what JUser *asks for*, not about what ends up in `vendor/`. What it buys is
+real all the same: a host that implements the six `Host\` interfaces installs no
+`laminas-mvc`, no `laminas-view`, no `laminas-session`, no authentication or ACL stack, and
+nothing in `JUser\Page\*`, `JUser\Controller\*` or `JUser\Host\*` reaches for them.
+Untangling the form and cache layers is 3.1's problem, not 3.0.0's.
+
 2026-08-21: **two packages come out, and one of them was only ever holding dead code.**
 `laminas-math` and `laminas-router` are gone from `composer.json` — the first two entries to
 leave since the port began.

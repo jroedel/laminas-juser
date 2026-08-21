@@ -9,7 +9,6 @@ namespace JUser\Model;
  */
 interface PersonValueOptionsProviderInterface
 {
-
     /**
      * Gets a simple key => value array of personId => name
      * @param bool $includeInactive
