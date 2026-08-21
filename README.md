@@ -52,15 +52,76 @@ application's convenience and this module reads none of it.
 
 **This module registers nothing with laminas-mvc as of 2026-08-21.** No controllers, no
 controller plugins, no view manager, and `Module` has no `onBootstrap()`: the session is the
-host's to start (see that class). The laminas packages still in `require` are there for code
-a laminas host uses — the session storage, the two view helpers, the BjyAuthorize identity
-and role providers — and for the table and form layers, which are data concerns rather than
-framework ones. Trimming that list is the last piece of 3.0.0.
+host's to start (see that class).
+
+**The `require` block is trimmed as of 2026-08-22**, which was the last piece of 3.0.0.
+Eleven of the eighteen `laminas/*` packages left it, together with BjyAuthorize. What
+remains is below, and the point of the table is that **every laminas entry left in `require`
+is a data or forms concern** — none of them is a framework one, and none of them is reachable
+from `JUser\Host\*`, `JUser\Page\*` or `JUser\Controller\*`.
+
+| package | what needs it |
+|---|---|
+| `laminas-db` | `UserTable`, `ApiTokenTable` and the role tables are `TableGateway`/`Sql` — 13 files, the largest single tie |
+| `laminas-form` | the six forms — 9 files |
+| `laminas-inputfilter` | their `getInputFilterSpecification()` — 6 files |
+| `laminas-validator` | `Db\NoRecordExists`, `Regex`, `StringLength` in those specs |
+| `laminas-filter` | **no `use` statement anywhere.** Named as strings — `['name' => 'StringTrim']` — in four form files and resolved through `FilterPluginManager`. Removing it breaks input trimming and *nothing fails*; it is here so the next dependency survey does not have to rediscover that. |
+| `laminas-i18n` | `TranslatorInterface`; the Mailer translates its subject and body |
+| `laminas-cache` | `CacheFactory`, which builds `JUser\Cache` |
+
+Non-laminas: `symfony/http-foundation` (11 files) and `twig/twig` (9) for the controllers
+and templates, `symfony/mailer` for the magic link, `firebase/php-jwt` for API tokens,
+`psr/container` (18 files) for the factories and `UserAdmin`'s form locator, and `psr/log`,
+which every call site guards with `isset()`.
+
+The eight packages in `require-dev` — `laminas-authentication`, `laminas-eventmanager`,
+`laminas-http`, `laminas-mvc`, `laminas-permissions-acl`, `laminas-session`, `laminas-view`
+and `bjy-authorize` — are reachable only from `JUser\Bridge\Laminas`, and each `suggest`
+line names the class that wants it.
+
+**Two caveats, so the list is not read as stronger than it is.**
+`laminas-servicemanager` still arrives transitively: `laminas-cache`, `laminas-form` and
+`laminas-inputfilter` each require it. And the two `jroedel/*` pins are **`dev-*`
+constraints in a tagged release** — see "The two dev pins" below, which is deliberate and
+is the thing most likely to surprise a consuming application.
 
 What this module does **not** use, despite older versions of this file saying so:
 ZfcUser, ZfcBase and GoalioRememberMe. The `ZfcUser*` class names that survive — the
 identity provider, the two view helpers, the `zfcuser/*` route names — are names, kept
 because renaming a route breaks every `url()` call and every guard entry that names it.
+
+### The two dev pins
+
+`composer.json` requires `jroedel/laminas-jtranslate: dev-modernization` and
+`jroedel/zf2-sion-model: dev-master`. **Two unstable branch constraints in a tagged
+release is deliberate, not an oversight**, and it is stated here because it is the first
+thing a consuming application hits: `composer require jroedel/laminas-juser` will not
+resolve on its own. Two root-level settings are needed, and the second is the classic trap:
+
+* `"minimum-stability": "dev"` with `"prefer-stable": true`, because a `stable` root
+  refuses a `dev-*` constraint arriving from a dependency;
+* **the three VCS repositories copied into the consuming application's own
+  `repositories` block.** Composer reads `repositories` from the **root package only** and
+  does *not* inherit them from dependencies, so the entries in this file do nothing for
+  anybody installing this package. The three are `jroedel/laminas-jtranslate`,
+  `jroedel/laminas-sion-model` and `kokspflanze/BjyAuthorize` (that last one only if you
+  install the `require-dev` set for a laminas host).
+
+The reason is that all three packages are being modernized together and none of the other
+two has a tag on its integration branch. Pinning JUser to a tag of theirs that does not
+exist would be worse than saying so. **This holds for the 3.0.x line**; the constraints
+become tags when those two repositories cut their own, and that is a 3.1 concern.
+
+What each is actually used for, so a host can judge the exposure:
+
+* **SionModel** — 7 files, and **not** confined to the bridge. `UserTable extends
+  SionModel\Db\Model\SionTable` is the deep one; also `Service\ActingUserProviderInterface`
+  at three sites, `Form\ChoiceDomain` in two forms, `Cache\LegacyCacheConfig`, and the
+  `SionModel\MailTransport` service id that `MailerFactory` asks the container for.
+* **JTranslate** — 4 files, all for `I18n\TranslatableMessage`. Note *where*: it appears in
+  the **signature** of `JUser\Host\FlashInterface`. So unlike SionModel this one is part of
+  the host contract itself, and a host cannot avoid it without changing that interface.
 
 The host contract
 -----------------
@@ -136,6 +197,51 @@ The templates in this package are Twig and expect the environment to provide:
   in that package precisely because it is not JUser-specific: any host rendering laminas
   forms in Twig needs it.
 
+Using this in a Symfony-only application
+----------------------------------------
+
+This is what 3.x exists for, and it is worth stating what it costs, because "drop-in" is
+easy to over-read.
+
+**What you write:** six small adapters implementing `JUser\Host\*`, plus the Twig
+extension registration and the route fragment from "Wiring it up". The contract's docblocks
+are the specification — read them rather than inferring from the interface names, because
+three of the six have a failure mode that produces **no symptom at all**:
+
+* **one `FlashMessenger` instance per request**, or messages are silently dropped;
+* the **locale prefix stripped** before a path is resolved, or every `?redirect=` on the
+  site is refused while nothing errors;
+* the **router primed with a request URI**, or `force_canonical` throws — which affects
+  exactly one thing, the emailed sign-in link, i.e. the one output whose breakage is
+  invisible on every page.
+
+`schoenstatt.link`'s `src/JUser/Host/` is a worked example of all six, and
+`test/Integration/JUserHostContractTest` there pins the properties that fail silently.
+
+**What you do not install:** `laminas-mvc`, `laminas-view`, `laminas-session`,
+`laminas-authentication`, `laminas-permissions-acl`, `laminas-eventmanager`, `laminas-http`
+or BjyAuthorize. Nothing in `JUser\Page\*`, `JUser\Controller\*` or `JUser\Host\*`
+reaches for any of them.
+
+**What you still install:** the seven laminas data/forms packages in the table above, and
+the two `jroedel/*` dev pins. The forms are laminas forms, rendered through
+`SionModel\Form\BootstrapFormRenderer`; replacing them with Symfony Forms is 3.1's
+question, not 3.0.0's.
+
+**If your host is still laminas-mvc**, install the `require-dev` packages and wire
+`JUser\Bridge\Laminas` — that namespace is exactly the set of adapters a laminas host
+would otherwise have to write, and `src/Bridge/Laminas/README.md` is its table.
+
+### Known blocker for reuse: the Mailer is not host-neutral
+
+`JUser\Service\Mailer` hardcodes this site's identity — the `From` address, the display
+name, and the string "Schoenstatt Link" inside the translated subject and body. A drop-in
+package cannot do that, and fixing it means new configuration keys plus new translation
+phrases in every locale, which is a change with its own review rather than something to
+fold into a port. It is listed here rather than quietly carried, because the first thing a
+second application notices is that its sign-in emails introduce themselves as somebody
+else.
+
 Installation
 ------------
 
@@ -185,14 +291,19 @@ like the tags were lost.
 | version | what it is |
 |---|---|
 | **2.0.0** | The passwordless line: magic-link sign-in, `symfony/mailer`, API tokens, monolog, DB adapters injected into forms rather than fetched from a static registry, and the password-era columns and routes retired. Still a Laminas MVC module — it owns laminas routes, controllers and view scripts. |
-| **3.0.0** | Symfony-oriented, and a **drop-in**: this module owns its own controllers, templates, forms, route fragment and Twig extension, and reaches the application only through the six interfaces in `JUser\Host\`. Thirteen of the eighteen `laminas/*` packages leave `require`; the five that stay are data concerns, not framework ones. |
+| **3.0.0** | Symfony-oriented, and a **drop-in**: this module owns its own controllers, templates, forms, route fragment and Twig extension, and reaches the application only through the six interfaces in `JUser\Host\`. **Eleven** of the eighteen `laminas/*` packages leave `require`, along with BjyAuthorize; the **seven** that stay are data and forms concerns, not framework ones. |
 
 It no longer serves any route through laminas-mvc, and the laminas-shaped code that a
-laminas host still uses is separated into `JUser\Bridge\Laminas\`. What is left before the
-tag is the `require` trim: the block still names packages only that namespace needs,
-deliberately, so it never claims to be freer of laminas than it is.
+laminas host still uses is separated into `JUser\Bridge\Laminas\`, whose packages are
+`require-dev` plus `suggest` rather than hard dependencies. The trim landed 2026-08-22 and
+3.0.0 is feature-complete; see "Requirements" for what is left and why each entry is there.
 
 ### Where the 3.0.0 work stands
+
+**Complete as of 2026-08-22.** The entries below are a log, newest first, and each is
+accurate as of its own date — so an older one saying a thing is "still to do" is history,
+not a live item. The two things 3.0.0 knowingly does *not* fix are the Mailer's hardcoded
+identity and the two `dev-*` pins, both described above.
 
 2026-08-22: **the `require` trim — what every step before this was for.** Twelve packages
 leave `require`: eight move to `require-dev` plus `suggest`, and four go entirely.
