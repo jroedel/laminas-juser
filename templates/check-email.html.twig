@@ -1,0 +1,24 @@
+{#
+  view/juser/login/check-email.phtml — the answer to every sign-in request.
+
+  **Every** request, and that is the point of the page rather than a detail of it: an
+  unknown address that was just registered, a known one that got a link, a deactivated one
+  that got nothing, a throttled one that got nothing, and a mailer that threw all render
+  exactly this. Anything added here that reports which of the five happened turns the
+  sign-in form into an account oracle.
+
+  So there is no `email` in the copy either, even though the controller passes it — the
+  .phtml does not print it, and printing it would be the first step towards a page that
+  knows something.
+#}
+{% extends juser_layout %}
+
+{% block content %}
+<h1>{{ translate('Check your email') }}</h1>
+
+<p>{{ translate('If that address is valid, we sent you a sign-in link. It expires in %s minutes.')|format(expiration_minutes) }}</p>
+
+<p class="help-block">{{ translate('Nothing in your inbox after a minute or two? Check the spam folder.') }}</p>
+
+<p><a href="{{ juser_path('zfcuser/login') }}">{{ translate('Use a different address') }}</a></p>
+{% endblock %}
