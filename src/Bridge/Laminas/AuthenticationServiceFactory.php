@@ -1,9 +1,8 @@
 <?php
 
-namespace JUser\Service;
+namespace JUser\Bridge\Laminas;
 
 use Interop\Container\ContainerInterface;
-use JUser\Authentication\Storage\SessionUser;
 use JUser\Model\UserTable;
 use Laminas\Authentication\AuthenticationService;
 use Laminas\Authentication\Storage\Session as SessionStorage;

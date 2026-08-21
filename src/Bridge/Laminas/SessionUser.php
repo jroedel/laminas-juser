@@ -1,6 +1,6 @@
 <?php
 
-namespace JUser\Authentication\Storage;
+namespace JUser\Bridge\Laminas;
 
 use JUser\Model\User;
 use JUser\Model\UserTable;

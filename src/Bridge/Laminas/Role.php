@@ -7,7 +7,7 @@
  * @license http://framework.zend.com/license/new-bsd New BSD License
  */
 
-namespace JUser\Entity;
+namespace JUser\Bridge\Laminas;
 
 use BjyAuthorize\Acl\HierarchicalRoleInterface;
 

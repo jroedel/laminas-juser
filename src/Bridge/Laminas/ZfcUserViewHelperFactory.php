@@ -1,17 +1,20 @@
 <?php
 
-namespace JUser\Service;
+namespace JUser\Bridge\Laminas;
 
 use Interop\Container\ContainerInterface;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 
-class AuthServiceActingUserProviderFactory implements FactoryInterface
+/**
+ * Builds any of the JUser view helpers that take only the AuthenticationService.
+ */
+class ZfcUserViewHelperFactory implements FactoryInterface
 {
     /**
      * @inheritdoc
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
-        return new AuthServiceActingUserProvider($container);
+        return new $requestedName($container->get('JUser\AuthService'));
     }
 }

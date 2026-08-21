@@ -1,9 +1,8 @@
 <?php
 
-namespace JUser\Service;
+namespace JUser\Bridge\Laminas;
 
 use Interop\Container\ContainerInterface;
-use JUser\Provider\Identity\ZfcUserZendDbPlusSelfAsRole;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Db\TableGateway\TableGateway;
 use Laminas\ServiceManager\Factory\FactoryInterface;

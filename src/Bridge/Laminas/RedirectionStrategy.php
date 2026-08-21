@@ -4,7 +4,7 @@
  * @author Rob Allen <rob@akrabat.com>
  */
 
-namespace JUser\View;
+namespace JUser\Bridge\Laminas;
 
 use BjyAuthorize\Exception\UnAuthorizedException;
 use Laminas\EventManager\EventManagerInterface;

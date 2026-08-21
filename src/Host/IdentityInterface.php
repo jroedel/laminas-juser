@@ -29,8 +29,9 @@ use JUser\Model\User;
  * `getStorage()->write()` and `clearIdentity()`, between them the whole of this
  * module's use of `laminas-authentication`, which leaves `require`.
  *
- * `JUser\Authentication\Storage\SessionUser` does **not** leave: it is how a laminas
- * host implements this, and it carries the one property worth keeping — only the user
+ * `JUser\Bridge\Laminas\SessionUser` does **not** leave: it is how a laminas
+ * host implements this — which is what the `Bridge\Laminas\` namespace means — and it
+ * carries the one property worth keeping: only the user
  * id is in the session, so the row is re-read every request, which is why deactivating
  * an account takes effect on the next request of a session that is already open rather
  * than at an invisible timeout. It moves to `JUser\Bridge\Laminas\` with the rest of the

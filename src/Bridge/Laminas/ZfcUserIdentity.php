@@ -1,6 +1,6 @@
 <?php
 
-namespace JUser\View\Helper;
+namespace JUser\Bridge\Laminas;
 
 use Laminas\Authentication\AuthenticationService;
 use Laminas\View\Helper\AbstractHelper;

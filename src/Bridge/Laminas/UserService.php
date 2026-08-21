@@ -1,6 +1,6 @@
 <?php
 
-namespace JUser\Service;
+namespace JUser\Bridge\Laminas;
 
 use Laminas\Authentication\AuthenticationService;
 

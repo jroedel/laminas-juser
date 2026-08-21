@@ -1,6 +1,6 @@
 <?php
 
-namespace JUser\Provider\Role;
+namespace JUser\Bridge\Laminas;
 
 use Laminas\Db\Sql\Select;
 use BjyAuthorize\Provider\Role\ProviderInterface;

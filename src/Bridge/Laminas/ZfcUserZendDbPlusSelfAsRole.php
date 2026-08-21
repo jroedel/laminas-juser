@@ -1,6 +1,6 @@
 <?php
 
-namespace JUser\Provider\Identity;
+namespace JUser\Bridge\Laminas;
 
 use BjyAuthorize\Exception\InvalidRoleException;
 use BjyAuthorize\Provider\Identity\ProviderInterface;
@@ -63,7 +63,7 @@ class ZfcUserZendDbPlusSelfAsRole implements ProviderInterface
             $roles[] = $role['role_id'];
         }
 
-        //let the user be a role unto themselves, see JUser\Provider\Role\UserIdRoles
+        //let the user be a role unto themselves, see JUser\Bridge\Laminas\UserIdRoles
         $userId = $identity->getId();
         if (isset($userId)) {
             $roles[] = "user_$userId";
