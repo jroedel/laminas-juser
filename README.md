@@ -187,13 +187,27 @@ like the tags were lost.
 | **2.0.0** | The passwordless line: magic-link sign-in, `symfony/mailer`, API tokens, monolog, DB adapters injected into forms rather than fetched from a static registry, and the password-era columns and routes retired. Still a Laminas MVC module — it owns laminas routes, controllers and view scripts. |
 | **3.0.0** | Symfony-oriented, and a **drop-in**: this module owns its own controllers, templates, forms, route fragment and Twig extension, and reaches the application only through the six interfaces in `JUser\Host\`. Thirteen of the eighteen `laminas/*` packages leave `require`; the five that stay are data concerns, not framework ones. |
 
-It no longer serves any route through laminas-mvc, which was the blocker. What is left
-before the tag is mechanical: move the laminas-shaped code that a laminas host still uses
-into `JUser\Bridge\Laminas\`, and trim `require` to match — the block still names packages
-this module no longer needs, deliberately, so that it never claims to be freer of laminas
-than it is.
+It no longer serves any route through laminas-mvc, and the laminas-shaped code that a
+laminas host still uses is separated into `JUser\Bridge\Laminas\`. What is left before the
+tag is the `require` trim: the block still names packages only that namespace needs,
+deliberately, so it never claims to be freer of laminas than it is.
 
 ### Where the 3.0.0 work stands
+
+2026-08-21: **the laminas-shaped code is demoted, not deleted.** Fifteen classes moved into
+`JUser\Bridge\Laminas\` — the session storage, the auth-service factory, the historical
+`zfcuser_user_service`, SionModel's acting-user provider, the two `.phtml` view helpers, the
+BjyAuthorize identity and role providers, its role entity, and the unauthorized-strategy
+redirect. Every one of them exists because a laminas host runs it; a host built on anything
+else needs none. `src/Bridge/Laminas/README.md` is the table.
+
+**Class names did not change, only namespaces**, which is what makes it reviewable as a move:
+`git log --follow` still works and a name in a five-year-old incident note still finds the
+file. Nothing in `JUser\Page\*`, `JUser\Controller\*` or `JUser\Host\*` reaches into it —
+the dependency runs one way, a laminas host wiring these *as* implementations of the contract.
+
+What this unblocks is the `require` trim, which is the last thing before the tag: the packages
+these fifteen need become `require-dev` plus `suggest`.
 
 2026-08-21: **`LoginController` is gone, and with it the last thing here that needed
 laminas-mvc.** The controller, its factory, its four view scripts, the whole `view/` tree and

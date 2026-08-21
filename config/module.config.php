@@ -7,10 +7,10 @@ use Laminas\Router\Http\Literal;
 use Laminas\Router\Http\Segment;
 use Laminas\Session;
 use Laminas\Session\Storage\SessionArrayStorage;
-use JUser\Provider\Identity\ZfcUserZendDbPlusSelfAsRole;
-use JUser\Service\ZfcUserZendDbPlusSelfAsRoleFactory;
-use JUser\Provider\Role\UserIdRoles;
-use JUser\Service\UserIdRolesFactory;
+use JUser\Bridge\Laminas\UserIdRoles;
+use JUser\Bridge\Laminas\UserIdRolesFactory;
+use JUser\Bridge\Laminas\ZfcUserZendDbPlusSelfAsRole;
+use JUser\Bridge\Laminas\ZfcUserZendDbPlusSelfAsRoleFactory;
 use SionModel\Service\ActingUserProviderInterface;
 
 return [
@@ -41,7 +41,7 @@ return [
         'api_token_roles' => [],
     ],
     'bjyauthorize' => [
-        'unauthorized_strategy' => View\RedirectionStrategy::class,
+        'unauthorized_strategy' => Bridge\Laminas\RedirectionStrategy::class,
 
 //         'cache_options'         => [
 //                 'adapter'   => [
@@ -307,13 +307,13 @@ return [
         'invokables' => [
         ],
         'factories' => [
-            View\Helper\ZfcUserDisplayName::class => Service\ZfcUserViewHelperFactory::class,
-            View\Helper\ZfcUserIdentity::class    => Service\ZfcUserViewHelperFactory::class,
+            Bridge\Laminas\ZfcUserDisplayName::class => Bridge\Laminas\ZfcUserViewHelperFactory::class,
+            Bridge\Laminas\ZfcUserIdentity::class    => Bridge\Laminas\ZfcUserViewHelperFactory::class,
         ],
         'aliases' => [
             //historical names, kept so existing templates keep working
-            'zfcUserDisplayName' => View\Helper\ZfcUserDisplayName::class,
-            'zfcUserIdentity'    => View\Helper\ZfcUserIdentity::class,
+            'zfcUserDisplayName' => Bridge\Laminas\ZfcUserDisplayName::class,
+            'zfcUserIdentity'    => Bridge\Laminas\ZfcUserIdentity::class,
         ],
     ],
     'service_manager' => [
@@ -330,22 +330,22 @@ return [
             Service\Mailer::class           => Service\MailerFactory::class,
             ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
             UserIdRoles::class              => UserIdRolesFactory::class,
-            'JUser\AuthService'             => Service\AuthenticationServiceFactory::class,
-            Service\UserService::class      => Service\UserServiceFactory::class,
+            'JUser\AuthService'             => Bridge\Laminas\AuthenticationServiceFactory::class,
+            Bridge\Laminas\UserService::class => Bridge\Laminas\UserServiceFactory::class,
             Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,
             Model\ApiTokenTable::class      => Service\ApiTokenTableFactory::class,
             Service\ApiTokenService::class  => Service\ApiTokenServiceFactory::class,
-            ActingUserProviderInterface::class => Service\AuthServiceActingUserProviderFactory::class,
+            ActingUserProviderInterface::class => Bridge\Laminas\AuthServiceActingUserProviderFactory::class,
         ],
         'invokables'  => [
-            View\RedirectionStrategy::class => View\RedirectionStrategy::class,
+            Bridge\Laminas\RedirectionStrategy::class => Bridge\Laminas\RedirectionStrategy::class,
         ],
         'aliases' => [
             \Laminas\Session\SessionManager::class => Session\ManagerInterface::class,
             //historical service names, kept so existing consumers keep working
             'zfcuser_user_mapper'           => Model\UserTable::class,
             'zfcuser_auth_service'          => 'JUser\AuthService',
-            'zfcuser_user_service'          => Service\UserService::class,
+            'zfcuser_user_service'          => Bridge\Laminas\UserService::class,
             'zfcuser_zend_db_adapter'       => Adapter::class,
             \Laminas\Authentication\AuthenticationService::class => 'JUser\AuthService',
         ],

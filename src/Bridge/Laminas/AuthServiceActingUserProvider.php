@@ -1,6 +1,6 @@
 <?php
 
-namespace JUser\Service;
+namespace JUser\Bridge\Laminas;
 
 use Interop\Container\ContainerInterface;
 use Laminas\Authentication\AuthenticationServiceInterface;
