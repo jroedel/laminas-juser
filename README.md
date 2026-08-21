@@ -17,8 +17,8 @@ application:
 
 | where | what it refuses |
 |---|---|
-| `LoginController::issueAndSend()` | mails no link, and does not say so |
-| `LoginController::verifyAction()` | a link that was already in flight, with a 403 |
+| `Page\SignIn::issueAndSend()` | mails no link, and does not say so |
+| `Controller\VerifyController` | a link that was already in flight, with a 403 |
 | `Authentication\Storage\SessionUser::read()` | a session that is **already open**, on its next request |
 | the application's API identity | a bearer token for the account |
 
@@ -194,6 +194,34 @@ deliberately, so it never claims to be freer of laminas than it is.
 
 ### Where the 3.0.0 work stands
 
+2026-08-21: **two packages come out, and one of them was only ever holding dead code.**
+`laminas-math` and `laminas-router` are gone from `composer.json` — the first two entries to
+leave since the port began.
+
+* **`laminas-router`** was held by `Mailer`, which assembled the sign-in link itself.
+  `sendLoginLinkEmail()`, `getRouter()`, `setRouter()` and the router the factory primed are
+  all deleted; `sendLoginLink()`, which takes a finished URL, is the only entry point.
+  `MailerFactory` no longer reaches for the `Request` service either — a service that does
+  not exist under a Symfony dispatch, so the priming it did was a latent 500 rather than a
+  detail.
+* **`laminas-math`** had two call sites and one of them was reachable.
+  `ApiTokenService::generateJti()` draws 43 base62 characters from `random_int()` now, which
+  is the same distribution `Laminas\Math\Rand::getString()` produced and by the same
+  mechanism — `Rand` has called `random_int()` internally since PHP 7. The other,
+  `User::generateVerificationToken()`, went with `getVerificationToken()` and
+  `setNewVerificationToken()`: **a second, weaker token generator that nothing had called for
+  years.** The getter was the hazard — on an entity holding no token it minted one *lazily,
+  on read*, so a plain read had a side effect and returned a value that had never been
+  stored. The live magic-link token is `LoginTokenService::issueWebToken()`, 32 bytes of
+  `random_bytes()`, and it never went near either.
+
+A token generator is the one thing where "it still works" proves nothing: one that has
+quietly lost half its alphabet produces output indistinguishable from correct output. So the
+consuming application's `JUserApiTokenEntropyTest` pins the length, the alphabet, the
+reachability of every character in it and the absence of repeats — written against the
+`Rand` version and passing there **before** the swap, which is the only ordering that makes
+the swap evidence of anything.
+
 2026-08-21: **the laminas-shaped code is demoted, not deleted.** Fifteen classes moved into
 `JUser\Bridge\Laminas\` — the session storage, the auth-service factory, the historical
 `zfcuser_user_service`, SionModel's acting-user provider, the two `.phtml` view helpers, the
@@ -282,11 +310,13 @@ Two things changed shape in the port and are worth reading before the code:
   and `test/Integration/JUserRedirectTargetTest` in the consuming application drives them
   against a resolver that says yes to everything.
 * **The emailed link is assembled from the host's URL builder**, not from a router inside
-  `Mailer`. `Mailer::sendLoginLink()` is the new entry point and takes a finished absolute
-  URL; `sendLoginLinkEmail()` still assembles one for the laminas path and delegates. That
-  old arrangement is what sent links out with no locale prefix — the unprefixed twin of the
-  real route, which 302s, spending a single-use token on anything that would not follow the
-  hop.
+  `Mailer`. `Mailer::sendLoginLink()` takes a finished absolute URL and is now the only
+  entry point: `sendLoginLinkEmail()`, which assembled one from a router the factory handed
+  it, was deleted along with the router itself. That old arrangement is what sent links out
+  with no locale prefix — the unprefixed twin of the real route, which 302s, spending a
+  single-use token on anything that would not follow the hop. Deleting rather than
+  deprecating is deliberate: a caller reaching for it now fails at the call site, where the
+  old one failed in a mailbox.
 
 **Known blocker for actual reuse:** `Mailer` hardcodes this site's identity — the `From`
 address, the display name, and "Schoenstatt Link" inside the translated body and subject. A

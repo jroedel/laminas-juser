@@ -6,7 +6,6 @@ use Firebase\JWT\JWT;
 use JUser\Model\ApiTokenTable;
 use JUser\Model\User;
 use JUser\Model\UserTable;
-use Laminas\Math\Rand;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -48,6 +47,17 @@ class ApiTokenService
      * column is UNIQUE, and a collision would be an insert failure at sign-in.
      */
     public const JTI_LENGTH = 43;
+
+    /**
+     * The `jti` alphabet: base62, in the order it has always been generated in.
+     *
+     * Written out rather than assembled from `range()` so that the set is
+     * readable at the call site and cannot drift by an off-by-one — which is
+     * the only way this could break without anything failing: a jti drawn from
+     * 61 characters is still a perfectly valid jti, just weaker, and nothing
+     * would ever say so.
+     */
+    public const JTI_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
     /** Default token lifetime, ISO 8601 duration. Six months, as it has always been. */
     public const DEFAULT_LIFETIME = 'P6M';
@@ -119,7 +129,7 @@ class ApiTokenService
         $this->assertUsableCypherKey();
 
         $expiration = $this->now()->add(new \DateInterval($this->lifetime));
-        $jti = Rand::getString(self::JTI_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+        $jti = self::generateJti();
 
         //Recorded *before* the JWT exists. If the insert fails — a jti collision,
         //a table that has not been migrated — the caller gets an exception and no
@@ -282,5 +292,35 @@ class ApiTokenService
     {
         $this->logger = $logger;
         return $this;
+    }
+
+    /**
+     * A fresh `jti`: JTI_LENGTH characters drawn from JTI_ALPHABET.
+     *
+     * Public and static because it is the one piece of this class that can be
+     * checked without a database — and it is worth checking, since a weakened
+     * token generator produces output that looks exactly like a strong one.
+     * `SchoenstattTest\Integration\JUserApiTokenEntropyTest` is what holds it.
+     *
+     * @return string
+     */
+    public static function generateJti()
+    {
+        //`random_int()` rather than `random_bytes()` and a modulo, which is the
+        //shorter thing to write and is biased: 256 is not a multiple of 62, so the
+        //first eight characters of the alphabet would come up about 1.21x as often
+        //as the rest. `random_int()` rejects and redraws to avoid exactly that, and
+        //throws rather than falling back to a weak source if the CSPRNG is
+        //unavailable — an exception at issue time being much the better outcome.
+        //The bound comes off the alphabet rather than being written as 61, so that
+        //changing the alphabet cannot leave its last character unreachable — a
+        //weakening nothing would report.
+        $last = strlen(self::JTI_ALPHABET) - 1;
+        $jti  = '';
+        for ($i = 0; $i < self::JTI_LENGTH; $i++) {
+            $jti .= self::JTI_ALPHABET[random_int(0, $last)];
+        }
+
+        return $jti;
     }
 }

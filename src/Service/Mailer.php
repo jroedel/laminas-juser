@@ -5,7 +5,6 @@ namespace JUser\Service;
 use Laminas\I18n\Translator\TranslatorInterface;
 use Laminas\I18n\Translator\TranslatorAwareInterface;
 use JUser\Model\UserTable;
-use Laminas\Router\RouteStackInterface;
 use Psr\Log\LoggerInterface;
 use JUser\Model\User;
 use Symfony\Component\Mailer\Transport\TransportInterface;
@@ -33,63 +32,21 @@ class Mailer implements TranslatorAwareInterface
     protected $userTable;
 
     /**
-     * @var RouteStackInterface $router
-     */
-    protected $router;
-
-    /**
      * @var LoggerInterface|null $logger
      */
     protected $logger;
 
     /**
-     * Email the user a magic link that signs them in.
+     * Email a sign-in link that the **caller has already assembled**.
      *
-     * @param User $user
-     * @param string $plaintextToken the token as it must appear in the link; only its hash is stored
-     * @param int $expirationMinutes how long the link stays valid, for the copy
-     * @param string|null $redirect a path on this site to land on after redeeming, carried
-     *        in the link rather than only in the session because the link is very often
-     *        opened on a different device than the one that asked for it. It is
-     *        re-validated on arrival (JUser\Controller\LoginController::validRedirect),
-     *        so what travels here is a hint, not a grant: the worst a tampered value can
-     *        do is send its own owner to another page of this site, which the ACL then
-     *        checks anyway.
-     * @return \Symfony\Component\Mailer\SentMessage|null
-     */
-    public function sendLoginLinkEmail(
-        User $user,
-        string $plaintextToken,
-        int $expirationMinutes = 15,
-        ?string $redirect = null
-    ) {
-        if (isset($this->logger)) {
-            $this->logger->info("JUser: Sending a sign-in link.", ['email' => $user->getEmail()]);
-        }
-        $start = microtime(true);
-
-        $query = ['token' => $plaintextToken];
-        if (null !== $redirect && '' !== $redirect) {
-            $query['redirect'] = $redirect;
-        }
-        $link = $this->router->assemble([], [
-            'name' => 'zfcuser/verify',
-            'force_canonical' => true,
-            'query' => $query,
-        ]);
-
-        return $this->sendLoginLink($user, $link, $expirationMinutes, $start);
-    }
-
-    /**
-     * Email a sign-in link that has **already been assembled**.
-     *
-     * The half of sendLoginLinkEmail() that is not routing, split out so that a caller
-     * holding a URL builder can hand over a finished link instead of handing over a
-     * router. JUser\Page\SignIn is that caller, and 3.0.0 makes it the only one:
-     * assembling the link is how this class came to need laminas-router, and it is the
-     * reason the emailed link once went out without a locale prefix, one 302 away from the
-     * page that redeems it. See JUser\Page\SignIn::sendLoginLink().
+     * This class does no routing, which in 3.0.0 is the whole of what it has to say
+     * about laminas: assembling the link itself is how it came to hold a
+     * `Laminas\Router\RouteStackInterface`, and holding one is what made the emailed
+     * link go out with no locale prefix — the unprefixed twin of the real route, one
+     * 302 away from the page that redeems a single-use token. `sendLoginLinkEmail()`
+     * and the router went together in 3.0.0; `JUser\Page\SignIn::sendLoginLink()` is
+     * the caller now, and it builds the URL through `JUser\Host\UrlBuilderInterface`,
+     * which is locale-aware because everything else on the site's pages is.
      *
      * @param User $user
      * @param string $link the absolute URL to put in the email. Absolute, not relative:
@@ -314,29 +271,6 @@ EOT;
     public function setUserTable(?UserTable $userTable)
     {
         $this->userTable = $userTable;
-        return $this;
-    }
-
-    /**
-     * Get the router
-     * @return RouteStackInterface
-     */
-    public function getRouter()
-    {
-        if (! isset($this->router)) {
-            throw new \Exception('Something went wrong, no router available');
-        }
-        return $this->router;
-    }
-
-    /**
-     * Set the router
-     * @param RouteStackInterface $router
-     * @return self
-     */
-    public function setRouter(?RouteStackInterface $router)
-    {
-        $this->router = $router;
         return $this;
     }
 

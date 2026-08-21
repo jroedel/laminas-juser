@@ -2,12 +2,8 @@
 
 namespace JUser\Model;
 
-use Laminas\Math\Rand;
-
 class User
 {
-    //@todo make length configurable
-    public const VERIFICATION_TOKEN_LENGTH = 32;
     /**
      * Id 0 means to be inserted
      * @var int $id
@@ -256,34 +252,19 @@ class User
     }
 
     /**
-     * Get the verificationToken value
-     * @return string
-     */
-    public function getVerificationToken()
-    {
-        if (! isset($this->verificationToken)) {
-            //if we don't have one, make one up (mainly for registration)
-            $this->verificationToken = static::generateVerificationToken();
-        }
-        return $this->verificationToken;
-    }
-
-    /**
-     * Generate a verification token
-     * @return void
-     */
-    public static function generateVerificationToken($tokenLength = self::VERIFICATION_TOKEN_LENGTH)
-    {
-        static $charList;
-        if (! isset($charList)) {
-            $charList = implode('', array_merge(range('A', 'Z'), range('a', 'z'), range('0', '9')));
-        }
-        $verificationToken = Rand::getString($tokenLength, $charList);
-        return $verificationToken;
-    }
-
-    /**
-     * Set the verificationToken value
+     * Set the verificationToken value.
+     *
+     * What is stored here is a **sha256 digest**, not a token anybody can present:
+     * `JUser\Service\LoginTokenService::issueWebToken()` mints 32 bytes from
+     * `random_bytes()`, hex-encodes them, emails that, and hands this the digest.
+     *
+     * Its companions went in 3.0.0 — `getVerificationToken()`,
+     * `generateVerificationToken()` and `setNewVerificationToken()`, a second and
+     * weaker token generator (32 base62 characters via `Laminas\Math\Rand`) that
+     * nothing had called for years. The getter was the real hazard: on an entity with
+     * no token it minted one *lazily, on read*, so a plain read had a side effect and
+     * returned a value that had never been stored anywhere.
+     *
      * @param string $verificationToken
      * @return self
      */
@@ -385,18 +366,6 @@ class User
     public function setCreateDatetime($createDatetime)
     {
         $this->createDatetime = $createDatetime;
-        return $this;
-    }
-
-    /**
-     * Generate and set a new verification token and reset the expiration for a day from now
-     * @return self
-     */
-    public function setNewVerificationToken()
-    {
-        $this->verificationToken = null;
-        $this->getVerificationToken();
-        $this->resetVerificationExpiration();
         return $this;
     }
 }
