@@ -5,11 +5,17 @@ namespace JUser\Service;
 use Laminas\ServiceManager\Factory\FactoryInterface;
 use Interop\Container\ContainerInterface;
 use Laminas\I18n\Translator\TranslatorInterface;
-use Laminas\Router\RouteStackInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Factory responsible of priming the Mailer service
+ * Factory responsible of priming the Mailer service.
+ *
+ * It used to hand the Mailer a router as well, and prime that router's request URI
+ * from the laminas `Request` service so that `force_canonical` had a host to work
+ * with. Both went in 3.0.0 with `Mailer::sendLoginLinkEmail()`: the caller assembles
+ * the link now. That is why nothing here reaches for `Request` any more — a service
+ * that does not exist under a Symfony dispatch, which is what made the priming a
+ * latent 500 rather than a detail.
  *
  * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
@@ -26,14 +32,6 @@ class MailerFactory implements FactoryInterface
         //SionModel\Service\MailTransportFactory
         $transport = $container->get('SionModel\MailTransport');
         $translator = $container->get(TranslatorInterface::class);
-        /** @var \Laminas\Router\Http\TreeRouteStack $router */
-        $router = $container->get(RouteStackInterface::class);
-        $routerRequestUri = $router->getRequestUri();
-        if (! isset($routerRequestUri)) {
-            /** @var \Laminas\Http\PhpEnvironment\Request $request */
-            $request = $container->get('Request');
-            $router->setRequestUri($request->getUri());
-        }
 
         $config = $container->get('Config');
         if (
@@ -48,8 +46,7 @@ class MailerFactory implements FactoryInterface
 
         $mailer = (new Mailer())
         ->setTranslator($translator)
-        ->setTransport($transport)
-        ->setRouter($router);
+        ->setTransport($transport);
         if (isset($logger)) {
             $mailer->setLogger($logger);
         }
