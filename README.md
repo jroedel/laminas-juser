@@ -10,6 +10,38 @@ account. Redeeming a link is also what verifies the address, so there is no sepa
 confirmation step. See `JUser\Service\LoginTokenService` for the token (only its sha256
 digest is stored, in `user.verification_token`, with an absolute UTC expiry alongside).
 
+**`user.state` and `user.email_verified` mean two different things, and since 2026-08-21
+they are kept apart.** `state` — the Active checkbox on `/users/{id}/edit` — means *may
+sign in*, enforced in three places inside this module and a fourth in the consuming
+application:
+
+| where | what it refuses |
+|---|---|
+| `LoginController::issueAndSend()` | mails no link, and does not say so |
+| `LoginController::verifyAction()` | a link that was already in flight, with a 403 |
+| `Authentication\Storage\SessionUser::read()` | a session that is **already open**, on its next request |
+| the application's API identity | a bearer token for the account |
+
+The third is what makes `state = 0` mean "cannot act" rather than "cannot sign in again",
+and it needed nothing new: only the user id is in the session, so the row is re-read every
+request, and `isEmpty()` already clears the storage when a read comes back null.
+
+`email_verified` means *someone has proved they read mail here*, and redeeming a link sets
+it, in `UserTable::clearVerificationToken()`. A new account starts **active and
+unverified**, which is why open registration still works — created inactive, its very first
+magic link would be refused. An application rendering `EditUserForm` for *creation* must
+tick Active itself: the element declares `'value' => 0`, so left alone an administrator
+creates accounts that can never sign in and are never told why.
+
+Before that they were conflated: new accounts were created inactive and `verifyAction()`
+activated whatever it redeemed, so every deactivated account reactivated itself on its next
+sign-in link. The checkbox read like a ban control and was not one. **A consuming
+application upgrading past this needs one data migration first** — any account sitting at
+`state = 0` because it merely never confirmed must be moved to `state = 1`, or it becomes
+retroactively banned. In schoenstatt.link that was 32 of 292 accounts
+(`database/db8.6.sql`, run at the `pre` phase so there is no window in which they are
+refused).
+
 Requirements
 ------------
 

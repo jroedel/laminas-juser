@@ -124,10 +124,38 @@ class LoginController extends AbstractActionController
             return $this->failedVerification();
         }
 
-        //redeeming the link proves the address works, so the account goes live
+        /*
+         * A deactivated account may not sign in, and this is the half that has to hold
+         * even when the other one did not run.
+         *
+         * `issueAndSend()` refuses to mail a link to a deactivated account, so ordinarily
+         * no token for one exists. This catches the token that was already in flight when
+         * the account was turned off -- an administrator revoking access has to mean it
+         * immediately, not "after the link in their inbox expires".
+         *
+         * The check is deliberately *after* redeemToken(), which has already burned the
+         * token. Answering the question needs the row, and the row is what redeemToken()
+         * looks up; spending a rejected credential is the right outcome anyway.
+         *
+         * This replaced an auto-activation -- `if (1 != $user->getState())
+         * $this->userTable->activateUser(...)` -- which made `state` unable to mean
+         * anything: every deactivated account reactivated itself on its next sign-in link,
+         * so the Active checkbox on /users/{id}/edit read like a ban control and was not
+         * one. The *other* half of what that line did is not lost: proving the address
+         * works is `email_verified`, and UserTable::clearVerificationToken() has always
+         * set it as part of burning the token, for every account rather than only inactive
+         * ones (test/Smoke/AuthSmokeTest::testSignInMarksEmailVerifiedEvenForActiveAccounts
+         * in the host application pins that). So the two meanings are now carried by the
+         * two columns that were always there for them.
+         */
         if (1 != $user->getState()) {
-            $this->userTable->activateUser($user->getId());
-            $user->setState(1);
+            if (isset($this->logger)) {
+                $this->logger->notice(
+                    "JUser: Refused a login link for a deactivated account.",
+                    ['userId' => $user->getId()]
+                );
+            }
+            return $this->deactivatedAccount();
         }
 
         //new privilege level, new session id
@@ -416,6 +444,28 @@ class LoginController extends AbstractActionController
                 $user = new User($userArray);
             }
 
+            /*
+             * Nothing is mailed to a deactivated account. Silently -- the caller learns
+             * nothing, exactly as it learns nothing about whether the address was known
+             * at all, because handleEmailRequest() renders the same "check your email"
+             * page either way and this method swallows every outcome. A distinguishable
+             * answer here would turn the sign-in form into an oracle for which accounts
+             * are disabled.
+             *
+             * Ordering matters: an unknown address has already been registered above, and
+             * createUserFromEmail() creates the account *active*, so open registration is
+             * not caught by this.
+             */
+            if (1 != $user->getState()) {
+                if (isset($this->logger)) {
+                    $this->logger->info(
+                        "JUser: Declined to issue a sign-in link for a deactivated account.",
+                        ['userId' => $user->getId()]
+                    );
+                }
+                return;
+            }
+
             if (! $this->tokenService->mayIssueToken($user)) {
                 if (isset($this->logger)) {
                     $this->logger->info(
@@ -461,6 +511,26 @@ class LoginController extends AbstractActionController
         $view = new ViewModel();
         $view->setTemplate('juser/login/verify-failed');
         $this->getResponse()->setStatusCode(400);
+        return $view;
+    }
+
+    /**
+     * A valid link for an account an administrator has turned off.
+     *
+     * A **separate page from failedVerification()**, and 403 rather than 400, because the
+     * two are different facts and the visitor can act on only one of them. "The link did
+     * not work" invites a retry, which for a deactivated account will fail forever; "your
+     * access has been turned off" names who to ask. Saying so leaks nothing: reaching this
+     * page at all requires holding a live token for that very account, so the reader
+     * already controls the address.
+     *
+     * @return ViewModel
+     */
+    protected function deactivatedAccount()
+    {
+        $view = new ViewModel();
+        $view->setTemplate('juser/login/deactivated');
+        $this->getResponse()->setStatusCode(403);
         return $view;
     }
 

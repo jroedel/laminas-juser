@@ -370,7 +370,16 @@ class UserTable extends SionTable
     }
 
     /**
-     * Mark a user as active and their email address as verified
+     * Mark a user as active and their email address as verified.
+     *
+     * **Nothing in this module calls this any more** (as of 2026-08-21), and that is not an
+     * oversight to tidy away: it is kept because it is the one operation an administrator
+     * genuinely needs -- undo a deactivation -- and because it is public API of a library
+     * two applications vendor. What it must not go back to being is part of the sign-in
+     * path: verifyAction() used to call it, which is what stopped `state` from being able
+     * to mean "banned". Anything reaching for this to express "the address checked out"
+     * wants clearVerificationToken(), which sets email_verified and touches nothing else.
+     *
      * @param int $userId
      * @return mixed
      */
@@ -384,8 +393,23 @@ class UserTable extends SionTable
 
     /**
      * Register a brand new account from nothing but an email address.
-     * The account starts out inactive and unverified; redeeming the emailed
-     * login link is what activates it.
+     *
+     * The account starts out **active and unverified**, and the pairing is the point:
+     * the two columns carry two different facts and used to be conflated.
+     *
+     * `state` (the Active checkbox on /users/{id}/edit) means "may sign in". A new
+     * account may, or open registration would not work at all -- the very first magic
+     * link would be refused by the deactivation check in
+     * JUser\Controller\LoginController.
+     *
+     * `email_verified` means "someone has proved they read mail at this address", and
+     * that is false until the link is redeemed. Redeeming sets it, in
+     * clearVerificationToken() as part of burning the token.
+     *
+     * This created the account with `active => 0` until 2026-08-21, which worked only
+     * because verifyAction() then *activated* whatever it redeemed -- and that in turn
+     * meant a deactivated account reactivated itself on its next sign-in link, so `state`
+     * could not express a ban. See the comment in verifyAction().
      *
      * @param string $email
      * @return array|null the new user row, or null on failure
@@ -408,7 +432,7 @@ class UserTable extends SionTable
             'username'      => $username,
             'email'         => $email,
             'displayName'   => $displayName,
-            'active'        => 0,
+            'active'        => 1,
             'emailVerified' => 0,
             'roles'         => $defaultRoles,
             'rolesList'     => array_keys($defaultRoles),
