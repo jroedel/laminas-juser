@@ -10,6 +10,20 @@ account. Redeeming a link is also what verifies the address, so there is no sepa
 confirmation step. See `JUser\Service\LoginTokenService` for the token (only its sha256
 digest is stored, in `user.verification_token`, with an absolute UTC expiry alongside).
 
+**`user.state` and `user.email_verified` mean two different things, and since 2026-08-21
+they are kept apart.** `state` — the Active checkbox on `/users/{id}/edit` — means *may
+sign in*: a deactivated account is refused a link and refused a redemption, so an
+administrator turning it off revokes access immediately rather than after the link already
+in that inbox expires. `email_verified` means *someone has proved they read mail here*,
+and redeeming a link sets it. A new account starts **active and unverified**, which is why
+open registration still works.
+
+Before that they were conflated: new accounts were created inactive and `verifyAction()`
+activated whatever it redeemed, so every deactivated account reactivated itself on its next
+sign-in link. The checkbox read like a ban control and was not one. A consuming application
+upgrading past this needs one data migration — any account sitting at `state = 0` because
+it merely never confirmed must be moved to `state = 1`, or it becomes retroactively banned.
+
 Requirements
 ------------
 
