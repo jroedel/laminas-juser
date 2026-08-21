@@ -185,11 +185,11 @@ return [
              * did this first on 2026-08-18.
              *
              * The `juser/user` segment is `may_terminate => false` and has been since
-             * `juser/user/show` was retired on 2026-08-20 — so `/users/5` matches nothing.
-             * Note that the `user` entity's spec below still names it as `show_route`; that
-             * is a dead field for this entity (nothing here goes through `SionController`)
-             * and it is filed rather than changed, because `edit_route` in the same block
-             * says `association-edit` and the pair wants one look, not two edits.
+             * `juser/user/show` was retired on 2026-08-20. It does not merely fail to match
+             * `/users/5` — it cannot be *assembled* either: `Part::assemble()` throws
+             * `Part route may not terminate` rather than returning a URL nothing serves. The
+             * `user` entity spec below named it as `show_route` until 2026-08-21, which is
+             * why that field is now absent; see the comment there.
              */
             'juser' => [
                 'type'    => Literal::class,
@@ -403,19 +403,47 @@ return [
                 'index_route'                           => 'juser',
 //                 'index_template'                        => 'project/events/index',
                 'default_route_key'                     => 'user_id',
-                'show_route'                            => 'juser/user',
-                'show_route_key'                        => 'user_id',
-                'show_route_key_field'                  => 'userId',
+                /*
+                 * **No `show_route`, deliberately.** There is no page showing one account:
+                 * `juser/user` exists only to carry /edit, /delete and /api-tokens, and
+                 * `juser/user/show` was retired 2026-08-20 because its action did not
+                 * exist. This spec named `juser/user` anyway until 2026-08-21, and the
+                 * consequence was not a wrong URL: a `may_terminate => false` part route
+                 * does not assemble at all, it throws `Part route may not terminate`. So
+                 * anything formatting a `user` entity as a link raised a 500.
+                 *
+                 * Nothing does today — `report_changes` is off for this entity and
+                 * `sch_changes` holds no `user` row — and an anonymous caller was shielded
+                 * by a second accident: `route/juser/user` *is* an ACL resource, so
+                 * `isActionAllowed('show')` refused before the assemble could throw. An
+                 * administrator, who is allowed, would have got the exception. Omitting the
+                 * route is what makes the name render as plain text, which is the right
+                 * rendering for an entity with no page of its own.
+                 */
                 'edit_action_form'                      => Form\EditUserForm::class,
 //                 'edit_action_template'                   => 'project/events/edit',
-                'edit_route'                            => 'association-edit',
+                /*
+                 * `juser/user/edit`, not `association-edit`. These route names were
+                 * copy-pasted from the association entity when this spec was written and
+                 * never corrected — assembling `association-edit` with a `user_id` throws
+                 * `Missing parameter "sw_id"`. The *keys* were always right; only the route
+                 * names belonged to another entity. The neighbouring `user-role` spec
+                 * carried the same copy-paste in `required_columns_for_creation`, and that
+                 * one was not dead: it broke `/users/roles/create` outright, for years
+                 * (fixed 2026-08-21).
+                 */
+                'edit_route'                            => 'juser/user/edit',
                 'edit_route_key'                        => 'user_id',
                 'edit_route_key_field'                  => 'userId',
                 'create_action_form'                    => Form\EditUserForm::class,
 //                 'create_action_valid_data_handler'      => 'createAssociation',
-                'create_action_redirect_route'          => 'association',
-                'create_action_redirect_route_key'      => 'user_id',
-                'create_action_redirect_route_key_field' => 'userId',
+                /*
+                 * `juser`, the index — the same destination as
+                 * `delete_action_redirect_route` below and what
+                 * `App\Controller\UserCreateController` actually redirects to. It takes no
+                 * parameter, hence no key fields.
+                 */
+                'create_action_redirect_route'          => 'juser',
 //                 'create_action_template'                   => 'project/events/create',
                 'enable_delete_action'                  => true,
 //                 'delete_action_acl_resource'             => 'event_:id',
