@@ -163,12 +163,39 @@ return [
                     ],
                 ],
             ],
+            /*
+             * **The user-administration surface has no laminas controller.** All seven of
+             * these routes are served by the host application's Symfony kernel as of
+             * 2026-08-21 — `App\Controller\UsersController`, `UserCreateController`,
+             * `UserEditController`, `UserDeleteController` and `ApiTokensController`, over
+             * `App\JUser\UserAdmin` — and `JUser\Controller\UsersController` was deleted
+             * with them.
+             *
+             * **The routes themselves stay, and are not vestigial.** They are how a Twig
+             * template addresses a page (`laminas_path('juser/user/edit', …)`), and
+             * BjyAuthorize's guards are keyed by route name — this module's own guards cover
+             * only the sign-in routes, so the seven `administrator` entries live in the host
+             * application's config/autoload/juser.global.php and name these. What is gone is
+             * `'controller' => …`, because there is no longer one to name; the `action`
+             * defaults are left as documentation of what each path does.
+             *
+             * A request that reached laminas for one of these paths would fail to dispatch,
+             * and that is the truthful answer rather than a gap: the pages exist only on the
+             * Symfony side. Same shape as the Books module's `library-imports` tree, which
+             * did this first on 2026-08-18.
+             *
+             * The `juser/user` segment is `may_terminate => false` and has been since
+             * `juser/user/show` was retired on 2026-08-20 — so `/users/5` matches nothing.
+             * Note that the `user` entity's spec below still names it as `show_route`; that
+             * is a dead field for this entity (nothing here goes through `SionController`)
+             * and it is filed rather than changed, because `edit_route` in the same block
+             * says `association-edit` and the pair wants one look, not two edits.
+             */
             'juser' => [
                 'type'    => Literal::class,
                 'options' => [
                     'route'    => '/users',
                     'defaults' => [
-                        'controller' => Controller\UsersController::class,
                         'action'     => 'index',
                     ],
                 ],
@@ -180,9 +207,6 @@ return [
                             'route'    => '/:user_id',
                             'constraints' => [
                                 'user_id' => '[0-9]{1,5}',
-                            ],
-                            'defaults' => [
-                                'controller' => Controller\UsersController::class,
                             ],
                         ],
                         'may_terminate' => false,
@@ -244,7 +268,6 @@ return [
                         'options' => [
                             'route'    => '/create',
                             'defaults' => [
-                                'controller' => Controller\UsersController::class,
                                 'action'     => 'create',
                             ],
                         ],
@@ -254,7 +277,6 @@ return [
                         'options' => [
                             'route'    => '/roles/create',
                             'defaults' => [
-                                'controller' => Controller\UsersController::class,
                                 'action'     => 'createRole',
                             ],
                         ],
@@ -265,7 +287,14 @@ return [
     ],
     'controllers' => [
         'factories' => [
-            Controller\UsersController::class => Service\UsersControllerFactory::class,
+            /*
+             * **`LoginController` is the last laminas-mvc controller in this module.**
+             * `UsersController` was deleted on 2026-08-21 with the `juser/*` admin surface,
+             * which the host application now serves from Symfony — see the router section
+             * below on why its seven routes are still declared here. Retiring this one is
+             * what JUser 3.0.0 is: it is the only thing left that needs
+             * `Laminas\Mvc\Controller\AbstractActionController`.
+             */
             Controller\LoginController::class => Service\LoginControllerFactory::class,
         ],
     ],
@@ -349,7 +378,12 @@ return [
                 'table_key'                             => 'user_id',
                 'entity_key_field'                      => 'userId',
                 'sion_model_class'                      => Model\UserTable::class,
-                'sion_controllers'                      => [Controller\UsersController::class],
+                //Empty since 2026-08-21: the class is gone. SionModel reads this to
+                //decide which controllers its own SionControllerFactory should build, and
+                //JUser's never was one — it had an explicit factory — so nothing changes
+                //behaviourally. A string naming a deleted class does not throw here
+                //(nothing autoloads it), which is exactly why it would have gone unnoticed.
+                'sion_controllers'                      => [],
                 'controller_services'                   => [
                 ],
                 'row_processor_function'                => 'processUserRow',
@@ -418,7 +452,12 @@ return [
                 'table_key'                             => 'id',
                 'entity_key_field'                      => 'roleId',
                 'sion_model_class'                      => Model\UserTable::class,
-                'sion_controllers'                      => [Controller\UsersController::class],
+                //Empty since 2026-08-21: the class is gone. SionModel reads this to
+                //decide which controllers its own SionControllerFactory should build, and
+                //JUser's never was one — it had an explicit factory — so nothing changes
+                //behaviourally. A string naming a deleted class does not throw here
+                //(nothing autoloads it), which is exactly why it would have gone unnoticed.
+                'sion_controllers'                      => [],
                 'controller_services'                   => [
                 ],
                 'row_processor_function'                => 'processRoleRow',
@@ -429,10 +468,26 @@ return [
 //                 'format_view_helper'                    => 'formatEntity',
 //                 'country_field'                         => 'country',
 //                 'report_changes'                        => true,
-                'required_columns_for_creation'         => [ //required for creation
-                    'username',
-                    'email',
-                    'displayName',
+                /*
+                 * **The role's own required column, and nothing else.**
+                 *
+                 * This said `username`, `email`, `displayName` until 2026-08-21 —
+                 * copy-pasted from the `user` entity above — so
+                 * `createEntity('user-role', …)` threw
+                 * `InvalidArgumentException: … Missing \`username\`` on **every**
+                 * submission, and /users/roles/create had never once created a role. The
+                 * form validated, the write refused, and the page said "Error in form
+                 * submission, please review." about a form that was fine; JUser 2.0's
+                 * writeFailure() message is what finally made the failure legible, and
+                 * porting the route to Symfony is what made it testable
+                 * (test/Smoke/JUserAdminSmokeTest in the application repo).
+                 *
+                 * `name` maps to `user_role.role_id`, which is the table's only NOT NULL
+                 * column without a default; `is_default` defaults to 0 and `parent_id` is
+                 * nullable.
+                 */
+                'required_columns_for_creation'         => [
+                    'name',
                 ],
                 'index_route'                           => 'juser',
 //                 'index_template'                        => 'project/events/index',
@@ -477,7 +532,12 @@ return [
                 'table_key'                             => 'id',
                 'entity_key_field'                      => 'linkId',
                 'sion_model_class'                      => Model\UserTable::class,
-//                 'sion_controllers'                      => [Controller\UsersController::class],
+//                 //Empty since 2026-08-21: the class is gone. SionModel reads this to
+                //decide which controllers its own SionControllerFactory should build, and
+                //JUser's never was one — it had an explicit factory — so nothing changes
+                //behaviourally. A string naming a deleted class does not throw here
+                //(nothing autoloads it), which is exactly why it would have gone unnoticed.
+                'sion_controllers'                      => [],
 //                 'controller_services'                   => [
 //                 ],
                 'row_processor_function'                => 'processUserRoleLinkerRow',
