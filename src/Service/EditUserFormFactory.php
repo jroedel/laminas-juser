@@ -2,8 +2,7 @@
 
 namespace JUser\Service;
 
-use Laminas\ServiceManager\Factory\FactoryInterface;
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use JUser\Form\EditUserForm;
 use JUser\Model\UserTable;
 use JUser\Model\PersonValueOptionsProviderInterface;
@@ -13,12 +12,11 @@ use JUser\Model\PersonValueOptionsProviderInterface;
  *
  * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
-class EditUserFormFactory implements FactoryInterface
+class EditUserFormFactory
 {
     /**
-     * Create an object
-     *
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

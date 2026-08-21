@@ -2,11 +2,10 @@
 
 namespace JUser\Bridge\Laminas;
 
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use Laminas\Authentication\AuthenticationService;
 use Laminas\Authentication\Storage\Session as SessionStorage;
-use Laminas\ServiceManager\Factory\FactoryInterface;
 use Laminas\Session\ManagerInterface as SessionManagerInterface;
 
 /**
@@ -14,10 +13,11 @@ use Laminas\Session\ManagerInterface as SessionManagerInterface;
  * way to obtain an identity is by redeeming an emailed login token, which writes
  * the user id straight into the storage.
  */
-class AuthenticationServiceFactory implements FactoryInterface
+class AuthenticationServiceFactory
 {
     /**
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

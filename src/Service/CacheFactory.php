@@ -3,19 +3,17 @@
 namespace JUser\Service;
 
 use Laminas\Cache\Service\StorageAdapterFactoryInterface;
-use Laminas\ServiceManager\Factory\FactoryInterface;
 use Psr\Container\ContainerInterface;
 use SionModel\Cache\LegacyCacheConfig;
 
 /**
  * Factory for building the cache storage
  */
-class CacheFactory implements FactoryInterface
+class CacheFactory
 {
     /**
-     * Create an object
-     *
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

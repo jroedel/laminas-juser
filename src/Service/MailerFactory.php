@@ -2,8 +2,7 @@
 
 namespace JUser\Service;
 
-use Laminas\ServiceManager\Factory\FactoryInterface;
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use Laminas\I18n\Translator\TranslatorInterface;
 use Psr\Log\LoggerInterface;
 
@@ -19,12 +18,11 @@ use Psr\Log\LoggerInterface;
  *
  * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
-class MailerFactory implements FactoryInterface
+class MailerFactory
 {
     /**
-     * Create an object
-     *
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

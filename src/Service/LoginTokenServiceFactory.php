@@ -2,14 +2,14 @@
 
 namespace JUser\Service;
 
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use JUser\Model\UserTable;
-use Laminas\ServiceManager\Factory\FactoryInterface;
 
-class LoginTokenServiceFactory implements FactoryInterface
+class LoginTokenServiceFactory
 {
     /**
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

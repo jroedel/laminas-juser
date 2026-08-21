@@ -2,8 +2,7 @@
 
 namespace JUser\Service;
 
-use Laminas\ServiceManager\Factory\FactoryInterface;
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use JUser\Model\UserTable;
 use JUser\Form\CreateRoleForm;
 
@@ -12,12 +11,11 @@ use JUser\Form\CreateRoleForm;
  *
  * @author Jeff Roedel <jeff.roedel@schoenstatt-fathers.org>
  */
-class CreateRoleFormFactory implements FactoryInterface
+class CreateRoleFormFactory
 {
     /**
-     * Create an object
-     *
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {

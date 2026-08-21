@@ -2,15 +2,15 @@
 
 namespace JUser\Service;
 
-use Interop\Container\ContainerInterface;
+use Psr\Container\ContainerInterface;
 use JUser\Model\ApiTokenTable;
 use Laminas\Db\Adapter\Adapter;
-use Laminas\ServiceManager\Factory\FactoryInterface;
 
-class ApiTokenTableFactory implements FactoryInterface
+class ApiTokenTableFactory
 {
     /**
-     * @inheritdoc
+     * @param string $requestedName
+     * @param array<string, mixed>|null $options
      */
     public function __invoke(ContainerInterface $container, $requestedName, ?array $options = null)
     {
