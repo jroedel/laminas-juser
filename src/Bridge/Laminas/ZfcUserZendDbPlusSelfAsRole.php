@@ -13,8 +13,15 @@ use Laminas\Permissions\Acl\Role\RoleInterface;
  * Identity provider based on a Laminas\Db adapter.
  *
  * Behaves exactly like the former BjyAuthorize\Provider\Identity\ZfcUserZendDb
- * (which this class used to extend), plus it adds a "user_<id>" role so that
- * ACL rules can target an individual user. It no longer depends on ZfcUser.
+ * (which this class used to extend), minus the dependency on ZfcUser.
+ *
+ * It also used to append a `user_<id>` role, so an ACL rule could name one person.
+ * That went on 2026-08-22 together with the provider that registered those roles —
+ * see the note in this module's `config/module.config.php` for why, and note that
+ * the two had to go **together**: what this method returns is handed to
+ * `Laminas\Permissions\Acl\Acl::addRole()` as the identity's parent roles, and that
+ * throws on a parent the ACL has never heard of. Leaving this line behind would
+ * have been a 500 on every signed-in request, not a harmless leftover.
  */
 class ZfcUserZendDbPlusSelfAsRole implements ProviderInterface
 {
@@ -61,12 +68,6 @@ class ZfcUserZendDbPlusSelfAsRole implements ProviderInterface
 
         foreach ($results as $role) {
             $roles[] = $role['role_id'];
-        }
-
-        //let the user be a role unto themselves, see JUser\Bridge\Laminas\UserIdRoles
-        $userId = $identity->getId();
-        if (isset($userId)) {
-            $roles[] = "user_$userId";
         }
 
         return $roles;

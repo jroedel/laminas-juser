@@ -7,8 +7,6 @@ use Laminas\Router\Http\Literal;
 use Laminas\Router\Http\Segment;
 use Laminas\Session;
 use Laminas\Session\Storage\SessionArrayStorage;
-use JUser\Bridge\Laminas\UserIdRoles;
-use JUser\Bridge\Laminas\UserIdRolesFactory;
 use JUser\Bridge\Laminas\ZfcUserZendDbPlusSelfAsRole;
 use JUser\Bridge\Laminas\ZfcUserZendDbPlusSelfAsRoleFactory;
 use SionModel\Service\ActingUserProviderInterface;
@@ -90,7 +88,21 @@ return [
             //                'admin' => [],
             //        ]],
             //],
-            UserIdRoles::class => [],
+            /*
+             * JUser\Bridge\Laminas\UserIdRoles was here until 2026-08-22. It added one
+             * ACL role per account — `user_<id>`, 294 of them against 45 real roles —
+             * so that a rule could be written for an individual. In the life of this
+             * database not one ever was: no rule in any config named one, `user_role`
+             * held no such row, and the only columns that store a role name by hand
+             * (`lib_libraries.ViewRole` / `.CheckoutBooksRole`) never held one either.
+             *
+             * The cost was not really the 1.5 ms per request it measured. It was that
+             * the ACL then depended on the `user` table, and an account is created on
+             * every first-time sign-in — which makes the assembled ACL uncacheable.
+             * Re-adding the provider means re-adding that, so weigh it against caching
+             * before reaching for a per-user rule; a role with one member is usually
+             * the cheaper answer.
+             */
             \BjyAuthorize\Provider\Role\LaminasDb::class => [
                 'table'                 => 'user_role',
                 'identifier_field_name' => 'id',
@@ -329,7 +341,6 @@ return [
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
             Service\Mailer::class           => Service\MailerFactory::class,
             ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
-            UserIdRoles::class              => UserIdRolesFactory::class,
             'JUser\AuthService'             => Bridge\Laminas\AuthenticationServiceFactory::class,
             Bridge\Laminas\UserService::class => Bridge\Laminas\UserServiceFactory::class,
             Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,

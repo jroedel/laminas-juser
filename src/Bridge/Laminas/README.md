@@ -26,9 +26,15 @@ What is in it, and which host concern each answers:
 | `AuthServiceActingUserProvider` (+ factory) | SionModel's `ActingUserProviderInterface`, over the auth service |
 | `ZfcUserDisplayName`, `ZfcUserIdentity`, `ZfcUserViewHelperFactory` | two `.phtml` view helpers a bridged layout still calls |
 | `ZfcUserZendDbPlusSelfAsRole` (+ factory) | BjyAuthorize identity provider |
-| `UserIdRoles` (+ factory) | BjyAuthorize role provider — the per-user `user_<id>` role |
 | `Role` | `BjyAuthorize\Acl\HierarchicalRoleInterface` |
 | `RedirectionStrategy` | BjyAuthorize's `unauthorized_strategy`: 302 to sign-in, or 403 |
+
+`UserIdRoles` (+ factory) was a fifteenth, a BjyAuthorize role provider registering one
+`user_<id>` role per account. Deleted 2026-08-22: nothing in the life of the database ever
+wrote a rule naming one, and their real cost was making the assembled ACL depend on the
+`user` table — which an account is added to on every first-time sign-in — and therefore
+uncacheable. `ZfcUserZendDbPlusSelfAsRole` had to stop returning `user_<id>` in the same
+commit; see its docblock for why that half is not optional.
 
 **Class names did not change, only namespaces.** That is what makes the move reviewable as a
 move: `git log --follow` still works, and a name in a five-year-old commit message or an
