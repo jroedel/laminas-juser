@@ -7,8 +7,6 @@ use Laminas\Router\Http\Literal;
 use Laminas\Router\Http\Segment;
 use Laminas\Session;
 use Laminas\Session\Storage\SessionArrayStorage;
-use JUser\Bridge\Laminas\ZfcUserZendDbPlusSelfAsRole;
-use JUser\Bridge\Laminas\ZfcUserZendDbPlusSelfAsRoleFactory;
 use SionModel\Service\ActingUserProviderInterface;
 
 return [
@@ -38,84 +36,17 @@ return [
         //config/autoload/juser.global.php for the reasoning at this site.
         'api_token_roles' => [],
     ],
+    // Authorization data the application's own engine (App\Acl in schoenstatt.link) reads:
+    // the anonymous default role and this module's own sign-in route guards. BjyAuthorize is
+    // gone; 'BjyAuthorize\Guard\Route' is a legacy identifier string the assembler keys on.
     'bjyauthorize' => [
-        'unauthorized_strategy' => Bridge\Laminas\RedirectionStrategy::class,
-
-//         'cache_options'         => [
-//                 'adapter'   => [
-//                         'name' => 'filesystem',
-//                 ],
-//                 'plugins'   => [
-//                         'Serializer',
-//                 ]
-//         ],
-
-//         // Key used by the cache for caching the acl
-//         'cache_key'             => 'bjyauthorize_acl',
-
-        // set the 'guest' role as default (must be defined in a role provider]
         'default_role' => 'guest',
-
-        /* this module uses a meta-role that inherits from any roles that should
-         * be applied to the active user. the identity provider tells us which
-         * roles the "identity role" should inherit from.
-         *
-         * for ZfcUser, this will be your default identity provider
-        */
-        'identity_provider' => ZfcUserZendDbPlusSelfAsRole::class,
-
-        /* If you only have a default role and an authenticated role, you can
-         * use the 'AuthenticationIdentityProvider' to allow/restrict access
-         * with the guards based on the state 'logged in' and 'not logged in'.
-         *
-         * 'default_role'       => 'guest',         // not authenticated
-         * 'authenticated_role' => 'user',          // authenticated
-         * 'identity_provider'  => 'BjyAuthorize\Provider\Identity\AuthenticationIdentityProvider',
-        */
-
-        /* role providers simply provide a list of roles that should be inserted
-         * into the Zend\Acl instance. the module comes with two providers, one
-         * to specify roles in a config file and one to load roles using a
-         * Laminas\Db adapter.
-        */
-        'role_providers' => [
-            /* here, 'guest' and 'user are defined as top-level roles, with
-             * 'admin' inheriting from user
-            */
-            //'BjyAuthorize\Provider\Role\Config' => [
-            //        'guest' => [],
-            //        'user'  => ['children' => [
-            //                'admin' => [],
-            //        ]],
-            //],
-            /*
-             * JUser\Bridge\Laminas\UserIdRoles was here until 2026-08-22. It added one
-             * ACL role per account — `user_<id>`, 294 of them against 45 real roles —
-             * so that a rule could be written for an individual. In the life of this
-             * database not one ever was: no rule in any config named one, `user_role`
-             * held no such row, and the only columns that store a role name by hand
-             * (`lib_libraries.ViewRole` / `.CheckoutBooksRole`) never held one either.
-             *
-             * The cost was not really the 1.5 ms per request it measured. It was that
-             * the ACL then depended on the `user` table, and an account is created on
-             * every first-time sign-in — which makes the assembled ACL uncacheable.
-             * Re-adding the provider means re-adding that, so weigh it against caching
-             * before reaching for a per-user rule; a role with one member is usually
-             * the cheaper answer.
-             */
-            \BjyAuthorize\Provider\Role\LaminasDb::class => [
-                'table'                 => 'user_role',
-                'identifier_field_name' => 'id',
-                'role_id_field'         => 'role_id',
-                'parent_role_field'     => 'parent_id',
-            ],
-        ],
         'guards' => [
             /*
              * The sign-in routes have to be reachable by definition. Anything
              * else this module exposes is guarded in the application config.
              */
-            \BjyAuthorize\Guard\Route::class => [
+            'BjyAuthorize\Guard\Route' => [
                 ['route' => 'zfcuser', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/login', 'roles' => ['guest', 'user']],
                 ['route' => 'zfcuser/verify', 'roles' => ['guest', 'user']],
@@ -340,16 +271,12 @@ return [
             // Provides session configuration to SessionManagerFactory
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
             Service\Mailer::class           => Service\MailerFactory::class,
-            ZfcUserZendDbPlusSelfAsRole::class => ZfcUserZendDbPlusSelfAsRoleFactory::class,
             'JUser\AuthService'             => Bridge\Laminas\AuthenticationServiceFactory::class,
             Bridge\Laminas\UserService::class => Bridge\Laminas\UserServiceFactory::class,
             Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,
             Model\ApiTokenTable::class      => Service\ApiTokenTableFactory::class,
             Service\ApiTokenService::class  => Service\ApiTokenServiceFactory::class,
             ActingUserProviderInterface::class => Bridge\Laminas\AuthServiceActingUserProviderFactory::class,
-        ],
-        'invokables'  => [
-            Bridge\Laminas\RedirectionStrategy::class => Bridge\Laminas\RedirectionStrategy::class,
         ],
         'aliases' => [
             \Laminas\Session\SessionManager::class => Session\ManagerInterface::class,

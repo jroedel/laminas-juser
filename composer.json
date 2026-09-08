@@ -38,12 +38,7 @@
         "laminas/laminas-view": "^2.34"
     },
     "suggest": {
-        "kokspflanze/bjy-authorize": "Only for JUser\\Bridge\\Laminas: its identity provider, role providers and role entity. A host implementing Host\\AccessInterface over anything else needs none of it.",
         "laminas/laminas-authentication": "Only for JUser\\Bridge\\Laminas: the SessionUser storage and the authentication-service factory behind zfcuser_auth_service. Host\\IdentityInterface is the replacement.",
-        "laminas/laminas-eventmanager": "Only for JUser\\Bridge\\Laminas\\RedirectionStrategy, which is a laminas-mvc listener aggregate.",
-        "laminas/laminas-http": "Only for JUser\\Bridge\\Laminas\\RedirectionStrategy, which sets a Laminas\\Http\\Response status.",
-        "laminas/laminas-mvc": "Only for JUser\\Bridge\\Laminas: MvcEvent, reached by RedirectionStrategy. Nothing else in this module registers with laminas-mvc.",
-        "laminas/laminas-permissions-acl": "Only for JUser\\Bridge\\Laminas, transitively with bjy-authorize.",
         "laminas/laminas-session": "Only for JUser\\Bridge\\Laminas: the session storage behind the laminas auth service. Host\\SessionInterface is the replacement.",
         "laminas/laminas-view": "Only for JUser\\Bridge\\Laminas: the two .phtml view helpers a bridged layout calls. Twig hosts render through JUser\\Twig\\JUserExtension instead."
     },
