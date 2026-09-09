@@ -14,7 +14,6 @@
         "firebase/php-jwt": "^7.0",
         "jroedel/laminas-jtranslate": "dev-modernization",
         "jroedel/zf2-sion-model": "dev-master",
-        "laminas/laminas-cache": "^3.0 || ^4.0",
         "laminas/laminas-db": "^2.4.0",
         "laminas/laminas-filter": "^2.34",
         "laminas/laminas-form": "^2.4.0",
