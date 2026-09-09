@@ -234,31 +234,21 @@ return [
      * last `AbstractActionController` here and it is gone, with its factory and its four
      * view scripts. `view/` no longer exists, so neither does the template map.
      *
-     * The `zfcUserAuthentication` controller plugin went with it. It only ever wrapped the
-     * same AuthenticationService, and with no laminas-mvc controllers left in this module
-     * there was nothing to register it for; its two consumers in the host application use
-     * `identity()` from laminas-mvc-plugin-identity, whose factory resolves
-     * `Laminas\Authentication\AuthenticationService` — which the aliases below point at
-     * this module's own service, so the answer is identical.
+     * The `zfcUserAuthentication` controller plugin went with it, and so, in 2026-09, did
+     * the whole `JUser\Bridge\Laminas` namespace: the authentication service, its session
+     * storage, the two `zfcUser*` view helpers and the ZfcUser service shim. Who is signed
+     * in is now {@see \JUser\Host\IdentityInterface}, and this module ships one
+     * implementation of it, {@see \JUser\Authentication\SessionIdentity}, which needs the
+     * host's session and this module's user table. `laminas-authentication` leaves
+     * `require` with it.
      *
-     * What is still declared: the routes (a name is what `url()` and a BjyAuthorize guard
-     * entry address, and both still name these), the view helpers (a host layout that has
-     * not been ported still calls `zfcUserDisplayName`), the services, and the session
-     * configuration.
+     * No view helpers are declared any more. They existed for a laminas host's layout, and
+     * the rule the display-name one carried is {@see \JUser\Model\DisplayName}, which any
+     * renderer can call.
+     *
+     * What is still declared: the routes (a name is what `url()` and a guard entry address,
+     * and both still name these), the services, and the session configuration.
      */
-    'view_helpers' => [
-        'invokables' => [
-        ],
-        'factories' => [
-            Bridge\Laminas\ZfcUserDisplayName::class => Bridge\Laminas\ZfcUserViewHelperFactory::class,
-            Bridge\Laminas\ZfcUserIdentity::class    => Bridge\Laminas\ZfcUserViewHelperFactory::class,
-        ],
-        'aliases' => [
-            //historical names, kept so existing templates keep working
-            'zfcUserDisplayName' => Bridge\Laminas\ZfcUserDisplayName::class,
-            'zfcUserIdentity'    => Bridge\Laminas\ZfcUserIdentity::class,
-        ],
-    ],
     'service_manager' => [
         'factories' => [
             Model\UserTable::class          => Service\UserTableFactory::class,
@@ -271,21 +261,19 @@ return [
             // Provides session configuration to SessionManagerFactory
             Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
             Service\Mailer::class           => Service\MailerFactory::class,
-            'JUser\AuthService'             => Bridge\Laminas\AuthenticationServiceFactory::class,
-            Bridge\Laminas\UserService::class => Bridge\Laminas\UserServiceFactory::class,
             Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,
             Model\ApiTokenTable::class      => Service\ApiTokenTableFactory::class,
             Service\ApiTokenService::class  => Service\ApiTokenServiceFactory::class,
-            ActingUserProviderInterface::class => Bridge\Laminas\AuthServiceActingUserProviderFactory::class,
+            //Who is signed in. The host may replace this with its own implementation of
+            //the interface; what it must not do is keep a second identity beside it.
+            Host\IdentityInterface::class    => Authentication\SessionIdentityFactory::class,
+            ActingUserProviderInterface::class => Service\IdentityActingUserProviderFactory::class,
         ],
         'aliases' => [
             \Laminas\Session\SessionManager::class => Session\ManagerInterface::class,
             //historical service names, kept so existing consumers keep working
             'zfcuser_user_mapper'           => Model\UserTable::class,
-            'zfcuser_auth_service'          => 'JUser\AuthService',
-            'zfcuser_user_service'          => Bridge\Laminas\UserService::class,
             'zfcuser_zend_db_adapter'       => Adapter::class,
-            \Laminas\Authentication\AuthenticationService::class => 'JUser\AuthService',
         ],
 
     ],

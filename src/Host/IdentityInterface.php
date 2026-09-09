@@ -26,18 +26,16 @@ use JUser\Model\User;
  * ## What it replaces
  *
  * `Laminas\Authentication\AuthenticationService` — `hasIdentity()`, `getIdentity()`,
- * `getStorage()->write()` and `clearIdentity()`, between them the whole of this
- * module's use of `laminas-authentication`, which leaves `require`.
+ * `getStorage()->write()` and `clearIdentity()`, between them the whole of this module's
+ * use of `laminas-authentication`, which has left `require`.
  *
- * `JUser\Bridge\Laminas\SessionUser` does **not** leave: it is how a laminas
- * host implements this — which is what the `Bridge\Laminas\` namespace means — and it
- * carries the one property worth keeping: only the user
- * id is in the session, so the row is re-read every request, which is why deactivating
- * an account takes effect on the next request of a session that is already open rather
- * than at an invisible timeout. It moves to `JUser\Bridge\Laminas\` with the rest of the
- * laminas-shaped code, and a host implementing {@see self::current()} over something
- * that caches a user object for the life of the session loses that property. Say so
- * where you do.
+ * {@see \JUser\Authentication\SessionIdentity} is the implementation this module ships,
+ * and it carries the one property worth keeping from the laminas storage it replaced: only
+ * the user id is in the session, so the row is re-read every request, which is why
+ * deactivating an account takes effect on the next request of a session that is already
+ * open rather than at an invisible timeout. A host implementing {@see self::current()}
+ * over something that caches a user object for the life of the session loses that
+ * property. Say so where you do.
  */
 interface IdentityInterface
 {
