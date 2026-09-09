@@ -28,17 +28,13 @@
     },
     "require-dev": {
         "kokspflanze/bjy-authorize": "dev-master",
-        "laminas/laminas-authentication": "^2.13",
         "laminas/laminas-eventmanager": "^3.11",
         "laminas/laminas-http": "^2.19",
         "laminas/laminas-permissions-acl": "^2.16",
-        "laminas/laminas-session": "^2.20",
-        "laminas/laminas-view": "^2.34"
+        "laminas/laminas-session": "^2.20"
     },
     "suggest": {
-        "laminas/laminas-authentication": "Only for JUser\\Bridge\\Laminas: the SessionUser storage and the authentication-service factory behind zfcuser_auth_service. Host\\IdentityInterface is the replacement.",
-        "laminas/laminas-session": "Only for JUser\\Bridge\\Laminas: the session storage behind the laminas auth service. Host\\SessionInterface is the replacement.",
-        "laminas/laminas-view": "Only for JUser\\Bridge\\Laminas: the two .phtml view helpers a bridged layout calls. Twig hosts render through JUser\\Twig\\JUserExtension instead."
+        "laminas/laminas-session": "Only for the SessionManager this module's config declares, which is how a laminas host starts the session Host\\SessionInterface reads. A Symfony host registers its own and needs none of it."
     },
     "autoload": {
         "psr-4": {

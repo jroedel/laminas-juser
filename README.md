@@ -75,10 +75,12 @@ and templates, `symfony/mailer` for the magic link, `firebase/php-jwt` for API t
 `psr/container` (18 files) for the factories and `UserAdmin`'s form locator, and `psr/log`,
 which every call site guards with `isset()`.
 
-The eight packages in `require-dev` — `laminas-authentication`, `laminas-eventmanager`,
-`laminas-http`, `laminas-mvc`, `laminas-permissions-acl`, `laminas-session`, `laminas-view`
-and `bjy-authorize` — are reachable only from `JUser\Bridge\Laminas`, and each `suggest`
-line names the class that wants it.
+The packages in `require-dev` are what a laminas host brings, not what this module runs
+on. `JUser\Bridge\Laminas` — the namespace that held the laminas-shaped implementations of
+the `Host\` contracts — was **deleted in 2026-09**, and `laminas-authentication` and
+`laminas-view` went with it. What remains there is `laminas-session`, for the
+`SessionManager` this module's config still declares, and the packages a laminas host's own
+guards use.
 
 **Two caveats, so the list is not read as stronger than it is.**
 `laminas-servicemanager` still arrives transitively: `laminas-cache`, `laminas-form` and
@@ -218,19 +220,22 @@ three of the six have a failure mode that produces **no symptom at all**:
 `schoenstatt.link`'s `src/JUser/Host/` is a worked example of all six, and
 `test/Integration/JUserHostContractTest` there pins the properties that fail silently.
 
-**What you do not install:** `laminas-mvc`, `laminas-view`, `laminas-session`,
-`laminas-authentication`, `laminas-permissions-acl`, `laminas-eventmanager`, `laminas-http`
-or BjyAuthorize. Nothing in `JUser\Page\*`, `JUser\Controller\*` or `JUser\Host\*`
-reaches for any of them.
+**What you do not install:** `laminas-mvc`, `laminas-view`, `laminas-authentication`,
+`laminas-permissions-acl`, `laminas-eventmanager`, `laminas-http` or BjyAuthorize. Nothing
+in `JUser\Page\*`, `JUser\Controller\*` or `JUser\Host\*` reaches for any of them.
 
 **What you still install:** the seven laminas data/forms packages in the table above, and
 the two `jroedel/*` dev pins. The forms are laminas forms, rendered through
 `SionModel\Form\BootstrapFormRenderer`; replacing them with Symfony Forms is 3.1's
 question, not 3.0.0's.
 
-**If your host is still laminas-mvc**, install the `require-dev` packages and wire
-`JUser\Bridge\Laminas` — that namespace is exactly the set of adapters a laminas host
-would otherwise have to write, and `src/Bridge/Laminas/README.md` is its table.
+**If your host is still laminas-mvc**, you write the six adapters yourself.
+`JUser\Bridge\Laminas` used to hold them and was deleted in 2026-09: keeping code for a
+laminas host is what the direction this module now follows rules out. The one thing that
+namespace carried which is worth having is
+`JUser\Authentication\SessionIdentity` — it is in `src/` now, it needs no laminas, and
+it keeps only the user id in the session so a deactivation takes effect on the next
+request.
 
 ### Known blocker for reuse: the Mailer is not host-neutral
 
@@ -293,10 +298,11 @@ like the tags were lost.
 | **2.0.0** | The passwordless line: magic-link sign-in, `symfony/mailer`, API tokens, monolog, DB adapters injected into forms rather than fetched from a static registry, and the password-era columns and routes retired. Still a Laminas MVC module — it owns laminas routes, controllers and view scripts. |
 | **3.0.0** | Symfony-oriented, and a **drop-in**: this module owns its own controllers, templates, forms, route fragment and Twig extension, and reaches the application only through the six interfaces in `JUser\Host\`. **Eleven** of the eighteen `laminas/*` packages leave `require`, along with BjyAuthorize; the **seven** that stay are data and forms concerns, not framework ones. |
 
-It no longer serves any route through laminas-mvc, and the laminas-shaped code that a
-laminas host still uses is separated into `JUser\Bridge\Laminas\`, whose packages are
-`require-dev` plus `suggest` rather than hard dependencies. The trim landed 2026-08-22 and
-3.0.0 is feature-complete; see "Requirements" for what is left and why each entry is there.
+It no longer serves any route through laminas-mvc. The laminas-shaped code was first
+separated into `JUser\Bridge\Laminas\` and then, in 2026-09, deleted outright — a shared
+library that keeps a laminas implementation keeps the laminas packages with it, and the
+direction is to drop them in place. The trim landed 2026-08-22 and 3.0.0 is
+feature-complete; see "Requirements" for what is left and why each entry is there.
 
 ### Where the 3.0.0 work stands
 
