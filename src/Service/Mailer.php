@@ -2,8 +2,7 @@
 
 namespace JUser\Service;
 
-use Laminas\I18n\Translator\TranslatorInterface;
-use Laminas\I18n\Translator\TranslatorAwareInterface;
+use Laminas\Translator\TranslatorInterface;
 use JUser\Model\UserTable;
 use Psr\Log\LoggerInterface;
 use JUser\Model\User;
@@ -11,7 +10,7 @@ use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
-class Mailer implements TranslatorAwareInterface
+class Mailer
 {
     /** @var TransportInterface $transport */
     protected $transport;
@@ -188,7 +187,7 @@ EOT;
      *
      * @param  bool $enabled [optional] whether translator should be used.
      *                       Default is true.
-     * @return TranslatorAwareInterface
+     * @return self
      */
     public function setTranslatorEnabled($enabled = true)
     {
@@ -210,7 +209,7 @@ EOT;
      * Set translation text domain
      *
      * @param  string $textDomain
-     * @return TranslatorAwareInterface
+     * @return self
      */
     public function setTranslatorTextDomain($textDomain = 'default')
     {

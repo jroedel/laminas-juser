@@ -17,7 +17,7 @@
         "laminas/laminas-db": "^2.4.0",
         "laminas/laminas-filter": "^2.34",
         "laminas/laminas-form": "^2.4.0",
-        "laminas/laminas-i18n": "^2.26",
+        "laminas/laminas-translator": "^1.0",
         "laminas/laminas-inputfilter": "^2.30",
         "laminas/laminas-validator": "^2.64",
         "psr/container": "^1.1 || ^2.0",
