@@ -3,7 +3,7 @@
 namespace JUser\Service;
 
 use Psr\Container\ContainerInterface;
-use Laminas\I18n\Translator\TranslatorInterface;
+use Laminas\Translator\TranslatorInterface;
 use Psr\Log\LoggerInterface;
 
 /**
