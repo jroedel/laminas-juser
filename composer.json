@@ -32,7 +32,6 @@
         "laminas/laminas-authentication": "^2.13",
         "laminas/laminas-eventmanager": "^3.11",
         "laminas/laminas-http": "^2.19",
-        "laminas/laminas-mvc": "^3.8",
         "laminas/laminas-permissions-acl": "^2.16",
         "laminas/laminas-session": "^2.20",
         "laminas/laminas-view": "^2.34"
