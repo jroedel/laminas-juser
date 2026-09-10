@@ -3,7 +3,7 @@
 namespace JUser\Form;
 
 use Laminas\Db\Adapter\Adapter;
-use Laminas\Form\Form;
+use SionModel\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
 use SionModel\Form\ChoiceDomain;
