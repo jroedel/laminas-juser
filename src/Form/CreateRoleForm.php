@@ -8,6 +8,7 @@ use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
 use SionModel\Form\ChoiceDomain;
 use SionModel\Form\CsrfSpec;
+use SionModel\Form\CheckboxDomain;
 
 class CreateRoleForm extends Form implements InputFilterProviderInterface
 {
@@ -112,6 +113,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
             ],
             'isDefault' => [
                 'required' => false,
+                'validators' => CheckboxDomain::validators($this->get('isDefault')),
             ],
             //The InArray this select's own options imply, which naming it here
             //would otherwise discard - see SionModel\Form\ChoiceDomain. The
