@@ -4,6 +4,7 @@ namespace JUser\Form;
 
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
+use SionModel\Form\CsrfSpec;
 
 /**
  * The one and only sign-in form: an email address. There is no password.
@@ -55,6 +56,7 @@ class LoginForm extends Form implements InputFilterProviderInterface
     public function getInputFilterSpecification()
     {
         return [
+            'security' => CsrfSpec::forElement($this->get('security')),
             'email' => [
                 'required' => true,
                 'filters'  => [

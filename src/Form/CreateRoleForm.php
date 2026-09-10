@@ -7,6 +7,7 @@ use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
 use SionModel\Form\ChoiceDomain;
+use SionModel\Form\CsrfSpec;
 
 class CreateRoleForm extends Form implements InputFilterProviderInterface
 {
@@ -78,6 +79,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
     public function getInputFilterSpecification()
     {
         return [
+            'security' => CsrfSpec::forElement($this->get('security')),
             'name' => [
                 'required' => true,
                 'filters'  => [

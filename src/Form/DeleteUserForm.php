@@ -5,6 +5,7 @@ namespace JUser\Form;
 use Laminas\Db\Adapter\Adapter;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
+use SionModel\Form\CsrfSpec;
 
 class DeleteUserForm extends Form implements InputFilterProviderInterface
 {
@@ -54,6 +55,7 @@ class DeleteUserForm extends Form implements InputFilterProviderInterface
     public function getInputFilterSpecification()
     {
         return [
+            'security' => CsrfSpec::forElement($this->get('security')),
             'userId' => [
                 'required' => true,
                 'validators' => [
