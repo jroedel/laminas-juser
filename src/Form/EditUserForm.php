@@ -284,6 +284,15 @@ class EditUserForm extends Form implements InputFilterProviderInterface
              * the absent case without turning the checkbox into a field that
              * accepts anything.
              */
+            //Unlike personId above, this select keeps its own InArray — nothing disables
+            //it — so the domain is already the role list setRoleValueOptions() supplies
+            //and there is nothing for ChoiceDomain to put back. The entry exists to
+            //declare `required`, which was reaching the input from
+            //Select::getInputSpecification() and from nowhere a reader of this method
+            //could see.
+            'rolesList' => [
+                'required' => true,
+            ],
             'emailVerified' => [
                 'required' => false,
                 'filters' => [self::UNCHECKED_WHEN_ABSENT],
