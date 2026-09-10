@@ -295,6 +295,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             //could see.
             'rolesList' => [
                 'required' => true,
+                'validators' => ChoiceDomain::validators($this->get('rolesList')),
             ],
             'emailVerified' => [
                 'required' => false,
