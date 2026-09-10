@@ -7,6 +7,7 @@ use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
 use SionModel\Form\ChoiceDomain;
+use SionModel\Form\CsrfSpec;
 
 class EditUserForm extends Form implements InputFilterProviderInterface
 {
@@ -196,6 +197,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             return $this->filterSpec;
         }
         $this->filterSpec = [
+            'security' => CsrfSpec::forElement($this->get('security')),
             'userId' => [
                 'required' => true,
                 'filters'  => [

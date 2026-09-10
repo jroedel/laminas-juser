@@ -4,6 +4,7 @@ namespace JUser\Form;
 
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
+use SionModel\Form\CsrfSpec;
 
 /**
  * Mint an API token for one account.
@@ -51,6 +52,7 @@ class IssueApiTokenForm extends Form implements InputFilterProviderInterface
     public function getInputFilterSpecification()
     {
         return [
+            'security' => CsrfSpec::forElement($this->get('security')),
             'label' => [
                 //Optional: an unlabelled token is still a token, and refusing to
                 //issue one over a missing note would be a strange place to be
