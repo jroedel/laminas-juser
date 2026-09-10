@@ -5,6 +5,7 @@ namespace JUser\Form;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
 use SionModel\Form\CsrfSpec;
+use SionModel\Form\InputTypeRules;
 
 /**
  * The one and only sign-in form: an email address. There is no password.
@@ -64,6 +65,7 @@ class LoginForm extends Form implements InputFilterProviderInterface
                     ['name' => 'StripTags'],
                 ],
                 'validators' => [
+                    ...InputTypeRules::email($this->get('email')),
                     ['name' => 'EmailAddress'],
                     [
                         'name' => 'StringLength',
