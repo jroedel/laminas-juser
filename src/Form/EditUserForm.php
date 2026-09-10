@@ -8,6 +8,7 @@ use Laminas\InputFilter\InputFilterProviderInterface;
 use Laminas\Validator\Regex;
 use SionModel\Form\ChoiceDomain;
 use SionModel\Form\CsrfSpec;
+use SionModel\Form\CheckboxDomain;
 
 class EditUserForm extends Form implements InputFilterProviderInterface
 {
@@ -298,14 +299,17 @@ class EditUserForm extends Form implements InputFilterProviderInterface
             'emailVerified' => [
                 'required' => false,
                 'filters' => [self::UNCHECKED_WHEN_ABSENT],
+                'validators' => CheckboxDomain::validators($this->get('emailVerified')),
             ],
             'isMultiPersonUser' => [
                 'required' => false,
                 'filters' => [self::UNCHECKED_WHEN_ABSENT],
+                'validators' => CheckboxDomain::validators($this->get('isMultiPersonUser')),
             ],
             'active' => [
                 'required' => false,
                 'filters' => [self::UNCHECKED_WHEN_ABSENT],
+                'validators' => CheckboxDomain::validators($this->get('active')),
             ],
         ];
         return $this->filterSpec;
