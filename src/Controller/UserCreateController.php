@@ -164,11 +164,11 @@ final class UserCreateController
      * `user_edit`, which is the only thing distinguishing the create form's markup from the
      * edit form's.
      *
-     * @return FormInterface<array<string, mixed>>
+     * @return FormInterface
      */
     private function form(string $formId, string $kind): FormInterface
     {
-        /** @var FormInterface<array<string, mixed>> $form */
+        /** @var FormInterface $form */
         $form = $this->admin->form($formId);
 
         if (self::USER === $kind) {

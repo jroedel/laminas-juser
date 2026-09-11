@@ -4,8 +4,8 @@ namespace JUser\Form;
 
 use Laminas\Db\Adapter\Adapter;
 use SionModel\Form\Form;
-use Laminas\InputFilter\InputFilterProviderInterface;
-use Laminas\Validator\Regex;
+use SionModel\Form\InputFilterProviderInterface;
+use SionModel\Validator\Regex;
 use SionModel\Form\ChoiceDomain;
 use SionModel\Form\CsrfSpec;
 use SionModel\Form\CheckboxDomain;
@@ -98,13 +98,13 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
                         ],
                     ],
                     [
-                        'name'    => 'Laminas\Validator\Db\NoRecordExists',
+                        'name'    => 'SionModel\Validator\Db\NoRecordExists',
                         'options' => [
                             'table' => 'user_role',
                             'field' => 'role_id',
                             'adapter' => $this->adapter,
                             'messages' => [
-                                \Laminas\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
+                                \SionModel\Validator\Db\NoRecordExists::ERROR_RECORD_FOUND
                                     => 'Role id already exists in database'
                             ],
                         ],

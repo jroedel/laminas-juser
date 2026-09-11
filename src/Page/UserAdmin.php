@@ -103,11 +103,11 @@ final class UserAdmin
      * route-keyed table, which static analysis sees as a plain string, and asserting the
      * narrower type at the call site would be a claim that table cannot make.
      *
-     * @return FormInterface<array<string, mixed>>
+     * @return FormInterface
      */
     public function form(string $formId): FormInterface
     {
-        /** @var FormInterface<array<string, mixed>> $form */
+        /** @var FormInterface $form */
         $form = $this->forms->get($formId);
 
         return $form;

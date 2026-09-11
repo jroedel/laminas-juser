@@ -3,7 +3,7 @@
 namespace JUser\Form;
 
 use SionModel\Form\Form;
-use Laminas\InputFilter\InputFilterProviderInterface;
+use SionModel\Form\InputFilterProviderInterface;
 use SionModel\Form\CsrfSpec;
 
 /**

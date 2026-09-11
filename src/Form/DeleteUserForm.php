@@ -4,7 +4,7 @@ namespace JUser\Form;
 
 use Laminas\Db\Adapter\Adapter;
 use SionModel\Form\Form;
-use Laminas\InputFilter\InputFilterProviderInterface;
+use SionModel\Form\InputFilterProviderInterface;
 use SionModel\Form\CsrfSpec;
 
 class DeleteUserForm extends Form implements InputFilterProviderInterface
@@ -60,13 +60,13 @@ class DeleteUserForm extends Form implements InputFilterProviderInterface
                 'required' => true,
                 'validators' => [
                     [
-                        'name'    => 'Laminas\Validator\Db\RecordExists',
+                        'name'    => 'SionModel\Validator\Db\RecordExists',
                         'options' => [
                             'table' => 'user',
                             'field' => 'user_id',
                             'adapter' => $this->adapter,
                             'messages' => [
-                                \Laminas\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND =>
+                                \SionModel\Validator\Db\RecordExists::ERROR_NO_RECORD_FOUND =>
                                     'Assignment not found in database'
                             ],
                         ],

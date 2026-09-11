@@ -3,7 +3,7 @@
 namespace JUser\Form;
 
 use SionModel\Form\Form;
-use Laminas\InputFilter\InputFilterProviderInterface;
+use SionModel\Form\InputFilterProviderInterface;
 use SionModel\Form\CsrfSpec;
 
 /**
@@ -59,13 +59,13 @@ class IssueApiTokenForm extends Form implements InputFilterProviderInterface
                 //strict.
                 'required' => false,
                 'filters' => [
-                    ['name' => 'Laminas\Filter\StringTrim'],
-                    ['name' => 'Laminas\Filter\StripTags'],
-                    ['name' => 'Laminas\Filter\ToNull'],
+                    ['name' => 'SionModel\Filter\StringTrim'],
+                    ['name' => 'SionModel\Filter\StripTags'],
+                    ['name' => 'SionModel\Filter\ToNull'],
                 ],
                 'validators' => [
                     [
-                        'name' => 'Laminas\Validator\StringLength',
+                        'name' => 'SionModel\Validator\StringLength',
                         'options' => ['max' => 100],
                     ],
                 ],
