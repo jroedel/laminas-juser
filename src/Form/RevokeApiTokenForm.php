@@ -41,12 +41,12 @@ class RevokeApiTokenForm extends Form implements InputFilterProviderInterface
      * Only the CSRF token: `submit` is a button rather than data, and this form carries
      * no fields of its own.
      *
-     * `security` is stated here even though `Laminas\Form\Element\Csrf` supplies the
-     * validator itself. That was the reasoning this docblock used to give for returning
-     * an empty array, and it stops being safe at step 5:
-     * `SionModel\Form\Validation\InputFilter` reads the specification and nothing else,
-     * so a check that exists only on the element is a check the cutover removes. See
-     * SionModel\Form\CsrfSpec.
+     * `security` is stated here because nothing else states it. `Laminas\Form\Element\Csrf`
+     * used to supply the validator itself, which was this docblock's reason for returning
+     * an empty array; `SionModel\Form\Validation\InputFilter` reads the specification and
+     * nothing else, and since the element swap `SionModel\Form\Element\Csrf` supplies no
+     * input specification at all — it owns the token and says nothing about validating it.
+     * See SionModel\Form\CsrfSpec, which writes the rule this line reads.
      *
      * @return array<string, mixed>
      */
