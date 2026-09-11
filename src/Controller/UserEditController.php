@@ -10,7 +10,7 @@ use JUser\Host\UrlBuilderInterface;
 use JUser\Page\UserAdmin;
 use JUser\Routing\Routes;
 use JUser\Twig\JUserExtension;
-use Laminas\Form\Element\Select;
+use SionModel\Form\Element\Select;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
