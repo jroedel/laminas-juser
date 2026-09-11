@@ -13,7 +13,7 @@ use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Model\UserTable;
 use JUser\Service\ApiTokenService;
 use Laminas\Db\Adapter\Adapter;
-use Laminas\Form\FormInterface;
+use SionModel\Form\FormInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use SionModel\Service\ActingUserProviderInterface;
