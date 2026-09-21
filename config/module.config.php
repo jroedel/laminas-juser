@@ -3,8 +3,6 @@
 namespace JUser;
 
 use Laminas\Db\Adapter\Adapter;
-use Laminas\Session;
-use Laminas\Session\Storage\SessionArrayStorage;
 use SionModel\Service\ActingUserProviderInterface;
 
 return [
@@ -80,10 +78,6 @@ return [
             Form\CreateRoleForm::class      => Service\CreateRoleFormFactory::class,
             'JUser\Config'                  => Service\ConfigServiceFactory::class,
             'JUser\Cache'                   => Service\CacheFactory::class,
-            // Configures the default SessionManager instance
-            Session\ManagerInterface::class => Session\Service\SessionManagerFactory::class,
-            // Provides session configuration to SessionManagerFactory
-            Session\Config\ConfigInterface::class => Session\Service\SessionConfigFactory::class,
             Service\Mailer::class           => Service\MailerFactory::class,
             Service\LoginTokenService::class => Service\LoginTokenServiceFactory::class,
             Model\ApiTokenTable::class      => Service\ApiTokenTableFactory::class,
@@ -94,16 +88,26 @@ return [
             ActingUserProviderInterface::class => Service\IdentityActingUserProviderFactory::class,
         ],
         'aliases' => [
-            \Laminas\Session\SessionManager::class => Session\ManagerInterface::class,
             //historical service names, kept so existing consumers keep working
             'zfcuser_user_mapper'           => Model\UserTable::class,
             'zfcuser_zend_db_adapter'       => Adapter::class,
         ],
 
     ],
-    'session_storage' => [
-        'type' => SessionArrayStorage::class
-    ],
+    /*
+     * The host applies these; this module only declares them.
+     *
+     * Until 2026-09-21 the two service entries above turned them into a
+     * `Laminas\Session\Config\SessionConfig`, and `session_storage` chose a
+     * `SessionArrayStorage`. laminas-session is gone and PHP's own `$_SESSION` is the
+     * storage there ever was, so the storage key went with it and the values below are
+     * read by the host's session — on schoenstatt.link `App\Session\HttpSession`.
+     *
+     * `cache_expire` is 30 days **in seconds** while PHP reads that setting in minutes.
+     * That is how it has been since the file was written; it is left alone here because
+     * correcting it changes a `Cache-Control` header on every cached response, which is a
+     * separate change with its own measurement.
+     */
     'session_config' => [
         // Set the session and cookie expiries to 30 days
         'cache_expire' => 30 * 24 * 60 * 60,
