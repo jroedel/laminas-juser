@@ -2,7 +2,7 @@
 
 namespace JUser\Service;
 
-use Laminas\Translator\TranslatorInterface;
+use SionModel\I18n\TranslatesMessages;
 use JUser\Model\UserTable;
 use Psr\Log\LoggerInterface;
 use JUser\Model\User;
@@ -15,7 +15,7 @@ class Mailer
     /** @var TransportInterface $transport */
     protected $transport;
 
-    /** @var TranslatorInterface $translator */
+    /** @var TranslatesMessages $translator */
     protected $translator;
 
     /**
@@ -151,7 +151,7 @@ EOT;
 
     /**
      * Get the translator value
-     * @return TranslatorInterface
+     * @return TranslatesMessages
      */
     public function getTranslator()
     {
@@ -163,10 +163,10 @@ EOT;
 
     /**
      * Set the translator value
-     * @param TranslatorInterface $translator
+     * @param TranslatesMessages $translator
      * @return self
      */
-    public function setTranslator(?TranslatorInterface $translator = null, $textDomain = null)
+    public function setTranslator(?TranslatesMessages $translator = null, $textDomain = null)
     {
         $this->translator = $translator;
         return $this;
