@@ -3,7 +3,7 @@
 namespace JUser\Service;
 
 use Psr\Container\ContainerInterface;
-use Laminas\Translator\TranslatorInterface;
+use SionModel\I18n\TranslatesMessages;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -29,7 +29,7 @@ class MailerFactory
         //the shared application transport, built from `smtp_options` by
         //SionModel\Service\MailTransportFactory
         $transport = $container->get('SionModel\MailTransport');
-        $translator = $container->get(TranslatorInterface::class);
+        $translator = $container->get(TranslatesMessages::class);
 
         $config = $container->get('Config');
         if (
