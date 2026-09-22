@@ -3,7 +3,7 @@
 namespace JUser\Service;
 
 use JUser\Model\UserTable;
-use Laminas\Db\Adapter\Adapter;
+use SionModel\Db\Connection;
 use Psr\Container\ContainerInterface;
 use SionModel\Service\ActingUserProviderInterface;
 use SionModel\Service\EntitiesService;
@@ -21,7 +21,7 @@ class UserTableFactory
         //used to take the container and pull six services out of it, one of which was the
         //MVC `Application`, for its event manager — laminas-mvc, reached from a data class.
         $table = new UserTable(
-            $container->get(Adapter::class),
+            $container->get(Connection::class),
             $container->get(EntitiesService::class),
             $container->get('SionModel\Config'),
             $container->get(ActingUserProviderInterface::class)

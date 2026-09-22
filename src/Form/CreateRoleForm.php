@@ -2,7 +2,7 @@
 
 namespace JUser\Form;
 
-use Laminas\Db\Adapter\Adapter;
+use SionModel\Db\Connection;
 use SionModel\Form\Form;
 use SionModel\Form\InputFilterProviderInterface;
 use SionModel\Validator\Regex;
@@ -21,7 +21,7 @@ class CreateRoleForm extends Form implements InputFilterProviderInterface
      * `GlobalAdapterFeature::getStaticAdapter()`. See DeleteUserForm for what the
      * static registry cost.
      */
-    public function __construct(private readonly Adapter $adapter, $name = null)
+    public function __construct(private readonly Connection $adapter, $name = null)
     {
         // we want to ignore the name passed
         parent::__construct('role_create');

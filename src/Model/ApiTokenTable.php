@@ -2,8 +2,12 @@
 
 namespace JUser\Model;
 
-use Laminas\Db\Adapter\AdapterInterface;
-use Laminas\Db\Sql\Sql;
+use SionModel\Db\Connection;
+use SionModel\Db\Sql\Delete;
+use SionModel\Db\Sql\Insert;
+use SionModel\Db\Sql\Select;
+use SionModel\Db\Sql\Update;
+use SionModel\Db\Sql\Predicate\Operator;
 
 /**
  * The registry of API tokens that have been issued.
@@ -28,10 +32,10 @@ class ApiTokenTable
 {
     public const TABLE_NAME = 'user_api_token';
 
-    /** @var AdapterInterface $adapter */
+    /** @var Connection $adapter */
     protected $adapter;
 
-    public function __construct(AdapterInterface $adapter)
+    public function __construct(Connection $adapter)
     {
         $this->adapter = $adapter;
     }
@@ -48,8 +52,7 @@ class ApiTokenTable
      */
     public function recordIssued($jti, $userId, \DateTimeInterface $expiresOn, $label = null, $issuedBy = null)
     {
-        $sql = new Sql($this->adapter);
-        $insert = $sql->insert(self::TABLE_NAME)->values([
+        $insert = (new Insert(self::TABLE_NAME))->values([
             'jti'        => $jti,
             'user_id'    => (int) $userId,
             'label'      => (null === $label || '' === $label) ? null : $label,
@@ -57,7 +60,7 @@ class ApiTokenTable
             'issued_by'  => null === $issuedBy ? null : (int) $issuedBy,
             'expires_on' => $expiresOn->format('Y-m-d H:i:s'),
         ]);
-        $sql->prepareStatementForSqlObject($insert)->execute();
+        $this->adapter->execute($insert);
     }
 
     /**
@@ -78,8 +81,7 @@ class ApiTokenTable
      */
     public function isLive($jti, $userId)
     {
-        $sql = new Sql($this->adapter);
-        $select = $sql->select(self::TABLE_NAME)
+        $select = (new Select(self::TABLE_NAME))
             ->columns(['token_id'])
             ->where([
                 'jti'     => $jti,
@@ -87,7 +89,7 @@ class ApiTokenTable
                 'revoked_on' => null,
             ]);
 
-        $row = $sql->prepareStatementForSqlObject($select)->execute()->current();
+        $row = $this->adapter->select($select)->current();
 
         //laminas-db returns **false**, not null, for an empty result set, and
         //`false !== null` is true — so a `null !== $row` test here would answer
@@ -109,12 +111,11 @@ class ApiTokenTable
      */
     public function getTokensForUser($userId)
     {
-        $sql = new Sql($this->adapter);
-        $select = $sql->select(self::TABLE_NAME)
+        $select = (new Select(self::TABLE_NAME))
             ->where(['user_id' => (int) $userId])
             ->order(['issued_on' => 'DESC', 'token_id' => 'DESC']);
 
-        $results = $sql->prepareStatementForSqlObject($select)->execute();
+        $results = $this->adapter->select($select);
 
         $now = $this->now();
         $tokens = [];
@@ -145,9 +146,8 @@ class ApiTokenTable
      */
     public function getToken($tokenId)
     {
-        $sql = new Sql($this->adapter);
-        $select = $sql->select(self::TABLE_NAME)->where(['token_id' => (int) $tokenId]);
-        $row = $sql->prepareStatementForSqlObject($select)->execute()->current();
+        $select = (new Select(self::TABLE_NAME))->where(['token_id' => (int) $tokenId]);
+        $row = $this->adapter->select($select)->current();
 
         if (! is_array($row) && ! is_object($row)) {
             return null;
@@ -178,8 +178,7 @@ class ApiTokenTable
      */
     public function revoke($tokenId, $userId, $revokedBy = null)
     {
-        $sql = new Sql($this->adapter);
-        $update = $sql->update(self::TABLE_NAME)
+        $update = (new Update(self::TABLE_NAME))
             ->set([
                 'revoked_on' => $this->now()->format('Y-m-d H:i:s'),
                 'revoked_by' => null === $revokedBy ? null : (int) $revokedBy,
@@ -190,7 +189,7 @@ class ApiTokenTable
                 'revoked_on' => null,
             ]);
 
-        return $sql->prepareStatementForSqlObject($update)->execute()->getAffectedRows() > 0;
+        return $this->adapter->execute($update) > 0;
     }
 
     /**
@@ -213,16 +212,15 @@ class ApiTokenTable
     {
         $cutoff = $this->now()->sub(new \DateInterval('P1D'))->format('Y-m-d H:i:s');
 
-        $sql = new Sql($this->adapter);
-        //Built in two statements on purpose: `$delete->where(...)` returns the
-        //Delete, but `$delete->where` is the Where predicate set, so chaining
-        //the two forms silently hands prepareStatementForSqlObject() a Where
-        //instead of a Delete.
-        $delete = $sql->delete(self::TABLE_NAME);
-        $delete->where(['user_id' => (int) $userId, 'revoked_on' => null]);
-        $delete->where->lessThan('expires_on', $cutoff);
+        //The two-statement shape is no longer forced: laminas-db exposed the predicate set
+        //as a public `$delete->where` *and* a `where()` method, and chaining the two silently
+        //handed the prepared statement a Where instead of a Delete. There is only the method
+        //now, and it always returns the statement.
+        $delete = (new Delete(self::TABLE_NAME))
+            ->where(['user_id' => (int) $userId, 'revoked_on' => null])
+            ->where(new Operator('expires_on', Operator::LT, $cutoff));
 
-        return $sql->prepareStatementForSqlObject($delete)->execute()->getAffectedRows();
+        return $this->adapter->execute($delete);
     }
 
     /**

@@ -2,7 +2,7 @@
 
 namespace JUser\Form;
 
-use Laminas\Db\Adapter\Adapter;
+use SionModel\Db\Connection;
 use SionModel\Form\Form;
 use SionModel\Form\InputFilterProviderInterface;
 use SionModel\Form\CsrfSpec;
@@ -19,7 +19,7 @@ class DeleteUserForm extends Form implements InputFilterProviderInterface
      * for every input — benign included — in any process that had not booted
      * laminas-mvc: the Symfony kernel, a console command, a test harness.
      */
-    public function __construct(private readonly Adapter $adapter, $name = null)
+    public function __construct(private readonly Connection $adapter, $name = null)
     {
         // we want to ignore the name passed
         parent::__construct('delete_user');

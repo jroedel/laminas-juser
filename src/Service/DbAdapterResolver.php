@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace JUser\Service;
 
-use Laminas\Db\Adapter\Adapter;
+use SionModel\Db\Connection;
 use Psr\Container\ContainerInterface;
 
 /**
@@ -23,19 +23,19 @@ use Psr\Container\ContainerInterface;
  *
  * The explicit exception is kept from `onBootstrap()`, which is where it used to
  * live: a missing service would otherwise surface as a `ServiceNotFoundException`
- * naming `Laminas\Db\Adapter\Adapter` and no reason for a host application to suspect
+ * naming `SionModel\Db\Connection` and no reason for a host application to suspect
  * its own JUser config.
  */
 final class DbAdapterResolver
 {
-    public static function fromContainer(ContainerInterface $container): Adapter
+    public static function fromContainer(ContainerInterface $container): Connection
     {
         /** @var array<string, mixed> $config */
         $config = $container->get('Config');
         /** @var array<string, mixed> $juser */
         $juser = $config['juser'] ?? [];
         /** @var string $service */
-        $service = $juser['db_adapter'] ?? Adapter::class;
+        $service = $juser['db_adapter'] ?? Connection::class;
 
         if (! $container->has($service)) {
             throw new \RuntimeException(
@@ -43,7 +43,7 @@ final class DbAdapterResolver
             );
         }
 
-        /** @var Adapter $adapter */
+        /** @var Connection $adapter */
         $adapter = $container->get($service);
 
         return $adapter;

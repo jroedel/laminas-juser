@@ -12,7 +12,7 @@ use JUser\Host\Severity;
 use JUser\Model\PersonValueOptionsProviderInterface;
 use JUser\Model\UserTable;
 use JUser\Service\ApiTokenService;
-use Laminas\Db\Adapter\Adapter;
+use SionModel\Db\Connection;
 use SionModel\Form\FormInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
@@ -80,7 +80,7 @@ final class UserAdmin
     public function __construct(
         private readonly UserTable $users,
         private readonly ContainerInterface $forms,
-        private readonly Adapter $adapter,
+        private readonly Connection $adapter,
         private readonly ApiTokenService $apiTokens,
         private readonly SessionInterface $session,
         private readonly FlashInterface $messages,

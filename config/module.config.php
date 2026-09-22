@@ -2,13 +2,13 @@
 
 namespace JUser;
 
-use Laminas\Db\Adapter\Adapter;
+use SionModel\Db\Connection;
 use SionModel\Service\ActingUserProviderInterface;
 
 return [
     'juser' => [
         //service name of the Laminas\Db adapter this module works against
-        'db_adapter' => Adapter::class,
+        'db_adapter' => Connection::class,
 
         //where to land after signing in / after signing out
         'login_redirect_route' => 'welcome',
@@ -90,7 +90,7 @@ return [
         'aliases' => [
             //historical service names, kept so existing consumers keep working
             'zfcuser_user_mapper'           => Model\UserTable::class,
-            'zfcuser_zend_db_adapter'       => Adapter::class,
+            'zfcuser_zend_db_adapter'       => Connection::class,
         ],
 
     ],

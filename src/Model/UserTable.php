@@ -2,7 +2,7 @@
 
 namespace JUser\Model;
 
-use Laminas\Db\Sql\Select;
+use SionModel\Db\Sql\Select;
 use SionModel\Db\Model\SionTable;
 use JUser\Service\Mailer;
 

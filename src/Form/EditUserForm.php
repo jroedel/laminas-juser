@@ -2,7 +2,7 @@
 
 namespace JUser\Form;
 
-use Laminas\Db\Adapter\Adapter;
+use SionModel\Db\Connection;
 use SionModel\Form\Form;
 use SionModel\Form\InputFilterProviderInterface;
 use SionModel\Validator\Regex;
@@ -36,7 +36,7 @@ class EditUserForm extends Form implements InputFilterProviderInterface
      * existing username or display name validated clean. With the adapter injected
      * that state is unreachable rather than unlikely.
      */
-    public function __construct(private readonly Adapter $adapter, $name = null)
+    public function __construct(private readonly Connection $adapter, $name = null)
     {
         // we want to ignore the name passed
         parent::__construct('user_edit');

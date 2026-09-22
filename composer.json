@@ -14,7 +14,6 @@
         "firebase/php-jwt": "^7.0",
         "jroedel/laminas-jtranslate": "dev-modernization",
         "jroedel/zf2-sion-model": "dev-master",
-        "laminas/laminas-db": "^2.4.0",
         "psr/container": "^1.1 || ^2.0",
         "psr/log": "^3.0",
         "symfony/http-foundation": "^7.0",
