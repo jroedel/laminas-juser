@@ -21,11 +21,6 @@
         "twig/twig": "^3.0",
         "symfony/mime": "^7.4"
     },
-    "require-dev": {
-        "kokspflanze/bjy-authorize": "dev-master",
-        "laminas/laminas-http": "^2.19",
-        "laminas/laminas-permissions-acl": "^2.16"
-    },
     "autoload": {
         "psr-4": {
             "JUser\\": "src/"
